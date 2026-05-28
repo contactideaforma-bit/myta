@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+  }
+  body {
+    @apply bg-zinc-50 text-zinc-900 antialiased;
+  }
+}
+
+@layer components {
+  /* ── Cartes ── */
+  .card {
+    @apply bg-white border border-zinc-200/80 rounded-xl p-5;
+  }
+  .card-sm {
+    @apply bg-white border border-zinc-200/80 rounded-xl p-4;
+  }
+
+  /* ── Boutons ── */
+  .btn-primary {
+    @apply flex items-center gap-2 px-4 py-2 rounded-lg bg-tta-mid text-white text-sm font-medium hover:bg-tta transition-colors;
+  }
+  .btn-nutri {
+    @apply flex items-center gap-2 px-4 py-2 rounded-lg bg-nutri text-white text-sm font-medium hover:bg-nutri-dark transition-colors;
+  }
+  .btn-ghost {
+    @apply flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-zinc-600 hover:bg-zinc-100 transition-colors;
+  }
+  .btn-danger {
+    @apply flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors;
+  }
+
+  /* ── KPI ── */
+  .kpi-card {
+    @apply bg-zinc-100 rounded-xl p-4 flex flex-col gap-1;
+  }
+  .kpi-nutri {
+    @apply bg-nutri-light rounded-xl p-4 flex flex-col gap-1;
+  }
+
+  /* ── Inputs ── */
+  .input {
+    @apply w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-tta-mid/30 focus:border-tta-mid transition-colors;
+  }
+
+  /* ── Module badges ── */
+  .badge-nutri {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-nutri-light text-nutri-dark;
+  }
+  .badge-sport {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-tta-light text-tta-mid;
+  }
+}
