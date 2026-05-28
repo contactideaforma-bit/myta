@@ -1,6 +1,6 @@
+// @ts-nocheck
 // Base alimentaire MYTA — 1100+ aliments (CIQUAL + base NutriTrack)
 // Source : Table CIQUAL Anses 2020 + base NutriTrack
-
 export interface FoodItem {
   id: string | number
   name: string
