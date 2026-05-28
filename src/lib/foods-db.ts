@@ -12,7 +12,8 @@ export interface FoodItem {
   image_url?: string | null
 }
 
-export const FOODS_DB: FoodItem[] = [
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const FOODS_DB: FoodItem[] = ([] as any[]).concat([
   { id: 1, name: "Pomme", cat: "fruit", cal: 52.0, prot: 0.3, carb: 14.0, fat: 0.2 },
   { id: 2, name: "Poire", cat: "fruit", cal: 57.0, prot: 0.4, carb: 15.2, fat: 0.1 },
   { id: 3, name: "Banane", cat: "fruit", cal: 89.0, prot: 1.1, carb: 23.0, fat: 0.3 },
@@ -1145,7 +1146,7 @@ export const FOODS_DB: FoodItem[] = [
   { id: "cq163", name: "Chocolat au lait", cat: "aliment", cal: 526.0, prot: 6.8, carb: 58.1, fat: 30.2 },
   { id: "cq164", name: "Confiture", cat: "aliment", cal: 261.0, prot: 0.5, carb: 65.0, fat: 0.1 },
   { id: "cq165", name: "Nutella", cat: "aliment", cal: 528.0, prot: 6.3, carb: 57.5, fat: 30.9 },
-]
+])
 
 // Normalise : minuscules + suppression accents
 function norm(s: string): string {
