@@ -157,33 +157,59 @@ export default function SessionPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const discName = voiceSession.discipline.charAt(0).toUpperCase() + voiceSession.discipline.slice(1)
-    const { data: disc }    = await supabase.from('disciplines').select('id').ilike('name', discName).single()
-    const { data: profile } = await supabase.from('profiles').select('weight_kg').eq('id', user.id).single()
-    const weight = (profile as any)?.weight_kg ?? 70
+    try {
+      // Mapping discipline vocal → nom en base
+      const DISC_MAP: Record<string, string> = {
+        natation:    'Natation',
+        musculation: 'Musculation',
+        cardio:      'Cardio',
+        boxe:        'Boxe',
+      }
+      const discName = DISC_MAP[voiceSession.discipline?.toLowerCase()] ?? 'Cardio'
 
-    const { data: session } = await supabase.from('sessions').insert({
-      user_id:        user.id,
-      discipline_id:  (disc as any)?.id ?? null,
-      session_date:   new Date().toISOString().slice(0, 10),
-      duration_min:   voiceSession.duration_min,
-      calories_burned: voiceSession.calories_estimate ?? Math.round(5 * weight * (voiceSession.duration_min / 60)),
-      notes:          voiceSession.notes ?? null,
-    }).select().single()
+      const { data: profile } = await supabase
+        .from('profiles').select('weight_kg').eq('id', user.id).single()
+      const weight = (profile as any)?.weight_kg ?? 70
 
-    if (session && voiceSession.exercises?.length > 0) {
-      await supabase.from('session_exercises').insert(
-        voiceSession.exercises.map((ex: any) => ({
-          session_id:   session.id,
-          exercise_name: ex.name,
-          sets:         ex.sets ?? null,
-          reps:         ex.reps ?? null,
-          duration_sec: ex.duration_sec ?? null,
-          weight_kg:    null,
-        }))
-      )
+      // Cherche la discipline sans planter si absente
+      const { data: discList } = await supabase
+        .from('disciplines').select('id').ilike('name', discName)
+      const discId = discList?.[0]?.id ?? null
+
+      const { data: session, error: sessionError } = await supabase
+        .from('sessions').insert({
+          user_id:         user.id,
+          discipline_id:   discId,
+          session_date:    new Date().toISOString().slice(0, 10),
+          duration_min:    voiceSession.duration_min ?? 30,
+          calories_burned: voiceSession.calories_estimate
+            ?? Math.round(5 * weight * ((voiceSession.duration_min ?? 30) / 60)),
+          notes: voiceSession.notes ?? null,
+        }).select().single()
+
+      if (sessionError) {
+        console.error('Session insert error:', sessionError)
+        return
+      }
+
+      if (session && voiceSession.exercises?.length > 0) {
+        await supabase.from('session_exercises').insert(
+          voiceSession.exercises.map((ex: any) => ({
+            session_id:    session.id,
+            exercise_name: ex.name,
+            sets:          ex.sets ?? null,
+            reps:          ex.reps ?? null,
+            duration_sec:  ex.duration_sec ?? null,
+            weight_kg:     null,
+          }))
+        )
+      }
+
+      router.push('/dashboard')
+    } catch (err) {
+      console.error('handleVoiceConfirm error:', err)
+      router.push('/dashboard')
     }
-    router.push('/dashboard')
   }
 
   return (
