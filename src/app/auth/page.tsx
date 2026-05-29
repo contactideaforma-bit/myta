@@ -22,7 +22,7 @@ export default function AuthPage() {
     if (mode === 'login') {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setMessage(error.message)
-      else window.location.href = '/dashboard'
+      else window.location.href = '/nutrition/journal'
     } else {
       const { error } = await supabase.auth.signUp({
         email,
