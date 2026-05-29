@@ -153,12 +153,13 @@ export default function SessionPage() {
   const [inputMode, setInputMode] = useState<InputMode>('none')
   const [shuffledTips]            = useState(() => [...SPORT_TIPS].sort(() => Math.random() - 0.5))
 
+  const [saved, setSaved] = useState(false)
+
   async function handleVoiceConfirm(voiceSession: any) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
     try {
-      // Mapping discipline vocal → nom en base
       const DISC_MAP: Record<string, string> = {
         natation:    'Natation',
         musculation: 'Musculation',
@@ -171,7 +172,6 @@ export default function SessionPage() {
         .from('profiles').select('weight_kg').eq('id', user.id).single()
       const weight = (profile as any)?.weight_kg ?? 70
 
-      // Cherche la discipline sans planter si absente
       const { data: discList } = await supabase
         .from('disciplines').select('id').ilike('name', discName)
       const discId = discList?.[0]?.id ?? null
@@ -187,10 +187,7 @@ export default function SessionPage() {
           notes: voiceSession.notes ?? null,
         }).select().single()
 
-      if (sessionError) {
-        console.error('Session insert error:', sessionError)
-        return
-      }
+      if (sessionError) { console.error('Session insert error:', sessionError); return }
 
       if (session && voiceSession.exercises?.length > 0) {
         await supabase.from('session_exercises').insert(
@@ -205,15 +202,27 @@ export default function SessionPage() {
         )
       }
 
-      router.push('/dashboard')
+      // Reste sur la page + affiche succès
+      setSaved(true)
+      setInputMode('none')
+      setTimeout(() => setSaved(false), 4000)
+
     } catch (err) {
       console.error('handleVoiceConfirm error:', err)
-      router.push('/dashboard')
     }
   }
 
   return (
     <div className="page">
+
+      {/* Toast succès */}
+      {saved && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-nutri text-white px-5 py-3 rounded-full shadow-lg font-bold text-sm animate-in fade-in slide-in-from-bottom-2">
+          <Check size={16} />
+          Séance enregistrée ! 💪
+        </div>
+      )}
+
       <div>
         <h1 className="text-xl font-extrabold text-zinc-900">Nouvelle séance</h1>
         <p className="text-sm text-zinc-400 mt-0.5">Décris ta séance à voix haute ou par écrit</p>
