@@ -8,7 +8,9 @@ import {
   Play, Pause, ChevronLeft,
   CheckCircle2, Loader2, Clock, Flame, Circle,
   Plus, Trash2, Pencil, X, Check, AlertTriangle,
+  Mic,
 } from 'lucide-react'
+import { VoiceSession } from '@/components/sport/VoiceSession'
 
 interface Exercise {
   name: string
@@ -196,6 +198,7 @@ function QuitModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: (
 export default function SessionPage() {
   const router = useRouter()
   const [step, setStep]           = useState<1 | 2 | 3 | 4>(1)
+  const [voiceMode, setVoiceMode] = useState(false)
   const [selected, setSelected]   = useState<DisciplineOption | null>(null)
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [dbExercises, setDbExercises] = useState<DBExercise[]>([])
@@ -317,6 +320,40 @@ export default function SessionPage() {
 
   function goToSummary() { pauseTimer(); setStep(4) }
 
+  async function handleVoiceConfirm(voiceSession: any) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const discName = voiceSession.discipline.charAt(0).toUpperCase() + voiceSession.discipline.slice(1)
+    const { data: disc } = await supabase.from('disciplines').select('id').ilike('name', discName).single()
+    const { data: profile } = await supabase.from('profiles').select('weight_kg').eq('id', user.id).single()
+    const weight = (profile as any)?.weight_kg ?? 70
+
+    const { data: session } = await supabase.from('sessions').insert({
+      user_id: user.id,
+      discipline_id: (disc as any)?.id ?? null,
+      session_date: new Date().toISOString().slice(0, 10),
+      duration_min: voiceSession.duration_min,
+      calories_burned: voiceSession.calories_estimate ?? Math.round(5 * weight * (voiceSession.duration_min / 60)),
+      notes: voiceSession.notes ?? null,
+    }).select().single()
+
+    if (session && voiceSession.exercises?.length > 0) {
+      await supabase.from('session_exercises').insert(
+        voiceSession.exercises.map((ex: any) => ({
+          session_id: session.id,
+          exercise_name: ex.name,
+          sets: ex.sets ?? null,
+          reps: ex.reps ?? null,
+          duration_sec: ex.duration_sec ?? null,
+          weight_kg: null,
+        }))
+      )
+    }
+    ;(window as any).__sessionActive = false
+    router.push('/dashboard')
+  }
+
   async function saveSession() {
     if (!selected) return
     setSaving(true)
@@ -357,20 +394,51 @@ export default function SessionPage() {
         <h1 className="text-xl font-semibold">Nouvelle séance</h1>
         <p className="text-sm text-zinc-500 mt-0.5">Quelle discipline aujourd'hui ?</p>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        {DISCIPLINES.map(disc => (
-          <button key={disc.slug} onClick={() => pickDiscipline(disc)}
-            className={`card flex flex-col gap-3 text-left transition-all cursor-pointer border-2 border-transparent ${disc.colors.card}`}>
-            <span className={`inline-flex items-center justify-center w-10 h-10 rounded-xl ${disc.colors.badge}`}>
-              <disc.Icon size={20} />
-            </span>
-            <div>
-              <p className="font-medium text-sm">{disc.label}</p>
-              <p className="text-xs text-zinc-400 mt-0.5">{disc.desc}</p>
+
+      {/* Mode vocal */}
+      {voiceMode ? (
+        <VoiceSession
+          onConfirm={handleVoiceConfirm}
+          onCancel={() => setVoiceMode(false)}
+        />
+      ) : (
+        <>
+          {/* Bouton vocal */}
+          <button onClick={() => setVoiceMode(true)}
+            className="card border-2 border-dashed border-tta-mid/40 flex items-center gap-4 hover:border-tta-mid hover:bg-tta-light/30 transition-all p-4">
+            <div className="w-12 h-12 rounded-full bg-tta-mid flex items-center justify-center flex-shrink-0">
+              <Mic size={22} className="text-white" />
+            </div>
+            <div className="text-left">
+              <p className="font-semibold text-sm text-zinc-900">🎤 Décrire ma séance à voix haute</p>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                Dis ce que tu as fait, l'IA crée la séance automatiquement
+              </p>
             </div>
           </button>
-        ))}
-      </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-zinc-200" />
+            <p className="text-xs text-zinc-400">ou choisir une discipline</p>
+            <div className="flex-1 h-px bg-zinc-200" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {DISCIPLINES.map(disc => (
+              <button key={disc.slug} onClick={() => pickDiscipline(disc)}
+                className={`card flex flex-col gap-3 text-left transition-all cursor-pointer border-2 border-transparent ${disc.colors.card}`}>
+                <span className={`inline-flex items-center justify-center w-10 h-10 rounded-xl ${disc.colors.badge}`}>
+                  <disc.Icon size={20} />
+                </span>
+                <div>
+                  <p className="font-medium text-sm">{disc.label}</p>
+                  <p className="text-xs text-zinc-400 mt-0.5">{disc.desc}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 
