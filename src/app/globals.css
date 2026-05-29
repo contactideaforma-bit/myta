@@ -3,60 +3,113 @@
 @tailwind utilities;
 
 @layer base {
-  :root { --radius: 0.5rem; }
+  :root { --radius: 0.75rem; }
 
-  body { @apply bg-zinc-50 text-zinc-900 antialiased; }
+  body {
+    @apply bg-cream text-zinc-800 antialiased;
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
+  }
 
-  /* Dark mode — CSS natif (pas de @apply ici) */
-  .dark body        { background-color: rgb(9 9 11);    color: rgb(244 244 245); }
-  .dark header      { background-color: rgb(24 24 27) !important; border-color: rgb(39 39 42) !important; }
-  .dark aside       { background-color: rgb(24 24 27) !important; border-color: rgb(39 39 42) !important; }
-  .dark select      { background-color: rgb(39 39 42) !important; border-color: rgb(63 63 70) !important; color: rgb(244 244 245) !important; }
-  .dark .card       { background-color: rgb(24 24 27) !important; border-color: rgb(39 39 42) !important; }
-  .dark .card-sm    { background-color: rgb(24 24 27) !important; border-color: rgb(39 39 42) !important; }
-  .dark .kpi-card   { background-color: rgb(39 39 42) !important; }
-  .dark .kpi-nutri  { background-color: rgb(20 83 45 / 0.3) !important; }
-  .dark .input      { background-color: rgb(39 39 42) !important; border-color: rgb(63 63 70) !important; color: rgb(244 244 245) !important; }
-  .dark .btn-ghost  { color: rgb(161 161 170) !important; }
-  .dark .btn-ghost:hover { background-color: rgb(39 39 42) !important; }
-
-  /* Couleurs texte dark */
-  .dark .text-zinc-900 { color: rgb(244 244 245) !important; }
-  .dark .text-zinc-700 { color: rgb(212 212 216) !important; }
-  .dark .text-zinc-600 { color: rgb(161 161 170) !important; }
-  .dark .text-zinc-500 { color: rgb(113 113 122) !important; }
-
-  /* Fonds dark */
-  .dark .bg-white    { background-color: rgb(24 24 27) !important; }
-  .dark .bg-zinc-50  { background-color: rgb(9 9 11) !important; }
-  .dark .bg-zinc-100 { background-color: rgb(39 39 42) !important; }
-
-  /* Bordures dark */
-  .dark .border-zinc-200 { border-color: rgb(63 63 70) !important; }
-  .dark .border-zinc-100 { border-color: rgb(39 39 42) !important; }
-
-  /* Dividers dark */
-  .dark .divide-zinc-100 > * + * { border-color: rgb(39 39 42) !important; }
-
-  /* Hover dark */
-  .dark .hover\:bg-zinc-50:hover  { background-color: rgb(39 39 42) !important; }
-  .dark .hover\:bg-zinc-100:hover { background-color: rgb(63 63 70) !important; }
+  /* Dark mode */
+  .dark body        { background-color: #1a1825; color: #f0eeff; }
+  .dark header      { background-color: #2d2a5e !important; border-color: #3d3a7a !important; }
+  .dark aside       { background-color: #2d2a5e !important; border-color: #3d3a7a !important; }
+  .dark .card       { background-color: #252340 !important; border-color: #3d3a7a !important; }
+  .dark .card-sm    { background-color: #252340 !important; border-color: #3d3a7a !important; }
+  .dark .kpi-card   { background-color: #2d2a5e !important; }
+  .dark .input      { background-color: #2d2a5e !important; border-color: #4d4a8e !important; color: #f0eeff !important; }
+  .dark .btn-ghost  { color: #a0a0d0 !important; }
+  .dark .btn-ghost:hover { background-color: #3d3a7a !important; }
+  .dark select      { background-color: #2d2a5e !important; border-color: #4d4a8e !important; color: #f0eeff !important; }
+  .dark .bg-white   { background-color: #252340 !important; }
+  .dark .bg-cream   { background-color: #1a1825 !important; }
+  .dark .bg-zinc-50 { background-color: #1a1825 !important; }
+  .dark .bg-zinc-100 { background-color: #2d2a5e !important; }
+  .dark .border-zinc-200 { border-color: #3d3a7a !important; }
+  .dark .border-zinc-100 { border-color: #2d2a5e !important; }
+  .dark .text-zinc-900 { color: #f0eeff !important; }
+  .dark .text-zinc-800 { color: #e0e0f8 !important; }
+  .dark .text-zinc-700 { color: #c0c0e8 !important; }
+  .dark .text-zinc-600 { color: #a0a0d0 !important; }
+  .dark .text-zinc-500 { color: #8080b8 !important; }
+  .dark .divide-zinc-100 > * + * { border-color: #2d2a5e !important; }
+  .dark .hover\:bg-zinc-50:hover  { background-color: #2d2a5e !important; }
+  .dark .hover\:bg-zinc-100:hover { background-color: #3d3a7a !important; }
 }
 
 @layer components {
-  .card    { @apply bg-white border border-zinc-200/80 rounded-xl p-5; }
-  .card-sm { @apply bg-white border border-zinc-200/80 rounded-xl p-4; }
 
-  .btn-primary { @apply flex items-center gap-2 px-4 py-2 rounded-lg bg-tta-mid text-white text-sm font-medium hover:bg-tta transition-colors; }
-  .btn-nutri   { @apply flex items-center gap-2 px-4 py-2 rounded-lg bg-nutri text-white text-sm font-medium hover:bg-nutri-dark transition-colors; }
-  .btn-ghost   { @apply flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-zinc-600 hover:bg-zinc-100 transition-colors; }
-  .btn-danger  { @apply flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors; }
+  /* ── Cartes fun ── */
+  .card {
+    @apply bg-white rounded-3xl p-5 border border-zinc-100 shadow-sm;
+  }
+  .card-sm {
+    @apply bg-white rounded-2xl p-4 border border-zinc-100 shadow-sm;
+  }
+  .card-nutri {
+    @apply bg-nutri-light rounded-3xl p-5 border border-nutri/20 shadow-sm;
+  }
+  .card-sport {
+    @apply bg-sport-light rounded-3xl p-5 border border-sport/20 shadow-sm;
+  }
+  .card-cream {
+    @apply bg-cream-warm rounded-3xl p-5 border border-orange-100 shadow-sm;
+  }
 
-  .kpi-card  { @apply bg-zinc-100 rounded-xl p-4 flex flex-col gap-1; }
-  .kpi-nutri { @apply bg-nutri-light rounded-xl p-4 flex flex-col gap-1; }
+  /* ── Boutons pill colorés ── */
+  .btn-primary {
+    @apply flex items-center gap-2 px-5 py-2.5 rounded-full bg-tta-mid text-white text-sm font-bold shadow-sm hover:bg-tta transition-all active:scale-95;
+  }
+  .btn-nutri {
+    @apply flex items-center gap-2 px-5 py-2.5 rounded-full bg-nutri text-white text-sm font-bold shadow-sm hover:bg-nutri-mid transition-all active:scale-95;
+  }
+  .btn-sport {
+    @apply flex items-center gap-2 px-5 py-2.5 rounded-full bg-sport text-white text-sm font-bold shadow-sm hover:bg-sport-mid transition-all active:scale-95;
+  }
+  .btn-ghost {
+    @apply flex items-center gap-2 px-4 py-2 rounded-full text-sm text-zinc-500 hover:bg-zinc-100 transition-all;
+  }
+  .btn-danger {
+    @apply flex items-center gap-2 px-5 py-2.5 rounded-full bg-red-400 text-white text-sm font-bold shadow-sm hover:bg-red-500 transition-all;
+  }
 
-  .input { @apply w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-tta-mid/30 focus:border-tta-mid transition-colors bg-white; }
+  /* ── KPI cards colorées ── */
+  .kpi-card {
+    @apply bg-white rounded-2xl p-4 flex flex-col gap-1 border border-zinc-100 shadow-sm;
+  }
+  .kpi-nutri {
+    @apply bg-nutri-light rounded-2xl p-4 flex flex-col gap-1 border border-nutri/20;
+  }
+  .kpi-sport {
+    @apply bg-sport-light rounded-2xl p-4 flex flex-col gap-1 border border-sport/20;
+  }
 
-  .badge-nutri { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-nutri-light text-nutri-dark; }
-  .badge-sport { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-tta-light text-tta-mid; }
+  /* ── Inputs fun ── */
+  .input {
+    @apply w-full px-4 py-2.5 border-2 border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-tta-mid focus:ring-2 focus:ring-tta-mid/20 transition-all bg-white;
+  }
+
+  /* ── Badges pill ── */
+  .badge-nutri {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-nutri/15 text-nutri-dark;
+  }
+  .badge-sport {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-sport/15 text-sport-dark;
+  }
+  .badge-pill {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold;
+  }
+
+  /* ── Section headers ── */
+  .section-title {
+    @apply text-lg font-extrabold text-zinc-900 tracking-tight;
+  }
+  .section-sub {
+    @apply text-sm text-zinc-400 mt-0.5;
+  }
+
+  /* ── Page container ── */
+  .page {
+    @apply max-w-2xl mx-auto px-4 py-6 flex flex-col gap-5;
+  }
 }
