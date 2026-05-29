@@ -7,11 +7,12 @@ import { fr } from 'date-fns/locale'
 import {
   ChevronLeft, ChevronRight, Flame,
   Search, X, Trash2, Loader2,
-  Scale, BarChart3,
+  Scale, BarChart3, Mic,
 } from 'lucide-react'
 import { todayISO, round1 } from '@/lib/utils'
 import { searchFoods, type FoodItem } from '@/lib/foods-db'
 import { Waty, getWatyMessage } from '@/components/ui/Waty'
+import { VoiceMeal, type DetectedFood } from '@/components/nutrition/VoiceMeal'
 import {
   calcInflamScore, hasGluten, classifyInflam,
   inflamGaugePct, inflamAdvice, calcMicros,
@@ -119,6 +120,7 @@ export default function JournalPage() {
   const [results, setResults]       = useState<FoodItem[]>([])
   const [searching, setSearching]   = useState(false)
   const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null)
+  const [showVoiceMeal, setShowVoiceMeal] = useState(false)
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Poids
@@ -248,6 +250,31 @@ export default function JournalPage() {
     showToast(`✓ ${selectedFood.name} ajouté`, 'ok')
   }
 
+  async function handleVoiceMealConfirm(foods: DetectedFood[]) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const entries = foods.map(f => ({
+      user_id:   user.id,
+      date:      currentDate,
+      food_id:   null,
+      food_name: f.name,
+      food_cat:  f.cat ?? 'aliment',
+      quantity:  f.quantity,
+      cal:       Math.round(f.cal),
+      prot:      round1(f.prot),
+      carb:      round1(f.carb),
+      fat:       round1(f.fat),
+      image_url: null,
+    }))
+    const { error } = await supabase.from('journal_entries').insert(entries)
+    if (error) { showToast('Erreur ajout', 'err'); return }
+    setShowVoiceMeal(false)
+    await loadDay(currentDate)
+    const totalCal = entries.reduce((s, e) => s + e.cal, 0)
+    setWeekCal(prev => ({ ...prev, [currentDate]: (prev[currentDate] ?? 0) + totalCal }))
+    showToast(`✓ ${foods.length} aliment${foods.length > 1 ? 's' : ''} ajouté${foods.length > 1 ? 's' : ''}`, 'ok')
+  }
+
   async function deleteEntry(id: string) {
     await supabase.from('journal_entries').delete().eq('id', id)
     await loadDay(currentDate)
@@ -340,6 +367,28 @@ export default function JournalPage() {
         })
         return <Waty mode={mode} message={message} size="sm" />
       })()}
+
+      {/* Modal ajout vocal repas */}
+      {showVoiceMeal && (
+        <VoiceMeal
+          onConfirm={handleVoiceMealConfirm}
+          onCancel={() => setShowVoiceMeal(false)}
+        />
+      )}
+
+      {/* Bouton ajout vocal + Recherche */}
+      {!showVoiceMeal && (
+        <button onClick={() => setShowVoiceMeal(true)}
+          className="w-full flex items-center gap-3 bg-gradient-to-r from-nutri to-nutri-mid rounded-2xl px-4 py-3 text-left hover:opacity-90 transition-all active:scale-[0.98] shadow-sm">
+          <div className="w-9 h-9 bg-white/25 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Mic size={18} className="text-white" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-white">Ajouter un repas en vocal ou texte</p>
+            <p className="text-xs text-white/70">"J'ai mangé un bol de riz avec du poulet..."</p>
+          </div>
+        </button>
+      )}
 
       {/* Recherche */}
       <div>
