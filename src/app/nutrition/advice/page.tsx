@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { X, Clock, ChevronRight } from 'lucide-react'
+import { Waty, WATY_MESSAGES } from '@/components/ui/Waty'
 
 interface Conseil {
   id: number
@@ -246,6 +247,12 @@ export default function AdvicePage() {
         <h1 className="text-xl font-bold text-zinc-900">Conseils nutrition</h1>
         <p className="text-sm text-zinc-400">{CONSEILS.length} articles</p>
       </div>
+
+      <Waty
+        mode="nutrition"
+        message={WATY_MESSAGES.general_tip_sleep}
+        size="sm"
+      />
 
       {/* Recherche + filtres */}
       <div className="flex flex-col gap-3">

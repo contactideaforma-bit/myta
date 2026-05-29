@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { Waty, WATY_MESSAGES } from '@/components/ui/Waty'
 import {
   ChevronLeft, Clock, Users, Flame,
   Loader2, ChefHat, Star,
@@ -459,8 +460,12 @@ export default function RecipesPage() {
       {view === 'saved' && !loadingSaved && displayed.length === 0 && (
         <div className="card text-center py-12 text-zinc-400">
           <BookmarkCheck size={36} className="mx-auto mb-3 text-zinc-300" />
-          <p className="text-sm">Aucune recette sauvegardée.</p>
-          <p className="text-xs mt-1">Clique sur 🔖 pour sauvegarder une recette.</p>
+        <Waty
+          mode="nutrition"
+          message={WATY_MESSAGES.recipes_encourage}
+          size="md"
+          dismissible={false}
+        />
         </div>
       )}
     </div>

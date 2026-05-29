@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { Clock, Flame, Pencil, Trash2, Plus, X, Check, Loader2 } from 'lucide-react'
 import { minutesToHuman } from '@/lib/utils'
+import { Waty, WATY_MESSAGES } from '@/components/ui/Waty'
 import type { Session } from '@/types'
 
 const DISC_COLORS: Record<string, string> = {
@@ -148,8 +149,12 @@ export default function HistoryPage() {
 
       {sessions.length === 0 ? (
         <div className="card text-center py-12 text-zinc-400">
-          <p className="text-sm">Aucune séance enregistrée.</p>
-          <p className="text-xs mt-1">Commencez une séance ou ajoutez-en une manuellement.</p>
+        <Waty
+          mode="sport"
+          message={WATY_MESSAGES.sport_no_session}
+          size="md"
+          dismissible={false}
+        />
         </div>
       ) : (
         <div className="flex flex-col gap-3">

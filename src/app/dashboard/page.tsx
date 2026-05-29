@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { cn, todayISO, minutesToHuman } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
+import { Waty, getWatyMessage } from '@/components/ui/Waty'
 import type { Profile, Session, JournalEntry } from '@/types'
 
 interface DashStats {
@@ -91,6 +92,18 @@ export default function DashboardPage() {
           Bonjour{s.profile?.full_name ? `, ${s.profile.full_name.split(' ')[0]}` : ''} 👋
         </h1>
       </div>
+
+      {/* Waty */}
+      {(() => {
+        const { message, mode } = getWatyMessage({
+          type: 'dashboard',
+          calToday: s.calToday,
+          calTarget: s.calTarget,
+          weekSessions: s.weekSessions,
+          isEmpty: !s.profile?.full_name,
+        })
+        return <Waty mode={mode} message={message} size="md" />
+      })()}
 
       {/* Twin modules */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

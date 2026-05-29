@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { todayISO, round1 } from '@/lib/utils'
 import { searchFoods, type FoodItem } from '@/lib/foods-db'
+import { Waty, getWatyMessage } from '@/components/ui/Waty'
 import {
   calcInflamScore, hasGluten, classifyInflam,
   inflamGaugePct, inflamAdvice, calcMicros,
@@ -326,6 +327,19 @@ export default function JournalPage() {
         <MacroCard label="Glucides"  icon="🌾" value={totals.carb} unit="g"    goal={g.carb} color="bg-yellow-400" />
         <MacroCard label="Lipides"   icon="🥑" value={totals.fat}  unit="g"    goal={g.fat}  color="bg-purple-400" />
       </div>
+
+      {/* Waty conseil nutrition */}
+      {(() => {
+        const { message, mode } = getWatyMessage({
+          type: 'journal',
+          calToday: totals.cal,
+          calTarget: g.cal,
+          protToday: totals.prot,
+          protTarget: g.prot,
+          isEmpty: entries.length === 0,
+        })
+        return <Waty mode={mode} message={message} size="sm" />
+      })()}
 
       {/* Recherche */}
       <div>

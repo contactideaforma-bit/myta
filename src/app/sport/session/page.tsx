@@ -11,6 +11,7 @@ import {
   Mic,
 } from 'lucide-react'
 import { VoiceSession } from '@/components/sport/VoiceSession'
+import { Waty, WATY_MESSAGES } from '@/components/ui/Waty'
 
 interface Exercise {
   name: string
@@ -394,6 +395,8 @@ export default function SessionPage() {
         <h1 className="text-xl font-semibold">Nouvelle séance</h1>
         <p className="text-sm text-zinc-500 mt-0.5">Quelle discipline aujourd'hui ?</p>
       </div>
+
+      <Waty mode="sport" message={WATY_MESSAGES.sport_start} size="sm" />
 
       {/* Mode vocal */}
       {voiceMode ? (
