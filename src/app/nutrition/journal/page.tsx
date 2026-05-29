@@ -461,7 +461,7 @@ export default function JournalPage() {
 
       {/* ── Micronutriments ── */}
       {entries.length > 0 && (() => {
-        const micros = calcMicros(entries.map(e => ({ food_id: e.food_id ?? '', quantity: e.quantity })))
+        const micros = calcMicros(entries.map(e => ({ food_id: e.food_id ?? '', food_name: e.food_name, quantity: e.quantity })))
         const withData = micros.filter(m => m.hasData)
         if (withData.length === 0) return (
           <div className="card">

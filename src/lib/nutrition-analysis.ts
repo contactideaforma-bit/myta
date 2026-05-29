@@ -173,13 +173,69 @@ export interface MicroTotal {
   hasData: boolean
 }
 
-export function calcMicros(entries: { food_id: string | number; quantity: number }[]): MicroTotal[] {
+// Map nom normalisé → id CIQUAL pour fallback par nom
+const NAME_TO_CQ: Record<string, string> = {
+  'oeuf entier cru': 'cq001', 'oeuf dur': 'cq002', 'oeuf a la coque': 'cq003',
+  'oeuf au plat': 'cq004', 'blanc d oeuf cru': 'cq005',
+  'blanc de poulet cru': 'cq010', 'blanc de poulet cuit vapeur': 'cq011',
+  'blanc de poulet grille': 'cq012', 'blanc de poulet roti': 'cq013',
+  'cuisse de poulet crue': 'cq014', 'poulet entier roti': 'cq015',
+  'escalope de dinde crue': 'cq016', 'escalope de dinde grille': 'cq017',
+  'saumon cru': 'cq020', 'saumon grille': 'cq021', 'saumon vapeur': 'cq022',
+  'thon en conserve au naturel': 'cq023', 'sardine en conserve a l huile': 'cq024',
+  'maquereau cru': 'cq025', 'cabillaud cru': 'cq026', 'cabillaud cuit': 'cq027',
+  'crevette cuite': 'cq028',
+  'boeuf steak cru': 'cq030', 'boeuf steak grille': 'cq031',
+  'boeuf hache cru': 'cq032', 'boeuf hache cuit': 'cq033',
+  'porc cote crue': 'cq034', 'porc filet cru': 'cq035',
+  'epinard cru': 'cq036', 'lentille cuite': 'cq037', 'pois chiche cuit': 'cq038',
+  'haricot vert cuit': 'cq039', 'brocoli cuit': 'cq040', 'tomate crue': 'cq041',
+  'foie de veau cru': 'cq043', 'moule cuite': 'cq044',
+  'orange': 'cq050', 'brocoli cru': 'cq051', 'poivron rouge cru': 'cq052',
+  'chou de bruxelles cuit': 'cq053', 'fraise': 'cq054', 'epinard cuit': 'cq055',
+  'kiwi': 'cq056',
+  'riz blanc cuit': 'cq060', 'riz complet cuit': 'cq061', 'pates cuites': 'cq062',
+  'lait entier': 'cq070', 'lait demi-ecreme': 'cq071',
+  'fromage emmental': 'cq072', 'fromage camembert': 'cq073',
+  'pomme': 'cq080', 'kiwi jaune': 'cq081', 'banane': 'cq082',
+  'poire': 'cq083', 'peche': 'cq084',
+  'amande': 'cq090', 'noix': 'cq091', 'graine de chia': 'cq092',
+}
+
+function normName(s: string): string {
+  return s.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .replace(/\s+/g, ' ').trim()
+}
+
+export function calcMicros(entries: { food_id: string | number; food_name?: string; quantity: number }[]): MicroTotal[] {
   const totals = new Array(12).fill(0)
   const hasData = new Array(12).fill(false)
 
   for (const e of entries) {
-    const id = String(e.food_id)
-    const row = MICROS_DB[id]
+    const idStr = String(e.food_id)
+    // Cherche d'abord par ID direct (aliments cq*)
+    let row = MICROS_DB[idStr]
+
+    // Sinon cherche par nom normalisé
+    if (!row && e.food_name) {
+      const normed = normName(e.food_name)
+      const cqId = NAME_TO_CQ[normed]
+      if (cqId) row = MICROS_DB[cqId]
+
+      // Dernier recours : cherche une correspondance partielle
+      if (!row) {
+        const words = normed.split(' ').filter(w => w.length > 3)
+        for (const [key, cqid] of Object.entries(NAME_TO_CQ)) {
+          if (words.some(w => key.includes(w))) {
+            row = MICROS_DB[cqid]
+            break
+          }
+        }
+      }
+    }
+
     if (!row) continue
     const ratio = (e.quantity || 100) / 100
     row.forEach((val, i) => {
