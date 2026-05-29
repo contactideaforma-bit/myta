@@ -15,7 +15,7 @@ import { useTheme } from '@/components/ui/ThemeProvider'
 import type { Module } from '@/types'
 
 const NAV_NUTRI = [
-  { href: '/nutrition/journal',    label: 'Journal',     icon: BookOpen,   desc: 'Suivi alimentaire du jour',  color: 'text-pink-500',   bg: 'bg-pink-50'   },
+  { href: '/nutrition/journal',    label: 'Journal',     icon: BookOpen,   desc: 'Suivi alimentaire du jour',  color: 'text-green-600',  bg: 'bg-green-50'  },
   { href: '/nutrition/calculator', label: 'Calculateur', icon: Calculator, desc: 'IMC, TDEE & macros',         color: 'text-orange-500', bg: 'bg-orange-50' },
   { href: '/nutrition/recipes',    label: 'Recettes',    icon: ChefHat,    desc: 'Recettes IA en français',    color: 'text-green-500',  bg: 'bg-green-50'  },
   { href: '/nutrition/advice',     label: 'Conseils',    icon: Lightbulb,  desc: 'Nutrition & bien-être',      color: 'text-yellow-500', bg: 'bg-yellow-50' },
@@ -105,7 +105,7 @@ export function Navbar() {
       <header className={cn(
         'sticky top-0 z-50 border-b',
         isNutri
-          ? 'bg-gradient-to-r from-pink-400 to-rose-400 border-pink-300'
+          ? 'bg-gradient-to-r from-nutri to-nutri-mid border-nutri-mid/50'
           : 'bg-gradient-to-r from-tta-mid to-sport border-sport'
       )}>
         <div className="px-4 h-14 flex items-center justify-between">
@@ -163,7 +163,7 @@ export function Navbar() {
         <div className={cn(
           'px-5 py-5 flex items-center justify-between',
           isNutri
-            ? 'bg-gradient-to-r from-pink-400 to-rose-400'
+            ? 'bg-gradient-to-r from-nutri to-nutri-mid'
             : 'bg-gradient-to-r from-tta-mid to-sport'
         )}>
           <div className="flex items-center gap-2.5">
@@ -188,7 +188,7 @@ export function Navbar() {
               onClick={() => { router.push('/nutrition/journal'); setSidebarOpen(false) }}
               className={cn(
                 'flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5',
-                isNutri ? 'bg-gradient-to-r from-pink-400 to-rose-400 text-white shadow-sm' : 'text-zinc-400'
+                isNutri ? 'bg-gradient-to-r from-nutri to-nutri-mid text-white shadow-sm' : 'text-zinc-400'
               )}>
               🥗 Nutrition
             </button>
@@ -228,7 +228,7 @@ export function Navbar() {
           {/* Label module */}
           <div className="px-3 pt-3 pb-1">
             <p className={cn('text-[10px] font-extrabold uppercase tracking-widest',
-              isNutri ? 'text-pink-400' : 'text-sport')}>
+              isNutri ? 'text-nutri-mid' : 'text-sport')}>
               {isNutri ? '🥗 Nutrition' : '🏋️ Sport'}
             </p>
           </div>

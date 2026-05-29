@@ -60,7 +60,7 @@ export default function DashboardPage() {
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <div className="w-10 h-10 border-4 border-pink-300 border-t-transparent rounded-full animate-spin" />
+      <div className="w-10 h-10 border-4 border-nutri-mid/30 border-t-transparent rounded-full animate-spin" />
     </div>
   )
 
@@ -95,7 +95,7 @@ export default function DashboardPage() {
 
       {/* ── Module Nutrition ── */}
       <button onClick={() => router.push('/nutrition/journal')}
-        className="w-full text-left bg-gradient-to-br from-pink-400 to-rose-400 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all active:scale-[0.98] group">
+        className="w-full text-left bg-gradient-to-br from-nutri to-nutri-mid rounded-3xl p-5 shadow-sm hover:shadow-md transition-all active:scale-[0.98] group">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 bg-white/25 rounded-2xl flex items-center justify-center text-xl">🥗</div>

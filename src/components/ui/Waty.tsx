@@ -93,7 +93,7 @@ export function Waty({
       'relative flex items-center rounded-2xl border',
       cfg.padding, cfg.gap,
       isNutri
-        ? 'bg-green-50 border-green-200'
+        ? 'bg-nutri-light border-nutri/20'
         : 'bg-indigo-50 border-indigo-200',
       animate && 'animate-in fade-in slide-in-from-bottom-2 duration-300',
       className
@@ -110,7 +110,7 @@ export function Waty({
         <p className={cn(
           'font-semibold mb-0.5',
           cfg.text,
-          isNutri ? 'text-green-700' : 'text-indigo-700'
+          isNutri ? 'text-nutri-mid' : 'text-indigo-700'
         )}>
           Waty dit :
         </p>
@@ -155,7 +155,7 @@ export function WatyAvatar({
         onClick={() => setShowTip(v => !v)}
         className={cn(
           'rounded-full border-2 overflow-hidden transition-transform hover:scale-110 active:scale-95',
-          isNutri ? 'border-green-300' : 'border-indigo-300',
+          isNutri ? 'border-nutri/30' : 'border-indigo-300',
           sizes[size]
         )}>
         <img
@@ -167,7 +167,7 @@ export function WatyAvatar({
       {showTip && (
         <div className={cn(
           'absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 rounded-xl text-xs shadow-lg z-10 border',
-          isNutri ? 'bg-green-50 border-green-200 text-green-800' : 'bg-indigo-50 border-indigo-200 text-indigo-800'
+          isNutri ? 'bg-nutri-light border-nutri/20 text-green-800' : 'bg-indigo-50 border-indigo-200 text-indigo-800'
         )}>
           <p className="font-semibold mb-1">Waty dit :</p>
           <p className="leading-snug">{message}</p>
