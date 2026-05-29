@@ -35,13 +35,60 @@ function formatDateFR(str: string): string {
 
 
 
-// ─── Composant MacroCard ──────────────────────────────────────────────────
-function MacroCard({ label, icon, value, unit, goal, color }: {
+// ─── Modal détail nutriment ────────────────────────────────────────────────
+interface NutrientEntry { food_name: string; value: number; unit: string }
+
+function NutrientDetailModal({ title, color, entries, onClose }: {
+  title: string; color: string; entries: NutrientEntry[]; onClose: () => void
+}) {
+  const total = entries.reduce((s, e) => s + e.value, 0)
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50"
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl max-h-[80vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white px-5 py-4 border-b border-zinc-100 flex items-center justify-between">
+          <h3 className="font-extrabold text-zinc-900">{title}</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-400">
+            <X size={14} />
+          </button>
+        </div>
+        <div className="p-5 flex flex-col gap-3">
+          {entries.length === 0 ? (
+            <p className="text-sm text-zinc-400 text-center py-4">Aucun aliment contributeur détecté.</p>
+          ) : entries.map((e, i) => {
+            const pct = total > 0 ? Math.round((e.value / total) * 100) : 0
+            return (
+              <div key={i} className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-zinc-900 truncate">{e.food_name}</p>
+                  <div className="h-1.5 bg-zinc-100 rounded-full mt-1 overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
+                  </div>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-sm font-bold" style={{ color }}>{round1(e.value)} {e.unit}</p>
+                  <p className="text-[10px] text-zinc-400">{pct}%</p>
+                </div>
+              </div>
+            )
+          })}
+          <p className="text-xs text-zinc-400 text-center pt-2 border-t border-zinc-100">
+            Total : <span className="font-bold">{round1(total)} {entries[0]?.unit ?? ''}</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Composant MacroCard cliquable ─────────────────────────────────────────
+function MacroCard({ label, icon, value, unit, goal, color, onClick }: {
   label: string; icon: string; value: number; unit: string; goal: number; color: string
+  onClick?: () => void
 }) {
   const pct = Math.min(100, goal > 0 ? Math.round((value / goal) * 100) : 0)
   return (
-    <div className="card">
+    <button onClick={onClick} className="card text-left w-full hover:shadow-md transition-all active:scale-[0.98]">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-bold uppercase tracking-wide text-zinc-400">{label}</span>
         <span className="text-lg">{icon}</span>
@@ -53,7 +100,7 @@ function MacroCard({ label, icon, value, unit, goal, color }: {
         <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${pct}%` }} />
       </div>
       <p className="text-xs text-zinc-400 mt-1">Objectif : {goal} {unit}</p>
-    </div>
+    </button>
   )
 }
 
@@ -128,6 +175,7 @@ export default function JournalPage() {
   const [savingWeight, setSavingWeight] = useState(false)
 
   const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null)
+  const [nutriModal, setNutriModal] = useState<{ title: string; color: string; entries: NutrientEntry[] } | null>(null)
 
   // Objectifs calculés depuis profil
   const goals = useCallback((): DayMacros => {
@@ -324,6 +372,16 @@ export default function JournalPage() {
       )}
 
       {/* Modal ajout */}
+      {/* Modal détail nutriment */}
+      {nutriModal && (
+        <NutrientDetailModal
+          title={nutriModal.title}
+          color={nutriModal.color}
+          entries={nutriModal.entries}
+          onClose={() => setNutriModal(null)}
+        />
+      )}
+
       {selectedFood && (
         <AddFoodModal food={selectedFood} onConfirm={confirmAdd} onClose={() => setSelectedFood(null)} />
       )}
@@ -349,10 +407,18 @@ export default function JournalPage() {
 
       {/* Macros */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <MacroCard label="Calories" icon="🔥" value={totals.cal}  unit="kcal" goal={g.cal}  color="bg-orange-400" />
-        <MacroCard label="Protéines" icon="💪" value={totals.prot} unit="g"    goal={g.prot} color="bg-blue-400" />
-        <MacroCard label="Glucides"  icon="🌾" value={totals.carb} unit="g"    goal={g.carb} color="bg-yellow-400" />
-        <MacroCard label="Lipides"   icon="🥑" value={totals.fat}  unit="g"    goal={g.fat}  color="bg-purple-400" />
+        <MacroCard label="Calories" icon="🔥" value={totals.cal}  unit="kcal" goal={g.cal}  color="bg-orange-400"
+          onClick={() => setNutriModal({ title: '🔥 Calories par aliment', color: '#f97316',
+            entries: entries.map(e => ({ food_name: e.food_name, value: Number(e.cal), unit: 'kcal' })) })} />
+        <MacroCard label="Protéines" icon="💪" value={totals.prot} unit="g" goal={g.prot} color="bg-blue-400"
+          onClick={() => setNutriModal({ title: '💪 Protéines par aliment', color: '#3b82f6',
+            entries: entries.map(e => ({ food_name: e.food_name, value: Number(e.prot), unit: 'g' })).filter(e => e.value > 0) })} />
+        <MacroCard label="Glucides"  icon="🌾" value={totals.carb} unit="g" goal={g.carb} color="bg-yellow-400"
+          onClick={() => setNutriModal({ title: '🌾 Glucides par aliment', color: '#eab308',
+            entries: entries.map(e => ({ food_name: e.food_name, value: Number(e.carb), unit: 'g' })).filter(e => e.value > 0) })} />
+        <MacroCard label="Lipides"   icon="🥑" value={totals.fat}  unit="g" goal={g.fat}  color="bg-purple-400"
+          onClick={() => setNutriModal({ title: '🥑 Lipides par aliment', color: '#a855f7',
+            entries: entries.map(e => ({ food_name: e.food_name, value: Number(e.fat), unit: 'g' })).filter(e => e.value > 0) })} />
       </div>
 
       {/* Waty conseil nutrition */}
@@ -492,12 +558,36 @@ export default function JournalPage() {
               </div>
             </div>
 
-            {/* Résumé */}
+            {/* Résumé — badges cliquables */}
             <div className="flex flex-wrap gap-2 text-xs">
-              {s.veryInflam > 0 && <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">🔴 {s.veryInflam} très inflam.</span>}
-              {s.inflam > 0     && <span className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">🟠 {s.inflam} inflammatoire{s.inflam > 1 ? 's' : ''}</span>}
-              {s.anti > 0       && <span className="px-2 py-0.5 rounded-full bg-nutri-light text-nutri-dark font-medium">🟢 {s.anti} anti-inflam.</span>}
-              {s.neutral > 0    && <span className="px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-500 font-medium">⚪ {s.neutral} neutre{s.neutral > 1 ? 's' : ''}</span>}
+              {s.veryInflam > 0 && (
+                <button onClick={() => setNutriModal({ title: '🔴 Aliments très inflammatoires', color: '#ef4444',
+                  entries: entries.filter(e => classifyInflam(e.food_name) === -2).map(e => ({ food_name: e.food_name, value: Number(e.cal), unit: 'kcal' })) })}
+                  className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium hover:bg-red-200 transition-colors">
+                  🔴 {s.veryInflam} très inflam.
+                </button>
+              )}
+              {s.inflam > 0 && (
+                <button onClick={() => setNutriModal({ title: '🟠 Aliments inflammatoires', color: '#f97316',
+                  entries: entries.filter(e => classifyInflam(e.food_name) === -1).map(e => ({ food_name: e.food_name, value: Number(e.cal), unit: 'kcal' })) })}
+                  className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium hover:bg-orange-200 transition-colors">
+                  🟠 {s.inflam} inflammatoire{s.inflam > 1 ? 's' : ''}
+                </button>
+              )}
+              {s.anti > 0 && (
+                <button onClick={() => setNutriModal({ title: '🟢 Aliments anti-inflammatoires', color: '#22c55e',
+                  entries: entries.filter(e => classifyInflam(e.food_name) === 1).map(e => ({ food_name: e.food_name, value: Number(e.cal), unit: 'kcal' })) })}
+                  className="px-2 py-0.5 rounded-full bg-nutri-light text-nutri-dark font-medium hover:bg-nutri/20 transition-colors">
+                  🟢 {s.anti} anti-inflam.
+                </button>
+              )}
+              {s.neutral > 0 && (
+                <button onClick={() => setNutriModal({ title: '⚪ Aliments neutres', color: '#71717a',
+                  entries: entries.filter(e => classifyInflam(e.food_name) === 0).map(e => ({ food_name: e.food_name, value: Number(e.cal), unit: 'kcal' })) })}
+                  className="px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-500 font-medium hover:bg-zinc-200 transition-colors">
+                  ⚪ {s.neutral} neutre{s.neutral > 1 ? 's' : ''}
+                </button>
+              )}
             </div>
 
             {/* Conseil */}
@@ -540,13 +630,30 @@ export default function JournalPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {micros.map(m => (
-                <div key={m.name} className="flex items-center gap-2">
+                <button key={m.name} onClick={() => {
+                  if (!m.hasData) return
+                  // Cherche les aliments contributeurs pour ce micro via leur nom
+                  const contributors = entries
+                    .filter(e => {
+                      const id = String(e.food_id ?? '')
+                      // On montre tous les aliments CIQUAL qui ont des données
+                      return id.startsWith('cq') || e.food_name
+                    })
+                    .map(e => ({ food_name: e.food_name, value: Number(e.cal), unit: 'kcal' }))
+                    .filter(e => e.value > 0)
+                  setNutriModal({
+                    title: `🔬 ${m.name} — aliments du jour`,
+                    color: m.color,
+                    entries: entries.map(e => ({ food_name: e.food_name, value: Number(e.cal), unit: 'kcal' })).filter(e => e.value > 0),
+                  })
+                }}
+                  className={`flex items-center gap-2 text-left rounded-xl p-1.5 transition-colors ${m.hasData ? 'hover:bg-zinc-50 cursor-pointer' : 'cursor-default'}`}>
                   <span className="text-xs text-zinc-500 w-20 flex-shrink-0">{m.name}</span>
                   {m.hasData ? (
                     <>
                       <div className="flex-1 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
                         <div className="h-full rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min(m.pct, 100)}%`, background: m.color + (m.pct >= 100 ? '' : '99') }} />
+                          style={{ width: `${Math.min(m.pct, 100)}%`, background: m.color }} />
                       </div>
                       <span className="text-xs font-bold w-10 text-right flex-shrink-0" style={{ color: m.color }}>
                         {m.pct > 999 ? '>999%' : `${m.pct}%`}
@@ -555,7 +662,7 @@ export default function JournalPage() {
                   ) : (
                     <span className="text-[10px] text-zinc-300 italic flex-1">données insuffisantes</span>
                   )}
-                </div>
+                </button>
               ))}
             </div>
           </div>
