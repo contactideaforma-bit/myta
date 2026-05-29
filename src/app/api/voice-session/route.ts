@@ -3,7 +3,6 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const anthropic = new Anthropic()
 
-// ─── Transcription Whisper via OpenAI ─────────────────────────────────────────
 async function transcribeAudio(audioBlob: Blob): Promise<string> {
   const formData = new FormData()
   formData.append('file', audioBlob, 'audio.webm')
@@ -15,21 +14,15 @@ async function transcribeAudio(audioBlob: Blob): Promise<string> {
     headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
     body: formData,
   })
-
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Whisper error: ${err}`)
-  }
-
+  if (!res.ok) throw new Error(`Whisper error: ${await res.text()}`)
   const data = await res.json()
   return data.text ?? ''
 }
 
-// ─── Extraction Claude ────────────────────────────────────────────────────────
 async function extractSession(transcript: string): Promise<object> {
   const prompt = `Tu es un assistant fitness. Analyse cette description d'entraînement et extrait les données structurées.
 
-Transcription : "${transcript}"
+Description : "${transcript}"
 
 Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour :
 {
@@ -49,46 +42,45 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour :
 }
 
 Règles :
-- discipline : choisis la plus proche (cardio pour tapis, vélo, course ; musculation pour poids, machines ; natation pour piscine ; boxe pour combat)
+- discipline : cardio pour tapis/vélo/course, musculation pour poids/machines, natation pour piscine, boxe pour combat
 - duration_min : durée totale en minutes
-- exercises : liste des exercices mentionnés. Si durée mentionnée → duration_sec, sinon sets+reps
-- Pour "15 min de tapis marche rapide" → { name: "Tapis de marche rapide", duration_sec: 900 }
-- Pour "30 reps de pompes" → { name: "Pompes", sets: 3, reps: 30 }
-- calories_estimate : estimation basée sur la durée et l'intensité (null si pas assez d'info)
-- notes : reformulation courte et claire de la séance`
+- Pour "15 min de tapis" → { name: "Tapis de marche rapide", duration_sec: 900 }
+- Pour "3 séries de 12 squats" → { name: "Squats", sets: 3, reps: 12 }
+- calories_estimate : estimation selon durée et intensité (null si insuffisant)
+- notes : reformulation courte et claire`
 
   const msg = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1024,
     messages: [{ role: 'user', content: prompt }],
   })
-
   const text = (msg.content[0] as any).text ?? ''
   const match = text.match(/\{[\s\S]*\}/)
   if (!match) throw new Error('No JSON in response')
   return JSON.parse(match[0])
 }
 
-// ─── Route POST /api/voice-session ────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData()
-    const audio = formData.get('audio') as Blob | null
+    const contentType = req.headers.get('content-type') ?? ''
+    let transcript = ''
 
-    if (!audio) {
-      return NextResponse.json({ error: 'Aucun fichier audio' }, { status: 400 })
+    if (contentType.includes('application/json')) {
+      // Mode texte
+      const { text } = await req.json()
+      if (!text?.trim()) return NextResponse.json({ error: 'Texte vide' }, { status: 400 })
+      transcript = text.trim()
+    } else {
+      // Mode audio (multipart)
+      const formData = await req.formData()
+      const audio = formData.get('audio') as Blob | null
+      if (!audio) return NextResponse.json({ error: 'Aucun fichier audio' }, { status: 400 })
+      transcript = await transcribeAudio(audio)
+      if (!transcript.trim()) return NextResponse.json({ error: 'Audio non reconnu, réessayez' }, { status: 400 })
     }
 
-    // 1. Transcription
-    const transcript = await transcribeAudio(audio)
-    if (!transcript.trim()) {
-      return NextResponse.json({ error: 'Audio non reconnu, réessayez' }, { status: 400 })
-    }
-
-    // 2. Extraction des données
-    const sessionData = await extractSession(transcript)
-
-    return NextResponse.json({ transcript, session: sessionData })
+    const session = await extractSession(transcript)
+    return NextResponse.json({ transcript, session })
   } catch (err: any) {
     console.error('[voice-session]', err)
     return NextResponse.json({ error: err.message ?? 'Erreur serveur' }, { status: 500 })

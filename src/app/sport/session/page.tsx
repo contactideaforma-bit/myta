@@ -7,10 +7,12 @@ import {
   Play, Pause, ChevronLeft,
   CheckCircle2, Loader2, Clock, Flame, Circle,
   Plus, Trash2, Pencil, X, Check, AlertTriangle,
-  Mic, ChevronDown, ChevronUp,
+  Mic, ChevronDown, ChevronUp, PenLine, Send,
 } from 'lucide-react'
 import { VoiceSession } from '@/components/sport/VoiceSession'
 import { Waty, WATY_MESSAGES } from '@/components/ui/Waty'
+
+type InputMode = 'none' | 'voice' | 'text'
 
 // ─── Conseils sportifs ────────────────────────────────────────────────────────
 const SPORT_TIPS = [
@@ -91,11 +93,93 @@ function QuitModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: (
   )
 }
 
-export default function SessionPage() {
+// ─── Composant saisie texte ───────────────────────────────────────────────────
+function TextSession({ onConfirm, onCancel }: {
+  onConfirm: (session: any) => void
+  onCancel: () => void
+}) {
+  const [text, setText]       = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError]     = useState('')
+
+  const EXAMPLES = [
+    "30 min de vélo elliptique intensité modérée",
+    "3 séries de 12 squats, 3 séries de 10 pompes, 20 min de tapis",
+    "1h de natation : 500m crawl + 200m dos",
+    "Boxe 45 min : échauffement, shadow boxing, sac",
+    "HIIT 20 min + gainage 10 min",
+  ]
+
+  async function submit() {
+    if (!text.trim()) return
+    setLoading(true)
+    setError('')
+    try {
+      const res  = await fetch('/api/voice-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Erreur serveur')
+      onConfirm(data.session)
+    } catch (e: any) {
+      setError(e.message ?? 'Erreur lors de l\'analyse')
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="card flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <p className="font-extrabold text-zinc-900">✍️ Décris ta séance</p>
+        <button onClick={onCancel} className="w-8 h-8 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-400 hover:bg-zinc-200">
+          <X size={14} />
+        </button>
+      </div>
+
+      <textarea
+        value={text}
+        onChange={e => setText(e.target.value)}
+        placeholder="Ex: J'ai fait 30 min de tapis marche rapide puis 3 séries de 15 squats et 10 pompes..."
+        rows={4}
+        className="w-full px-4 py-3 border-2 border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-sport resize-none transition-colors"
+        autoFocus
+      />
+
+      {/* Exemples cliquables */}
+      <div>
+        <p className="text-xs text-zinc-400 mb-2 font-semibold">Exemples :</p>
+        <div className="flex flex-col gap-1.5">
+          {EXAMPLES.map((ex, i) => (
+            <button key={i} onClick={() => setText(ex)}
+              className="text-left text-xs text-sport bg-sport-light px-3 py-2 rounded-xl hover:bg-sport/20 transition-colors">
+              {ex}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {error && (
+        <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-xl">{error}</p>
+      )}
+
+      <button onClick={submit} disabled={!text.trim() || loading}
+        className="btn-sport justify-center py-3 disabled:opacity-50">
+        {loading
+          ? <><Loader2 size={16} className="animate-spin" />Analyse en cours…</>
+          : <><Send size={16} />Analyser ma séance</>
+        }
+      </button>
+    </div>
+  )
+}
+
+
   const router   = useRouter()
   const supabase = createClient()
 
-  const [voiceMode, setVoiceMode]         = useState(false)
+  const [inputMode, setInputMode]         = useState<InputMode>('none')
   const [exercises, setExercises]         = useState<Exercise[]>([])
   const [step, setStep]                   = useState<1 | 2 | 3>(1)
   const [checkedExercises, setCheckedExercises] = useState<Set<number>>(new Set())
@@ -229,31 +313,47 @@ export default function SessionPage() {
       <Waty mode="sport" message={WATY_MESSAGES.sport_start} size="sm" />
 
       {/* Mode vocal */}
-      {voiceMode ? (
+      {inputMode === 'voice' ? (
         <VoiceSession
           onConfirm={handleVoiceConfirm}
-          onCancel={() => setVoiceMode(false)}
+          onCancel={() => setInputMode('none')}
+        />
+      ) : inputMode === 'text' ? (
+        <TextSession
+          onConfirm={handleVoiceConfirm}
+          onCancel={() => setInputMode('none')}
         />
       ) : (
-        <button onClick={() => setVoiceMode(true)}
-          className="w-full bg-gradient-to-br from-sport to-tta-mid rounded-3xl p-6 flex items-center gap-5 shadow-sm hover:shadow-md transition-all active:scale-[0.98] group">
-          <div className="w-16 h-16 bg-white/25 rounded-2xl flex items-center justify-center flex-shrink-0">
-            <Mic size={30} className="text-white" />
-          </div>
-          <div className="text-left">
-            <p className="font-extrabold text-white text-base">Décrire ma séance</p>
-            <p className="text-sm text-white/70 mt-1">
-              Parle, l'IA comprend et enregistre automatiquement
-            </p>
-            <p className="text-xs text-white/50 mt-1 italic">
-              "J'ai fait 30 min de vélo et 3 séries de squats..."
-            </p>
-          </div>
-        </button>
+        /* Deux boutons côte à côte */
+        <div className="flex flex-col gap-3">
+          <button onClick={() => setInputMode('voice')}
+            className="w-full bg-gradient-to-br from-sport to-tta-mid rounded-3xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-all active:scale-[0.98]">
+            <div className="w-14 h-14 bg-white/25 rounded-2xl flex items-center justify-center flex-shrink-0">
+              <Mic size={26} className="text-white" />
+            </div>
+            <div className="text-left">
+              <p className="font-extrabold text-white text-base">Décrire en vocal</p>
+              <p className="text-sm text-white/70 mt-0.5">Parle, l'IA enregistre</p>
+              <p className="text-xs text-white/50 mt-1 italic">"30 min de vélo et 3 séries..."</p>
+            </div>
+          </button>
+
+          <button onClick={() => setInputMode('text')}
+            className="w-full bg-white rounded-3xl p-5 flex items-center gap-4 border-2 border-sport/30 hover:border-sport hover:bg-sport-light transition-all active:scale-[0.98]">
+            <div className="w-14 h-14 bg-sport-light rounded-2xl flex items-center justify-center flex-shrink-0">
+              <PenLine size={26} className="text-sport" />
+            </div>
+            <div className="text-left">
+              <p className="font-extrabold text-zinc-900 text-base">Décrire par écrit</p>
+              <p className="text-sm text-zinc-400 mt-0.5">Tape ta séance, l'IA analyse</p>
+              <p className="text-xs text-zinc-300 mt-1 italic">"J'ai fait 15 min de tapis..."</p>
+            </div>
+          </button>
+        </div>
       )}
 
-      {/* Séparateur */}
-      {!voiceMode && (
+      {/* Séparateur + conseils — seulement si pas de mode actif */}
+      {inputMode === 'none' && (
         <>
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-zinc-200" />
