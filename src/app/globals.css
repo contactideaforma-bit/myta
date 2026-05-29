@@ -6,9 +6,53 @@
   :root {
     --radius: 0.5rem;
   }
+
+  /* ── Light mode ── */
   body {
     @apply bg-zinc-50 text-zinc-900 antialiased;
   }
+
+  /* ── Dark mode ── */
+  .dark body {
+    @apply bg-zinc-950 text-zinc-100;
+  }
+  .dark .card {
+    @apply bg-zinc-900 border-zinc-800/80 !important;
+  }
+  .dark .card-sm {
+    @apply bg-zinc-900 border-zinc-800/80 !important;
+  }
+  .dark .input {
+    @apply bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 focus:border-tta-mid !important;
+  }
+  .dark .kpi-card {
+    @apply bg-zinc-800 !important;
+  }
+  .dark .kpi-nutri {
+    @apply bg-nutri-dark/30 !important;
+  }
+  .dark header {
+    @apply bg-zinc-900 border-zinc-800 !important;
+  }
+  .dark aside {
+    @apply bg-zinc-900 border-zinc-800 !important;
+  }
+  .dark .btn-ghost {
+    @apply text-zinc-400 hover:bg-zinc-800 !important;
+  }
+  .dark select {
+    @apply bg-zinc-800 border-zinc-700 text-zinc-100 !important;
+  }
+  .dark .bg-zinc-100 { @apply bg-zinc-800 !important; }
+  .dark .bg-zinc-50  { @apply bg-zinc-900 !important; }
+  .dark .bg-white    { @apply bg-zinc-900 !important; }
+  .dark .border-zinc-200 { @apply border-zinc-700 !important; }
+  .dark .border-zinc-100 { @apply border-zinc-800 !important; }
+  .dark .text-zinc-900   { @apply text-zinc-100 !important; }
+  .dark .text-zinc-700   { @apply text-zinc-300 !important; }
+  .dark .text-zinc-600   { @apply text-zinc-400 !important; }
+  .dark .text-zinc-500   { @apply text-zinc-400 !important; }
+  .dark .divide-zinc-100 > * + * { border-color: rgb(39 39 42) !important; }
 }
 
 @layer components {
@@ -44,10 +88,10 @@
 
   /* ── Inputs ── */
   .input {
-    @apply w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-tta-mid/30 focus:border-tta-mid transition-colors;
+    @apply w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-tta-mid/30 focus:border-tta-mid transition-colors bg-white;
   }
 
-  /* ── Module badges ── */
+  /* ── Badges ── */
   .badge-nutri {
     @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-nutri-light text-nutri-dark;
   }

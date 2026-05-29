@@ -7,10 +7,11 @@ import {
   BookOpen, Calculator, ChefHat, Lightbulb,
   Dumbbell, Timer, History, User,
   LogOut, AlertTriangle, Menu, X,
-  ChevronRight,
+  ChevronRight, Sun, Moon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
+import { useTheme } from '@/components/ui/ThemeProvider'
 import type { Module } from '@/types'
 
 const NAV_NUTRI = [
@@ -100,6 +101,7 @@ export function Navbar() {
     router.push('/auth')
   }
 
+  const { theme, toggle } = useTheme()
   const isNutri = activeModule === 'nutrition'
 
   return (
@@ -278,8 +280,34 @@ export function Navbar() {
           </button>
         </nav>
 
-        {/* Footer sidebar — déconnexion */}
-        <div className="px-4 py-4 border-t border-zinc-100">
+        {/* Footer sidebar — dark mode + déconnexion */}
+        <div className="px-4 py-4 border-t border-zinc-100 flex flex-col gap-2">
+
+          {/* Dark mode toggle */}
+          <button onClick={toggle}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-zinc-600 hover:bg-zinc-50 transition-colors">
+            <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center">
+              {theme === 'dark' ? <Sun size={15} className="text-amber-400" /> : <Moon size={15} />}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold">
+                {theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+              </p>
+              <p className="text-[10px] text-zinc-400">
+                {theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
+              </p>
+            </div>
+            <div className={cn(
+              'w-10 h-5 rounded-full relative transition-colors',
+              theme === 'dark' ? 'bg-tta-mid' : 'bg-zinc-300'
+            )}>
+              <div className={cn(
+                'absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all',
+                theme === 'dark' ? 'left-5' : 'left-0.5'
+              )} />
+            </div>
+          </button>
+
           <button onClick={signOut}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-zinc-500 hover:bg-red-50 hover:text-red-600 transition-colors">
             <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center">
