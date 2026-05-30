@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Mic, MicOff, Loader2, Check, X, RefreshCw } from 'lucide-react'
+import { Mic, MicOff, Loader2, Check, X, RefreshCw, Calendar } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface ExtractedSession {
@@ -19,8 +19,9 @@ interface ExtractedSession {
 }
 
 interface Props {
-  onConfirm: (session: ExtractedSession) => void
+  onConfirm: (session: ExtractedSession & { custom_date?: string }) => void
   onCancel: () => void
+  allowDatePick?: boolean
 }
 
 type RecordState = 'idle' | 'recording' | 'processing' | 'preview' | 'error'
@@ -36,12 +37,13 @@ const DISC_EMOJI: Record<string, string> = {
   natation: '🏊', musculation: '🏋️', cardio: '🚴', boxe: '🥊',
 }
 
-export function VoiceSession({ onConfirm, onCancel }: Props) {
+export function VoiceSession({ onConfirm, onCancel, allowDatePick = false }: Props) {
   const [state, setState]             = useState<RecordState>('idle')
   const [transcript, setTranscript]   = useState('')
   const [session, setSession]         = useState<ExtractedSession | null>(null)
   const [error, setError]             = useState('')
   const [elapsed, setElapsed]         = useState(0)
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10))
   const mediaRef    = useRef<MediaRecorder | null>(null)
   const chunksRef   = useRef<Blob[]>([])
   const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -243,9 +245,26 @@ export function VoiceSession({ onConfirm, onCancel }: Props) {
         </div>
       )}
 
+      {/* Sélecteur de date — si allowDatePick */}
+      {allowDatePick && (
+        <div className="bg-zinc-50 rounded-2xl p-3 flex items-center gap-3">
+          <Calendar size={16} className="text-sport flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-xs font-bold text-zinc-600 mb-1">Date de la séance</p>
+            <input
+              type="date"
+              value={selectedDate}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={e => setSelectedDate(e.target.value)}
+              className="input py-1.5 text-sm"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex gap-2 pt-1">
-        <button onClick={() => onConfirm(session)}
+        <button onClick={() => onConfirm({ ...session!, custom_date: allowDatePick ? selectedDate : undefined })}
           className="btn-primary flex-1 justify-center py-2.5">
           <Check size={16} />Enregistrer la séance
         </button>
