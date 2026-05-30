@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { Clock, Flame, Pencil, Trash2, Plus, X, Check, Loader2 } from 'lucide-react'
+import { Clock, Flame, Pencil, Trash2, Plus, X, Check, Loader2, Mic } from 'lucide-react'
 import { minutesToHuman } from '@/lib/utils'
 import { Waty, WATY_MESSAGES } from '@/components/ui/Waty'
+import { VoiceSession } from '@/components/sport/VoiceSession'
 import type { Session } from '@/types'
 
 const DISC_COLORS: Record<string, string> = {
@@ -32,6 +33,7 @@ export default function HistoryPage() {
   const [saving, setSaving]           = useState(false)
   const [deletingId, setDeletingId]   = useState<string | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
+  const [showVoice, setShowVoice]     = useState(false)
   const [disciplines, setDisciplines] = useState<{ id: string; name: string }[]>([])
   const [newForm, setNewForm]         = useState({ discipline_id: '', session_date: '', duration_min: '', notes: '' })
   const [addSaving, setAddSaving]     = useState(false)
@@ -95,6 +97,31 @@ export default function HistoryPage() {
     setAddSaving(false)
   }
 
+  async function handleVoiceConfirm(voiceSession: any) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    try {
+      const DISC_MAP: Record<string, string> = {
+        natation: 'Natation', musculation: 'Musculation', cardio: 'Cardio', boxe: 'Boxe',
+      }
+      const discName = DISC_MAP[voiceSession.discipline?.toLowerCase()] ?? 'Cardio'
+      const { data: profile } = await supabase.from('profiles').select('weight_kg').eq('id', user.id).single()
+      const weight = (profile as any)?.weight_kg ?? 70
+      const { data: discList } = await supabase.from('disciplines').select('id').ilike('name', discName)
+      const discId = discList?.[0]?.id ?? null
+      await supabase.from('sessions').insert({
+        user_id:         user.id,
+        discipline_id:   discId,
+        session_date:    new Date().toISOString().slice(0, 10),
+        duration_min:    voiceSession.duration_min ?? 30,
+        calories_burned: voiceSession.calories_estimate ?? Math.round(5 * weight * ((voiceSession.duration_min ?? 30) / 60)),
+        notes:           voiceSession.notes ?? null,
+      })
+      setShowVoice(false)
+      await loadSessions()
+    } catch (err) { console.error(err) }
+  }
+
   if (loading) return (
     <div className="flex items-center justify-center py-20">
       <Loader2 size={24} className="animate-spin text-zinc-400" />
@@ -109,10 +136,24 @@ export default function HistoryPage() {
           <h1 className="text-xl font-semibold">Historique</h1>
           <p className="text-sm text-zinc-500">{sessions.length} séance{sessions.length > 1 ? 's' : ''} enregistrée{sessions.length > 1 ? 's' : ''}</p>
         </div>
-        <button onClick={() => setShowAddForm(v => !v)} className="btn-primary">
-          <Plus size={16} />Ajouter
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => { setShowVoice(v => !v); setShowAddForm(false) }}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-2xl text-sm font-bold transition-all ${showVoice ? 'bg-sport text-white' : 'bg-sport-light text-sport'}`}>
+            <Mic size={15} />Vocal
+          </button>
+          <button onClick={() => { setShowAddForm(v => !v); setShowVoice(false) }} className="btn-primary">
+            <Plus size={16} />Manuel
+          </button>
+        </div>
       </div>
+
+      {/* Ajout en vocal */}
+      {showVoice && (
+        <VoiceSession
+          onConfirm={handleVoiceConfirm}
+          onCancel={() => setShowVoice(false)}
+        />
+      )}
 
       {showAddForm && (
         <div className="card border-2 border-tta-mid/30 flex flex-col gap-3">

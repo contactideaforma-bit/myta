@@ -192,7 +192,7 @@ export function VoiceMeal({ onConfirm, onCancel }: Props) {
       <textarea value={textInput} onChange={e => setTextInput(e.target.value)}
         placeholder="Ex: J'ai mangé un bol de riz avec du poulet grillé et une salade..."
         rows={4}
-        className="w-full px-4 py-3 border-2 border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-nutri resize-none transition-colors" />
+        className="w-full px-4 py-3 border-2 border-zinc-200 rounded-2xl text-sm text-zinc-900 bg-white focus:outline-none focus:border-nutri resize-none transition-colors dark:bg-zinc-800 dark:border-zinc-600 dark:text-zinc-100 dark:placeholder:text-zinc-500" />
 
       <div>
         <p className="text-xs text-zinc-400 mb-2 font-semibold">Exemples :</p>

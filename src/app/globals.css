@@ -22,6 +22,8 @@
   .dark .btn-ghost:hover { background-color: #3d3a7a !important; }
   .dark select      { background-color: #2d2a5e !important; border-color: #4d4a8e !important; color: #f0eeff !important; }
   .dark .bg-white   { background-color: #252340 !important; }
+  .dark textarea    { background-color: #2d2a5e !important; border-color: #4d4a8e !important; color: #f0eeff !important; }
+  .dark textarea::placeholder { color: #6060a0 !important; }
   .dark .bg-cream   { background-color: #1a1825 !important; }
   .dark .bg-zinc-50 { background-color: #1a1825 !important; }
   .dark .bg-zinc-100 { background-color: #2d2a5e !important; }

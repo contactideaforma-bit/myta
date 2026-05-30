@@ -97,7 +97,7 @@ function TextSession({ onConfirm, onCancel }: {
       <textarea value={text} onChange={e => setText(e.target.value)}
         placeholder="Ex: J'ai fait 30 min de tapis marche rapide puis 3 séries de 15 squats et 10 pompes..."
         rows={4}
-        className="w-full px-4 py-3 border-2 border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-sport resize-none transition-colors"
+        className="w-full px-4 py-3 border-2 border-zinc-200 rounded-2xl text-sm text-zinc-900 bg-white focus:outline-none focus:border-sport resize-none transition-colors dark:bg-zinc-800 dark:border-zinc-600 dark:text-zinc-100 dark:placeholder:text-zinc-500"
         autoFocus />
       <div>
         <p className="text-xs text-zinc-400 mb-2 font-semibold">Exemples :</p>
