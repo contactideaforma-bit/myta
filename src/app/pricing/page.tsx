@@ -15,33 +15,36 @@ const FEATURES = [
   'App installable sur mobile',
 ]
 
-async function handleSubscribe(plan: 'monthly' | 'yearly') {
-  setLoading(plan)
-  try {
-    const res = await fetch('/api/stripe/checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan }),  // on envoie 'monthly' ou 'yearly'
-    })
+export default function PricingPage() {
+  const [billing, setBilling] = useState<'monthly' | 'yearly'>('yearly')
+  const [loading, setLoading] = useState<string | null>(null)
+  const router = useRouter()
 
-    const data = await res.json()
-    
-    if (data.url) {
-      window.location.href = data.url
-    } else {
-      console.error('Erreur Stripe:', data.error)
-      alert('Erreur : ' + (data.error || 'Impossible de créer la session'))
+  const yearlyTotal = '39,99'
+  const savings     = Math.round((1 - 39.99 / (3.99 * 12)) * 100)
+
+  async function handleSubscribe(plan: 'monthly' | 'yearly') {
+    setLoading(plan)
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan }),
+      })
+
+      const data = await res.json()
+
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        alert('Erreur : ' + (data.error || 'Impossible de créer la session'))
+        setLoading(null)
+      }
+    } catch (err) {
+      console.error(err)
       setLoading(null)
     }
-  } catch (err) {
-    console.error(err)
-    setLoading(null)
   }
-}
-
-  const monthlyPrice  = billing === 'yearly' ? '3,33' : '3,99'
-  const yearlyTotal   = '39,99'
-  const savings       = Math.round((1 - 39.99 / (3.99 * 12)) * 100)
 
   return (
     <div
@@ -66,9 +69,7 @@ async function handleSubscribe(plan: 'monthly' | 'yearly') {
           <button
             onClick={() => setBilling('monthly')}
             className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
-              billing === 'monthly'
-                ? 'bg-zinc-900 text-white shadow-sm'
-                : 'text-zinc-400'
+              billing === 'monthly' ? 'bg-zinc-900 text-white shadow-sm' : 'text-zinc-400'
             }`}
           >
             Mensuel
@@ -76,9 +77,7 @@ async function handleSubscribe(plan: 'monthly' | 'yearly') {
           <button
             onClick={() => setBilling('yearly')}
             className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-              billing === 'yearly'
-                ? 'text-white shadow-sm'
-                : 'text-zinc-400'
+              billing === 'yearly' ? 'text-white shadow-sm' : 'text-zinc-400'
             }`}
             style={billing === 'yearly' ? { background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' } : {}}
           >
@@ -96,8 +95,10 @@ async function handleSubscribe(plan: 'monthly' | 'yearly') {
 
           {/* Badge essai */}
           <div className="flex items-center gap-2 mb-4">
-            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white"
-              style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
+            <span
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white"
+              style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}
+            >
               <Zap size={11} /> 3 jours gratuits
             </span>
             <span className="text-xs text-zinc-400">puis facturation automatique</span>
@@ -129,8 +130,10 @@ async function handleSubscribe(plan: 'monthly' | 'yearly') {
           <ul className="flex flex-col gap-2.5 mb-6">
             {FEATURES.map(f => (
               <li key={f} className="flex items-center gap-2.5 text-sm text-zinc-700">
-                <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'linear-gradient(135deg, #4B47A0, #2BA8B0)' }}>
+                <div
+                  className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #4B47A0, #2BA8B0)' }}
+                >
                   <Check size={11} className="text-white" strokeWidth={3} />
                 </div>
                 {f}
@@ -147,10 +150,7 @@ async function handleSubscribe(plan: 'monthly' | 'yearly') {
           >
             {loading === billing
               ? <Loader2 size={16} className="animate-spin" />
-              : <>
-                  <Crown size={15} />
-                  Commencer l'essai gratuit
-                </>
+              : <><Crown size={15} /> Commencer l'essai gratuit</>
             }
           </button>
 
