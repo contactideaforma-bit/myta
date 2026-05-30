@@ -276,6 +276,21 @@ export function Navbar() {
               <p className="text-[10px] text-zinc-400">Objectifs & statistiques</p>
             </div>
           </button>
+
+          <button onClick={() => handleNavClick('/sleep')}
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-all',
+              pathname === '/sleep' ? 'bg-tta-light' : 'hover:bg-zinc-50 text-zinc-600'
+            )}>
+            <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center',
+              pathname === '/sleep' ? 'bg-tta-mid/20' : 'bg-zinc-100')}>
+              <Moon size={16} className={pathname === '/sleep' ? 'text-tta-mid' : 'text-zinc-400'} />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-zinc-700">Sommeil</p>
+              <p className="text-[10px] text-zinc-400">Suivi de tes nuits</p>
+            </div>
+          </button>
         </nav>
 
         {/* Footer */}

@@ -97,7 +97,7 @@ export default function ProfilePage() {
   const router   = useRouter()
   const supabase = createClient()
 
-  const [tab, setTab]         = useState<Tab>('profil')
+  const [tab, setTab]         = useState<Tab>('bilan')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving]   = useState(false)
   const [saved, setSaved]     = useState(false)
@@ -106,9 +106,12 @@ export default function ProfilePage() {
   const [period, setPeriod]   = useState('3m')
 
   // Données bilan
-  const [weights, setWeights]       = useState<WeightLog[]>([])
+  const [weights, setWeights]         = useState<WeightLog[]>([])
   const [journalDays, setJournalDays] = useState<JournalDay[]>([])
   const [sessionDays, setSessionDays] = useState<SessionDay[]>([])
+  const [sleepLogs, setSleepLogs]     = useState<{ date: string; duration_min: number }[]>([])
+  const [aiReport, setAiReport]       = useState<string>('')
+  const [loadingReport, setLoadingReport] = useState(false)
   const [loadingBilan, setLoadingBilan] = useState(false)
 
   // Form
@@ -120,6 +123,7 @@ export default function ProfilePage() {
 
   useEffect(() => { loadProfile() }, [])
   useEffect(() => { if (tab === 'bilan') loadBilan() }, [tab, period])
+  useEffect(() => { loadBilan() }, []) // charge au montage car bilan est l'onglet par défaut
 
   async function loadProfile() {
     const { data: { user } } = await supabase.auth.getUser()
@@ -155,28 +159,82 @@ export default function ProfilePage() {
       ? '2020-01-01'
       : format(subDays(new Date(), p.days), 'yyyy-MM-dd')
 
-    const [{ data: wts }, { data: jnl }, { data: ses }] = await Promise.all([
-      supabase.from('weight_log').select('date,weight_kg').eq('user_id', user.id)
-        .gte('date', from).order('date'),
-      supabase.from('journal_entries').select('date,cal').eq('user_id', user.id)
-        .gte('date', from),
-      supabase.from('sessions').select('session_date,calories_burned').eq('user_id', user.id)
-        .gte('session_date', from),
+    const [{ data: wts }, { data: jnl }, { data: ses }, { data: slp }] = await Promise.all([
+      supabase.from('weight_log').select('date,weight_kg').eq('user_id', user.id).gte('date', from).order('date'),
+      supabase.from('journal_entries').select('date,cal').eq('user_id', user.id).gte('date', from),
+      supabase.from('sessions').select('session_date,calories_burned,duration_min').eq('user_id', user.id).gte('session_date', from),
+      supabase.from('sleep_log').select('date,duration_min').eq('user_id', user.id).gte('date', from).order('date'),
     ])
 
     setWeights(wts ?? [])
+    setSleepLogs(slp ?? [])
 
-    // Agréger journal par jour
     const jMap: Record<string, number> = {}
     for (const r of jnl ?? []) jMap[r.date] = (jMap[r.date] ?? 0) + Number(r.cal)
     setJournalDays(Object.entries(jMap).map(([date, cal]) => ({ date, cal })).sort((a, b) => a.date.localeCompare(b.date)))
 
-    // Agréger sessions par jour
     const sMap: Record<string, number> = {}
     for (const r of ses ?? []) sMap[r.session_date] = (sMap[r.session_date] ?? 0) + Number(r.calories_burned ?? 0)
     setSessionDays(Object.entries(sMap).map(([date, calories_burned]) => ({ date, calories_burned })).sort((a, b) => a.date.localeCompare(b.date)))
 
     setLoadingBilan(false)
+  }
+
+  async function generateAIReport() {
+    setLoadingReport(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const from7 = format(subDays(new Date(), 7), 'yyyy-MM-dd')
+
+      const [{ data: jnl }, { data: ses }, { data: slp }, { data: wts }] = await Promise.all([
+        supabase.from('journal_entries').select('date,cal,prot,carb,fat').eq('user_id', user.id).gte('date', from7),
+        supabase.from('sessions').select('session_date,duration_min,calories_burned').eq('user_id', user.id).gte('session_date', from7),
+        supabase.from('sleep_log').select('date,duration_min,bedtime,wake_time').eq('user_id', user.id).gte('date', from7),
+        supabase.from('weight_log').select('date,weight_kg').eq('user_id', user.id).gte('date', from7).order('date'),
+      ])
+
+      // Agréger nutrition par jour
+      const jMap: Record<string, { cal: number; prot: number; carb: number; fat: number }> = {}
+      for (const r of jnl ?? []) {
+        if (!jMap[r.date]) jMap[r.date] = { cal: 0, prot: 0, carb: 0, fat: 0 }
+        jMap[r.date].cal  += Number(r.cal)
+        jMap[r.date].prot += Number(r.prot)
+        jMap[r.date].carb += Number(r.carb)
+        jMap[r.date].fat  += Number(r.fat)
+      }
+
+      const calTarget = profile?.calorie_target ?? 2000
+      const nutritionSummary = Object.entries(jMap).map(([date, m]) =>
+        `${date}: ${Math.round(m.cal)} kcal (P:${Math.round(m.prot)}g G:${Math.round(m.carb)}g L:${Math.round(m.fat)}g)`
+      ).join('\n') || 'Aucune donnée nutrition'
+
+      const sportSummary = (ses ?? []).map(s =>
+        `${s.session_date}: ${s.duration_min} min, ${Math.round(s.calories_burned ?? 0)} kcal brûlées`
+      ).join('\n') || 'Aucune séance enregistrée'
+
+      const sleepSummary = (slp ?? []).map(s =>
+        `${s.date}: ${Math.floor(s.duration_min / 60)}h${s.duration_min % 60 > 0 ? s.duration_min % 60 + 'min' : ''} (couché ${s.bedtime?.slice(0,5)} réveil ${s.wake_time?.slice(0,5)})`
+      ).join('\n') || 'Aucune donnée sommeil'
+
+      const weightSummary = (wts ?? []).map(w => `${w.date}: ${w.weight_kg} kg`).join('\n') || 'Aucune donnée poids'
+
+      const res = await fetch('/api/health-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          calTarget,
+          nutrition: nutritionSummary,
+          sport:     sportSummary,
+          sleep:     sleepSummary,
+          weight:    weightSummary,
+          goal:      profile?.goal ?? 'non défini',
+        }),
+      })
+      const data = await res.json()
+      setAiReport(data.report ?? '')
+    } catch (err) { console.error(err) }
+    setLoadingReport(false)
   }
 
   // Calcul TDEE depuis form
@@ -633,6 +691,65 @@ export default function ProfilePage() {
                   <p className="text-xs mt-1">Essaie une période plus longue ou continue à enregistrer.</p>
                 </div>
               )}
+
+              {/* Sommeil */}
+              {sleepLogs.length > 0 && (
+                <div className="card flex flex-col gap-3">
+                  <h3 className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
+                    🌙 Sommeil
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: 'Nuits loggées', value: sleepLogs.length },
+                      { label: 'Moy. par nuit', value: (() => { const avg = Math.round(sleepLogs.reduce((s, l) => s + l.duration_min, 0) / sleepLogs.length); return `${Math.floor(avg/60)}h${avg%60>0?avg%60+'min':''}` })() },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="kpi-card text-center p-3">
+                        <p className="text-xl font-extrabold text-tta-mid">{value}</p>
+                        <p className="text-xs text-zinc-400">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Mini graphique sommeil */}
+                  <div className="flex items-end gap-1 h-16">
+                    {sleepLogs.slice(-14).map((l, i) => {
+                      const pct = Math.min(100, Math.round((l.duration_min / 540) * 100))
+                      const color = l.duration_min >= 420 ? '#22c55e' : l.duration_min >= 360 ? '#eab308' : '#ef4444'
+                      return (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-0.5" title={`${l.date}: ${Math.floor(l.duration_min/60)}h${l.duration_min%60}min`}>
+                          <div className="w-full rounded-t-sm transition-all" style={{ height: `${pct}%`, background: color, minHeight: '4px' }} />
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <p className="text-[10px] text-zinc-400 text-center">Barre verte = 7h+, jaune = 6-7h, rouge = {'<'}6h</p>
+                </div>
+              )}
+
+              {/* Rapport IA 7 jours */}
+              <div className="card flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-zinc-700">🤖 Rapport IA — 7 jours</h3>
+                  <button onClick={generateAIReport} disabled={loadingReport}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-tta-mid text-white text-xs font-bold hover:bg-tta transition-all disabled:opacity-60">
+                    {loadingReport
+                      ? <><Loader2 size={12} className="animate-spin" />Analyse…</>
+                      : '✨ Générer'
+                    }
+                  </button>
+                </div>
+
+                {aiReport ? (
+                  <div className="text-sm text-zinc-700 leading-relaxed whitespace-pre-line bg-tta-light rounded-2xl p-4">
+                    {aiReport}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-zinc-400">
+                    <p className="text-3xl mb-2">🤖</p>
+                    <p className="text-sm">Clique sur "Générer" pour obtenir un rapport personnalisé basé sur tes 7 derniers jours.</p>
+                    <p className="text-xs mt-1 text-zinc-300">Nutrition · Sport · Sommeil · Poids</p>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
