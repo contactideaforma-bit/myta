@@ -663,26 +663,6 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              {/* Balance calorique nette */}
-              {bilanStats.calData.length > 1 && (
-                <div className="card flex flex-col gap-3">
-                  <h3 className="text-sm font-semibold text-zinc-700">⚖️ Balance calorique nette</h3>
-                  <p className="text-xs text-zinc-400">Calories consommées − calories brûlées par le sport</p>
-                  <ResponsiveContainer width="100%" height={140}>
-                    <AreaChart data={bilanStats.calData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
-                      <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} />
-                      <YAxis tick={{ fontSize: 10 }} tickLine={false} />
-                      <Tooltip formatter={(v: number) => [`${v} kcal`, 'Net']} />
-                      <ReferenceLine y={0} stroke="#6366f1" />
-                      <Area type="monotone" dataKey="net"
-                        stroke="#16a34a" fill="#dcfce7" strokeWidth={2} dot={false}
-                        name="Bilan net"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
 
               {/* Pas assez de données */}
               {bilanStats.weightData.length <= 1 && bilanStats.calData.length <= 1 && (

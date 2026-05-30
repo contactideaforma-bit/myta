@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { ArrowRight, ChevronRight, TrendingDown, TrendingUp, Minus } from 'lucide-react'
+import { ArrowRight, ChevronRight } from 'lucide-react'
 import { cn, todayISO, minutesToHuman } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { Waty } from '@/components/ui/Waty'
@@ -18,6 +18,7 @@ interface Stats {
   calTarget: number
   calConsumed: number
   calBurned: number
+  totalProt: number
   weekSessions: number
   weekMinutes: number
   lastSession: Session | null
@@ -69,13 +70,14 @@ export default function DashboardPage() {
     ] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
       supabase.from('journal_entries').select('cal').eq('user_id', user.id).eq('date', today),
-      supabase.from('journal_entries').select('cal').eq('user_id', user.id).gte('date', dateFrom).lte('date', dateTo),
+      supabase.from('journal_entries').select('cal,prot').eq('user_id', user.id).gte('date', dateFrom).lte('date', dateTo),
       supabase.from('sessions').select('*').eq('user_id', user.id).gte('session_date', dateFrom).lte('session_date', dateTo),
       supabase.from('sessions').select('*, discipline:disciplines(*)').eq('user_id', user.id).order('session_date', { ascending: false }).limit(1),
     ])
 
     const calToday    = (journalToday ?? []).reduce((s, e) => s + Number(e.cal), 0)
     const calConsumed = (journalPeriod ?? []).reduce((s, e) => s + Number(e.cal), 0)
+    const totalProt   = (journalPeriod ?? []).reduce((s, e) => s + Number(e.prot ?? 0), 0)
     const sessList    = sessions ?? []
     const calBurned   = sessList.reduce((s, e) => s + Number(e.calories_burned ?? 0), 0)
 
@@ -85,6 +87,7 @@ export default function DashboardPage() {
       calTarget:    prof?.calorie_target ?? 2000,
       calConsumed,
       calBurned,
+      totalProt,
       weekSessions: sessList.length,
       weekMinutes:  sessList.reduce((s, e) => s + Number(e.duration_min ?? 0), 0),
       lastSession:  lastSess?.[0] ?? null,
@@ -118,91 +121,109 @@ export default function DashboardPage() {
         </h1>
       </div>
 
-      {/* ── Bilan calorique semaine/mois ── */}
+      {/* ── Objectifs semaine/mois avec curseurs ── */}
       <div className="card flex flex-col gap-4">
-        {/* Header + sélecteur période */}
         <div className="flex items-center justify-between">
-          <h2 className="font-extrabold text-zinc-900">⚡ Bilan calorique</h2>
+          <h2 className="font-extrabold text-zinc-900">🎯 Mes objectifs</h2>
           <div className="flex bg-zinc-100 rounded-2xl p-0.5 gap-0.5">
             {(['semaine', 'mois'] as Period[]).map(p => (
               <button key={p} onClick={() => setPeriod(p)}
-                className={cn(
-                  'px-3 py-1.5 rounded-xl text-xs font-bold transition-all capitalize',
-                  period === p ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-400'
-                )}>
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all capitalize ${period === p ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-400'}`}>
                 {p}
               </button>
             ))}
           </div>
         </div>
 
-        {/* 3 métriques principales */}
-        <div className="grid grid-cols-3 gap-2">
-          <div className="bg-nutri-light rounded-2xl p-3 text-center">
-            <p className="text-[10px] text-nutri-mid font-bold uppercase tracking-wide mb-1">Consommées</p>
-            <p className="text-xl font-extrabold text-nutri-dark">{Math.round(s.calConsumed)}</p>
-            <p className="text-[10px] text-zinc-400">kcal</p>
+        {!s.profile?.calorie_target ? (
+          <div className="text-center py-4">
+            <p className="text-sm text-zinc-400">Renseigne tes objectifs dans le profil pour voir ta progression</p>
+            <button onClick={() => router.push('/profile')}
+              className="mt-2 text-xs font-bold text-tta-mid hover:underline">
+              Configurer mon profil →
+            </button>
           </div>
-          <div className="bg-sport-light rounded-2xl p-3 text-center">
-            <p className="text-[10px] text-sport font-bold uppercase tracking-wide mb-1">Brûlées</p>
-            <p className="text-xl font-extrabold text-sport-dark">{Math.round(s.calBurned)}</p>
-            <p className="text-[10px] text-zinc-400">kcal</p>
-          </div>
-          <div className={cn(
-            'rounded-2xl p-3 text-center',
-            netCal > 0 ? 'bg-orange-50' : 'bg-nutri-light'
-          )}>
-            <p className="text-[10px] font-bold uppercase tracking-wide mb-1 text-zinc-500">Net</p>
-            <p className={cn(
-              'text-xl font-extrabold flex items-center justify-center gap-0.5',
-              netCal > 0 ? 'text-orange-500' : 'text-nutri-dark'
-            )}>
-              {netCal > 0
-                ? <TrendingUp size={14} className="flex-shrink-0" />
-                : netCal < 0
-                ? <TrendingDown size={14} className="flex-shrink-0" />
-                : <Minus size={14} className="flex-shrink-0" />
-              }
-              {Math.abs(netCal)}
-            </p>
-            <p className="text-[10px] text-zinc-400">kcal</p>
-          </div>
-        </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {(() => {
+              const days     = period === 'semaine' ? 7 : 30
+              const calObj   = (s.profile?.calorie_target ?? 2000) * days
+              const protObj  = (s.profile?.prot_target ?? 120) * days
+              const calPct   = calObj  > 0 ? Math.min(150, Math.round((s.calConsumed  / calObj)  * 100)) : 0
+              const protPct  = protObj > 0 ? Math.min(150, Math.round((s.totalProt    / protObj)  * 100)) : 0
+              const sportObj = period === 'semaine' ? 3 : 12
+              const sportPct = Math.min(150, Math.round((s.weekSessions / sportObj) * 100))
 
-        {/* Barre visuelle consommées vs brûlées */}
-        {(s.calConsumed > 0 || s.calBurned > 0) && (
-          <div>
-            <div className="flex justify-between text-xs text-zinc-400 mb-1.5">
-              <span className="text-nutri-mid font-semibold">🥗 {Math.round(s.calConsumed)} consommées</span>
-              <span className="text-sport font-semibold">{Math.round(s.calBurned)} brûlées 🏋️</span>
-            </div>
-            <div className="h-3 bg-zinc-100 rounded-full overflow-hidden flex">
-              {s.calConsumed > 0 && (
-                <div
-                  className="h-full bg-nutri rounded-full transition-all duration-700"
-                  style={{ width: `${Math.min(100, (s.calConsumed / Math.max(s.calConsumed, s.calBurned)) * 100)}%` }}
-                />
-              )}
-            </div>
-            <div className="h-3 bg-zinc-100 rounded-full overflow-hidden flex mt-1">
-              {s.calBurned > 0 && (
-                <div
-                  className="h-full bg-sport rounded-full transition-all duration-700"
-                  style={{ width: `${Math.min(100, (s.calBurned / Math.max(s.calConsumed, s.calBurned)) * 100)}%` }}
-                />
-              )}
-            </div>
+              const objectives = [
+                {
+                  label:   'Calories consommées',
+                  current: Math.round(s.calConsumed),
+                  target:  calObj,
+                  pct:     calPct,
+                  unit:    'kcal',
+                  color:   '#f97316',
+                  icon:    '🔥',
+                },
+                {
+                  label:   'Protéines',
+                  current: Math.round(s.totalProt ?? 0),
+                  target:  protObj,
+                  pct:     protPct,
+                  unit:    'g',
+                  color:   '#3b82f6',
+                  icon:    '💪',
+                },
+                {
+                  label:   'Séances sport',
+                  current: s.weekSessions,
+                  target:  sportObj,
+                  pct:     sportPct,
+                  unit:    'séances',
+                  color:   '#7b7fd4',
+                  icon:    '🏋️',
+                },
+                {
+                  label:   'Calories brûlées',
+                  current: Math.round(s.calBurned),
+                  target:  period === 'semaine' ? 1500 : 6000,
+                  pct:     Math.min(150, Math.round((s.calBurned / (period === 'semaine' ? 1500 : 6000)) * 100)),
+                  unit:    'kcal',
+                  color:   '#22c55e',
+                  icon:    '⚡',
+                },
+              ]
+
+              return objectives.map(obj => (
+                <div key={obj.label}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-semibold text-zinc-600 flex items-center gap-1">
+                      {obj.icon} {obj.label}
+                    </span>
+                    <span className="text-xs text-zinc-400">
+                      <span className="font-bold" style={{ color: obj.color }}>{obj.current}</span> / {obj.target} {obj.unit}
+                    </span>
+                  </div>
+                  {/* Barre curseur */}
+                  <div className="relative h-3 bg-zinc-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: `${Math.min(100, obj.pct)}%`,
+                        background: obj.pct >= 100 ? obj.color : `${obj.color}99`,
+                      }} />
+                    {/* Indicateur objectif (100%) */}
+                    <div className="absolute top-0 bottom-0 w-0.5 bg-zinc-300" style={{ left: '66.6%' }} />
+                  </div>
+                  <div className="flex justify-between mt-0.5">
+                    <span className="text-[10px] text-zinc-400">0</span>
+                    <span className={`text-[10px] font-bold ${obj.pct >= 100 ? 'text-nutri-mid' : obj.pct >= 70 ? 'text-yellow-500' : 'text-zinc-400'}`}>
+                      {obj.pct}%
+                    </span>
+                  </div>
+                </div>
+              ))
+            })()}
           </div>
         )}
-
-        {/* Waty bilan */}
-        <div className="flex items-start gap-3 bg-sport-light rounded-2xl p-3">
-          <img src="/waty-sport.png" alt="Waty" className="w-10 h-10 object-contain flex-shrink-0" />
-          <div>
-            <p className="text-xs font-bold text-sport-dark mb-0.5">Waty dit :</p>
-            <p className="text-xs text-zinc-600 leading-relaxed">{bilanMsg}</p>
-          </div>
-        </div>
       </div>
 
       {/* ── Modules Nutrition + Sport ── */}

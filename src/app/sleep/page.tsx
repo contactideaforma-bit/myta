@@ -199,21 +199,27 @@ export default function SleepPage() {
           </p>
         </div>
 
-        {/* Heures */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs text-zinc-400 mb-1.5 block font-semibold flex items-center gap-1">
-              <Moon size={12} className="text-tta-mid" />Couché
-            </label>
-            <input type="time" value={bedtime} onChange={e => setBedtime(e.target.value)}
-              className="input text-center font-mono text-lg font-bold" />
+        {/* Heures — empilées verticalement pour éviter le chevauchement */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3 bg-tta-light rounded-2xl p-3">
+            <div className="w-10 h-10 bg-tta-mid rounded-xl flex items-center justify-center flex-shrink-0">
+              <Moon size={18} className="text-white" />
+            </div>
+            <div className="flex-1">
+              <label className="text-xs text-zinc-500 font-semibold block mb-1">Heure de coucher</label>
+              <input type="time" value={bedtime} onChange={e => setBedtime(e.target.value)}
+                className="w-full bg-white border-2 border-tta-mid/30 rounded-xl px-3 py-2 font-mono text-xl font-bold text-zinc-900 focus:outline-none focus:border-tta-mid text-center" />
+            </div>
           </div>
-          <div>
-            <label className="text-xs text-zinc-400 mb-1.5 block font-semibold flex items-center gap-1">
-              <Sun size={12} className="text-yellow-500" />Réveil
-            </label>
-            <input type="time" value={wakeTime} onChange={e => setWakeTime(e.target.value)}
-              className="input text-center font-mono text-lg font-bold" />
+          <div className="flex items-center gap-3 bg-yellow-50 rounded-2xl p-3">
+            <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Sun size={18} className="text-white" />
+            </div>
+            <div className="flex-1">
+              <label className="text-xs text-zinc-500 font-semibold block mb-1">Heure de réveil</label>
+              <input type="time" value={wakeTime} onChange={e => setWakeTime(e.target.value)}
+                className="w-full bg-white border-2 border-yellow-300 rounded-xl px-3 py-2 font-mono text-xl font-bold text-zinc-900 focus:outline-none focus:border-yellow-400 text-center" />
+            </div>
           </div>
         </div>
 

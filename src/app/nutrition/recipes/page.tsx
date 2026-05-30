@@ -9,16 +9,27 @@ import {
   Bookmark, BookmarkCheck, Share2, Copy, Check,
 } from 'lucide-react'
 
+interface Ingredient { qte: string; nom: string; note?: string }
+interface Etape { num: number; titre: string; detail: string; duree?: string; astuce?: string }
+
 interface Recipe {
   id: string
   titre: string
   description: string
   temps: number
+  temps_prep?: number
+  temps_cuisson?: number
   portions: number
   calories: number
+  proteines?: number
+  glucides?: number
+  lipides?: number
   difficulte: 'Facile' | 'Moyen' | 'Avancé'
-  ingredients: string[]
-  etapes: string[]
+  ustensiles?: string[]
+  ingredients: Ingredient[] | string[]
+  etapes: Etape[] | string[]
+  conseils_chef?: string
+  accompagnements?: string[]
   photo_keyword: string
   photoUrl?: string
   category?: string
@@ -314,7 +325,7 @@ export default function RecipesPage() {
 
       <div className="grid grid-cols-2 gap-2">
         {[
-          { icon: <Clock size={14} />, val: `${detail.temps} min`,     lbl: 'Temps' },
+          { icon: <Clock size={14} />, val: detail.temps_prep ? `${detail.temps_prep}min prép` : `${detail.temps} min`, lbl: 'Préparation' },
           { icon: <Users size={14} />, val: `${detail.portions}`,       lbl: 'Portions' },
           { icon: <Flame size={14} />, val: `${detail.calories} kcal`, lbl: 'Par portion' },
           { icon: <Star size={14} />,  val: detail.difficulte,          lbl: 'Niveau' },
@@ -327,31 +338,119 @@ export default function RecipesPage() {
         ))}
       </div>
 
+      {/* Macros détaillées */}
+      {(detail.proteines || detail.glucides || detail.lipides) && (
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label: 'Protéines', val: detail.proteines, color: 'text-blue-500', bg: 'bg-blue-50' },
+            { label: 'Glucides',  val: detail.glucides,  color: 'text-yellow-600', bg: 'bg-yellow-50' },
+            { label: 'Lipides',   val: detail.lipides,   color: 'text-purple-500', bg: 'bg-purple-50' },
+          ].map(m => m.val ? (
+            <div key={m.label} className={`${m.bg} rounded-2xl p-2 text-center`}>
+              <p className={`text-base font-extrabold ${m.color}`}>{m.val}g</p>
+              <p className="text-[10px] text-zinc-400">{m.label}</p>
+            </div>
+          ) : null)}
+        </div>
+      )}
+
+      {/* Ustensiles */}
+      {detail.ustensiles && detail.ustensiles.length > 0 && (
+        <div className="card">
+          <h2 className="text-sm font-bold text-zinc-900 mb-2">🔧 Ustensiles nécessaires</h2>
+          <div className="flex flex-wrap gap-1.5">
+            {detail.ustensiles.map((u, i) => (
+              <span key={i} className="text-xs bg-zinc-100 text-zinc-600 px-2.5 py-1 rounded-full">{u}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Ingrédients */}
       <div className="card">
         <h2 className="text-sm font-bold text-zinc-900 mb-3">🛒 Ingrédients</h2>
-        <div className="flex flex-col gap-1.5">
-          {detail.ingredients.map((ing, i) => (
-            <div key={i} className="flex items-center gap-2 text-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-nutri flex-shrink-0" />
-              <span className="text-zinc-700">{ing}</span>
-            </div>
-          ))}
+        <div className="flex flex-col gap-2">
+          {detail.ingredients.map((ing, i) => {
+            const isObj = typeof ing === 'object' && ing !== null
+            return (
+              <div key={i} className="flex items-start gap-3 py-1.5 border-b border-zinc-50 last:border-0">
+                <span className="w-6 h-6 bg-nutri-light rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold text-nutri-dark">{i + 1}</span>
+                <div className="flex-1">
+                  {isObj ? (
+                    <>
+                      <span className="text-sm font-semibold text-zinc-900">{(ing as Ingredient).qte} </span>
+                      <span className="text-sm text-zinc-700">{(ing as Ingredient).nom}</span>
+                      {(ing as Ingredient).note && <span className="text-xs text-zinc-400 ml-1">({(ing as Ingredient).note})</span>}
+                    </>
+                  ) : (
+                    <span className="text-sm text-zinc-700">{String(ing)}</span>
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
 
+      {/* Étapes détaillées */}
       <div className="card">
         <h2 className="text-sm font-bold text-zinc-900 mb-3">👨‍🍳 Préparation</h2>
-        <ol className="flex flex-col gap-3">
-          {detail.etapes.map((etape, i) => (
-            <li key={i} className="flex gap-3 items-start">
-              <span className="w-6 h-6 rounded-full bg-nutri text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
-                {i + 1}
-              </span>
-              <p className="text-sm text-zinc-600 leading-relaxed flex-1">{etape}</p>
-            </li>
-          ))}
-        </ol>
+        <div className="flex flex-col gap-4">
+          {detail.etapes.map((etape, i) => {
+            const isObj = typeof etape === 'object' && etape !== null
+            return (
+              <div key={i} className="flex gap-3">
+                <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                  <span className="w-8 h-8 rounded-2xl bg-nutri text-white text-xs font-extrabold flex items-center justify-center">
+                    {isObj ? (etape as Etape).num : i + 1}
+                  </span>
+                  {i < detail.etapes.length - 1 && <div className="w-px flex-1 bg-zinc-100 min-h-[16px]" />}
+                </div>
+                <div className="flex-1 pb-2">
+                  {isObj ? (
+                    <>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-sm font-bold text-zinc-900">{(etape as Etape).titre}</p>
+                        {(etape as Etape).duree && (
+                          <span className="text-[10px] text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full flex-shrink-0">{(etape as Etape).duree}</span>
+                        )}
+                      </div>
+                      <p className="text-sm text-zinc-600 leading-relaxed">{(etape as Etape).detail}</p>
+                      {(etape as Etape).astuce && (
+                        <div className="mt-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 text-xs text-amber-700">
+                          💡 <span className="font-semibold">Astuce :</span> {(etape as Etape).astuce}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-zinc-600 leading-relaxed">{String(etape)}</p>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
+
+      {/* Conseils chef */}
+      {detail.conseils_chef && (
+        <div className="card bg-nutri-light border-nutri/20">
+          <p className="text-xs font-extrabold text-nutri-dark mb-1">👨‍🍳 Conseil du chef</p>
+          <p className="text-sm text-nutri-dark leading-relaxed">{detail.conseils_chef}</p>
+        </div>
+      )}
+
+      {/* Accompagnements */}
+      {detail.accompagnements && detail.accompagnements.length > 0 && (
+        <div className="card">
+          <p className="text-xs font-extrabold text-zinc-500 mb-2">🍽️ Accompagnements suggérés</p>
+          <div className="flex flex-wrap gap-1.5">
+            {detail.accompagnements.map((a, i) => (
+              <span key={i} className="text-xs bg-zinc-100 text-zinc-600 px-2.5 py-1 rounded-full">{a}</span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 
