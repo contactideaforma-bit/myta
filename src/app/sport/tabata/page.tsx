@@ -102,7 +102,7 @@ export default function TabataPage() {
   const pc = phaseConfig[phase]
 
   return (
-    <div className="max-w-md mx-auto px-4 py-6 flex flex-col gap-5">
+    <div className="page flex flex-col gap-5">
 
       <div className="flex items-center justify-between">
         <div>

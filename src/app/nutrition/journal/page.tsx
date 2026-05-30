@@ -118,7 +118,7 @@ function AddFoodModal({ food, onConfirm, onClose }: {
         <h3 className="font-bold text-zinc-900 mb-1">➕ Ajouter</h3>
         <p className="text-sm text-nutri-dark font-semibold mb-4 truncate">{food.name}</p>
 
-        <div className="grid grid-cols-4 gap-2 mb-4">
+        <div className="grid grid-cols-2 gap-2 mb-4">
           {[
             { val: Math.round(food.cal * r), lbl: 'kcal', color: 'text-orange-500' },
             { val: round1(food.prot * r),    lbl: 'Prot.', color: 'text-blue-500' },
@@ -362,7 +362,7 @@ export default function JournalPage() {
   const isToday = currentDate === todayISO()
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 flex flex-col gap-6">
+    <div className="page">
 
       {/* Toast */}
       {toast && (
@@ -406,7 +406,7 @@ export default function JournalPage() {
       </div>
 
       {/* Macros */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <MacroCard label="Calories" icon="🔥" value={totals.cal}  unit="kcal" goal={g.cal}  color="bg-orange-400"
           onClick={() => setNutriModal({ title: '🔥 Calories par aliment', color: '#f97316',
             entries: entries.map(e => ({ food_name: e.food_name, value: Number(e.cal), unit: 'kcal' })) })} />
@@ -628,7 +628,7 @@ export default function JournalPage() {
               <h3 className="text-sm font-semibold text-zinc-700">🔬 Micronutriments du jour</h3>
               <span className="text-[10px] text-zinc-400">% de l'apport journalier recommandé</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2">
               {micros.map(m => (
                 <button key={m.name} onClick={() => {
                   if (!m.hasData) return
@@ -670,7 +670,7 @@ export default function JournalPage() {
       })()}
 
       {/* Deux colonnes : poids + graphique semaine */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
 
         {/* Poids */}
         <div className="card flex flex-col gap-3">

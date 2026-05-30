@@ -173,7 +173,7 @@ export default function CalculatorPage() {
   const imcGaugePct = imcResult ? Math.min(Math.max(((imcResult - 16) / (40 - 16)) * 100, 0), 100) : 50
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-6">
+    <div className="page">
 
       {/* Toast */}
       {toast && (
@@ -257,7 +257,7 @@ export default function CalculatorPage() {
 
               <div className="border-t border-zinc-100 pt-4">
                 <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-3">🎯 Objectifs caloriques</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 gap-2">
                   {[
                     { label: 'Perte de poids', cal: tdeeResult.tdee - 300, color: 'border-blue-200 bg-blue-50', text: 'text-blue-700', sub: '-300 kcal' },
                     { label: 'Maintien',        cal: tdeeResult.tdee,       color: 'border-nutri/40 bg-nutri-light', text: 'text-nutri-dark', sub: 'équilibre' },
@@ -354,7 +354,7 @@ export default function CalculatorPage() {
 
             <div>
               <label className="text-xs text-zinc-400 mb-1.5 block">Objectif</label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {(Object.entries(MACRO_PROFILES) as [GoalKey, typeof MACRO_PROFILES[GoalKey]][]).map(([key, { label }]) => (
                   <button key={key} onClick={() => setMacroGoal(key)}
                     className={`py-2 px-3 rounded-lg text-xs font-medium border transition-colors ${macroGoal === key ? 'bg-nutri text-white border-nutri' : 'border-zinc-200 text-zinc-500 hover:border-zinc-300'}`}>
@@ -387,7 +387,7 @@ export default function CalculatorPage() {
               </div>
 
               {/* Cercles */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-2">
                 {[
                   { label: 'Protéines', val: macros.prot, cal: macros.prot * 4,  color: 'bg-blue-500',   text: 'text-blue-600' },
                   { label: 'Glucides',  val: macros.carb, cal: macros.carb * 4,  color: 'bg-yellow-400', text: 'text-yellow-600' },

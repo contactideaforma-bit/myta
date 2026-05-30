@@ -60,7 +60,7 @@ export default async function SharedRecipePage({ searchParams }: Props) {
         </a>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-5">
+      <div className="page">
 
         {/* Photo hero */}
         <div className="relative rounded-2xl overflow-hidden h-56">
@@ -81,7 +81,7 @@ export default async function SharedRecipePage({ searchParams }: Props) {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {[
             { icon: <Clock size={14} />,  val: `${recipe.temps} min`,     lbl: 'Temps' },
             { icon: <Users size={14} />,  val: `${recipe.portions}`,       lbl: 'Portions' },

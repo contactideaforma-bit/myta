@@ -353,7 +353,7 @@ export default function ProfilePage() {
   )
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-5">
+    <div className="page">
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -473,7 +473,7 @@ export default function ProfilePage() {
                 </div>
                 <Activity size={28} className="text-tta-mid/50" />
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {[
                   { label: 'Perte de poids', cal: tdee - 300, color: 'text-blue-600' },
                   { label: 'Maintien',        cal: tdee,       color: 'text-tta-mid' },
@@ -500,7 +500,7 @@ export default function ProfilePage() {
                   <RefreshCw size={11} />Appliquer
                 </button>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {[
                   { label: 'Protéines', val: autoMacros.prot, color: 'bg-blue-500' },
                   { label: 'Glucides',  val: autoMacros.carb, color: 'bg-yellow-400' },

@@ -153,7 +153,7 @@ export default function SleepPage() {
 
       {/* Stats 7 jours */}
       {last7.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2">
           {[
             { label: 'Nuits loggées', value: `${last7.length}/7`, icon: '📅' },
             { label: 'Moyenne', value: avgSleep ? formatDuration(avgSleep) : '—', icon: '⏱️' },

@@ -265,7 +265,7 @@ export default function RecipesPage() {
 
   // ── Vue détail ──────────────────────────────────────────────────────────────
   if (detail) return (
-    <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-5">
+    <div className="page">
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-semibold text-white bg-nutri shadow-lg">
           {toast}
@@ -312,7 +312,7 @@ export default function RecipesPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {[
           { icon: <Clock size={14} />, val: `${detail.temps} min`,     lbl: 'Temps' },
           { icon: <Users size={14} />, val: `${detail.portions}`,       lbl: 'Portions' },
@@ -357,7 +357,7 @@ export default function RecipesPage() {
 
   // ── Vue liste ───────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 flex flex-col gap-6">
+    <div className="page">
 
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-semibold text-white bg-nutri shadow-lg">
@@ -382,7 +382,7 @@ export default function RecipesPage() {
 
       {/* Catégories */}
       {view !== 'saved' && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {CATEGORIES.map(cat => (
             <button key={cat.key} onClick={() => loadCategory(cat.key)}
               className={`card text-left p-3 transition-all hover:shadow-sm hover:border-nutri/40 ${
@@ -440,7 +440,7 @@ export default function RecipesPage() {
               </button>
             )}
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             {displayed.map(r => (
               <RecipeCard
                 key={r.id}

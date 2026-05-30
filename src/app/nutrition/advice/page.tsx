@@ -202,7 +202,7 @@ export default function AdvicePage() {
         )}
 
         {s.type === 'key-numbers' && s.numbers && (
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {s.numbers.map((n, j) => (
               <div key={j} className="bg-zinc-50 rounded-xl p-3 text-center">
                 <div className="text-xl font-black" style={{ color: n.color }}>{n.val}</div>
@@ -216,7 +216,7 @@ export default function AdvicePage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 flex flex-col gap-6">
+    <div className="page">
 
       {/* Modal */}
       {open && (
@@ -269,7 +269,7 @@ export default function AdvicePage() {
       </div>
 
       {/* Grille */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3">
         {visible.map(c => (
           <button key={c.id} onClick={() => setOpen(c)}
             className="card text-left hover:border-nutri/40 hover:shadow-sm transition-all group flex flex-col gap-3">
