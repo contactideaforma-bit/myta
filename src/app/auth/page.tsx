@@ -21,22 +21,41 @@ export default function AuthPage() {
     setMessage('')
 
     if (mode === 'login') {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) setMessage(error.message)
-      else window.location.href = '/nutrition/journal'
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) {
+        setMessage(error.message)
+        setLoading(false)
+        return
+      }
+      // Vérifie le statut d'abonnement
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('subscription_status')
+        .eq('id', data.user.id)
+        .single()
+
+      const status = profile?.subscription_status
+      const hasAccess = ['trialing', 'active', 'vip'].includes(status ?? '')
+
+      // Redirige selon le statut
+      window.location.href = hasAccess ? '/dashboard' : '/pricing'
+
     } else {
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: { full_name: name },
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: `${window.location.origin}/pricing`,
         },
       })
-      if (error) setMessage(error.message)
-      else setMessage('Vérifiez votre email pour confirmer votre compte.')
+      if (error) {
+        setMessage(error.message)
+      } else {
+        setMessage('Vérifiez votre email pour confirmer votre compte.')
+      }
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
@@ -46,7 +65,7 @@ export default function AuthPage() {
     >
       <div className="w-full max-w-sm flex flex-col gap-8">
 
-        {/* ── Logo + tagline ── */}
+        {/* Logo + tagline */}
         <div className="flex flex-col items-center gap-4">
           <img
             src="/logo_my_twin_app.png"
@@ -69,10 +88,9 @@ export default function AuthPage() {
           </div>
         </div>
 
-        {/* ── Card formulaire ── */}
+        {/* Card formulaire */}
         <div className="bg-white rounded-3xl p-6 shadow-lg border border-zinc-100">
 
-          {/* Titre */}
           <h2 className="text-xl font-extrabold text-zinc-900 tracking-tight mb-0.5">
             {mode === 'login' ? 'Bon retour ! 👋' : 'Créer un compte'}
           </h2>
@@ -173,11 +191,9 @@ export default function AuthPage() {
           </form>
         </div>
 
-        {/* ── Footer ── */}
         <p className="text-center text-zinc-400 text-xs">
           🔒 Données sécurisées · synchronisées avec Supabase
         </p>
-
       </div>
     </div>
   )
