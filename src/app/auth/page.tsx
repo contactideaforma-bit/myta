@@ -40,67 +40,50 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
+    <div
+      className="min-h-screen flex flex-col items-center justify-center px-5 py-12"
+      style={{ background: 'linear-gradient(160deg, #f0f0ff 0%, #e8fbf8 50%, #f0fdf4 100%)' }}
+    >
+      <div className="w-full max-w-sm flex flex-col gap-8">
 
-      {/* ── Panneau gauche / haut : visuel brand ── */}
-      <div className="relative flex-1 flex flex-col items-center justify-center p-10 overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #4B47A0 0%, #2BA8B0 50%, #22C55E 100%)' }}>
-
-        {/* Orbes décoratifs */}
-        <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full opacity-20"
-          style={{ background: 'radial-gradient(circle, #fff 0%, transparent 70%)' }} />
-        <div className="absolute -bottom-16 -right-16 w-56 h-56 rounded-full opacity-15"
-          style={{ background: 'radial-gradient(circle, #fff 0%, transparent 70%)' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full opacity-10"
-          style={{ background: 'radial-gradient(circle, #fff 0%, transparent 60%)' }} />
-
-        {/* Contenu brand */}
-        <div className="relative z-10 flex flex-col items-center gap-6 text-center">
-
-          {/* Logo PNG */}
+        {/* ── Logo + tagline ── */}
+        <div className="flex flex-col items-center gap-4">
           <img
             src="/logo_my_twin_app.png"
             alt="My Twin App"
-            className="w-72 md:w-80 object-contain drop-shadow-xl"
+            className="w-64 object-contain drop-shadow-sm"
           />
-
-          {/* Pills modules */}
-          <div className="flex gap-3 mt-2">
-            <span className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/20 backdrop-blur text-white text-sm font-bold border border-white/30">
+          <div className="flex gap-2">
+            <span className="px-3 py-1 rounded-full text-xs font-bold border"
+              style={{ background: '#f0fdf4', color: '#16A34A', borderColor: '#bbf7d0' }}>
               🥗 Nutrition
             </span>
-            <span className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/20 backdrop-blur text-white text-sm font-bold border border-white/30">
+            <span className="px-3 py-1 rounded-full text-xs font-bold border"
+              style={{ background: '#f0f0ff', color: '#4B47A0', borderColor: '#c7d2fe' }}>
               🏋️ Sport
             </span>
-            <span className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/20 backdrop-blur text-white text-sm font-bold border border-white/30">
+            <span className="px-3 py-1 rounded-full text-xs font-bold border"
+              style={{ background: '#e8fbf8', color: '#0D7A6E', borderColor: '#99f6e4' }}>
               😴 Sommeil
             </span>
           </div>
-
-          <p className="text-white/75 text-sm max-w-xs leading-relaxed">
-            Ton coach digital personnel — nutrition, entraînements et récupération dans un seul espace.
-          </p>
         </div>
-      </div>
 
-      {/* ── Panneau droit / bas : formulaire ── */}
-      <div className="flex-1 flex items-center justify-center bg-white p-6 md:p-12">
-        <div className="w-full max-w-sm">
+        {/* ── Card formulaire ── */}
+        <div className="bg-white rounded-3xl p-6 shadow-lg border border-zinc-100">
 
           {/* Titre */}
-          <div className="mb-8">
-            <h2 className="text-2xl font-extrabold text-zinc-900 tracking-tight">
-              {mode === 'login' ? 'Bon retour ! 👋' : 'Créer un compte'}
-            </h2>
-            <p className="text-zinc-400 text-sm mt-1">
-              {mode === 'login'
-                ? 'Connecte-toi pour accéder à ton espace MYTA'
-                : 'Rejoins My Twin App gratuitement'}
-            </p>
-          </div>
+          <h2 className="text-xl font-extrabold text-zinc-900 tracking-tight mb-0.5">
+            {mode === 'login' ? 'Bon retour ! 👋' : 'Créer un compte'}
+          </h2>
+          <p className="text-zinc-400 text-sm mb-5">
+            {mode === 'login'
+              ? 'Connecte-toi à ton espace MYTA'
+              : 'Rejoins My Twin App gratuitement'}
+          </p>
 
-          {/* Tabs login / register */}
-          <div className="flex bg-zinc-100 rounded-2xl p-1 mb-6">
+          {/* Tabs */}
+          <div className="flex bg-zinc-100 rounded-2xl p-1 mb-5">
             {(['login', 'register'] as const).map(m => (
               <button
                 key={m}
@@ -117,7 +100,7 @@ export default function AuthPage() {
           </div>
 
           {/* Formulaire */}
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
 
             {mode === 'register' && (
               <div className="relative">
@@ -188,12 +171,13 @@ export default function AuthPage() {
               }
             </button>
           </form>
-
-          {/* Footer */}
-          <p className="text-center text-zinc-400 text-xs mt-8">
-            🔒 Données sécurisées · synchronisées avec Supabase
-          </p>
         </div>
+
+        {/* ── Footer ── */}
+        <p className="text-center text-zinc-400 text-xs">
+          🔒 Données sécurisées · synchronisées avec Supabase
+        </p>
+
       </div>
     </div>
   )
