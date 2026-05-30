@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check, Loader2, Zap, Crown } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 const FEATURES = [
   'Journal nutritionnel illimité',
@@ -19,6 +20,7 @@ export default function PricingPage() {
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('yearly')
   const [loading, setLoading] = useState<string | null>(null)
   const router = useRouter()
+  const supabase = createClient()
 
   const yearlyTotal = '39,99'
   const savings     = Math.round((1 - 39.99 / (3.99 * 12)) * 100)
@@ -26,9 +28,21 @@ export default function PricingPage() {
   async function handleSubscribe(plan: 'monthly' | 'yearly') {
     setLoading(plan)
     try {
+      // Récupère la session côté client
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (!session) {
+        router.push('/auth')
+        setLoading(null)
+        return
+      }
+
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({ plan }),
       })
 

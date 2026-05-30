@@ -1,23 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2026-05-27.dahlia' as any,
 })
 
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
+    // Récupère le token depuis le header Authorization
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+    }
+    const token = authHeader.replace('Bearer ', '')
+
+    // Vérifie le token avec Supabase admin
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Token invalide' }, { status: 401 })
     }
 
     const { plan } = await req.json()
 
-    // On lit les price IDs côté serveur — fiable
     const priceId = plan === 'monthly'
       ? process.env.STRIPE_PRICE_MONTHLY
       : process.env.STRIPE_PRICE_YEARLY
