@@ -15,32 +15,29 @@ const FEATURES = [
   'App installable sur mobile',
 ]
 
-export default function PricingPage() {
-  const [billing, setBilling] = useState<'monthly' | 'yearly'>('yearly')
-  const [loading, setLoading] = useState<string | null>(null)
-  const router = useRouter()
+async function handleSubscribe(plan: 'monthly' | 'yearly') {
+  setLoading(plan)
+  try {
+    const res = await fetch('/api/stripe/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan }),  // on envoie 'monthly' ou 'yearly'
+    })
 
-  async function handleSubscribe(plan: 'monthly' | 'yearly') {
-    setLoading(plan)
-    try {
-      const priceId = plan === 'monthly'
-        ? process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY
-        : process.env.NEXT_PUBLIC_STRIPE_PRICE_YEARLY
-
-      const res = await fetch('/api/stripe/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ priceId }),
-      })
-
-      const data = await res.json()
-      if (data.url) window.location.href = data.url
-      else throw new Error(data.error)
-    } catch (err) {
-      console.error(err)
+    const data = await res.json()
+    
+    if (data.url) {
+      window.location.href = data.url
+    } else {
+      console.error('Erreur Stripe:', data.error)
+      alert('Erreur : ' + (data.error || 'Impossible de créer la session'))
       setLoading(null)
     }
+  } catch (err) {
+    console.error(err)
+    setLoading(null)
   }
+}
 
   const monthlyPrice  = billing === 'yearly' ? '3,33' : '3,99'
   const yearlyTotal   = '39,99'
