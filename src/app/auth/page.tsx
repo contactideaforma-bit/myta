@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Layers, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react'
+import { Mail, Lock, User, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react'
 
 export default function AuthPage() {
   const [email, setEmail]       = useState('')
@@ -11,6 +11,7 @@ export default function AuthPage() {
   const [mode, setMode]         = useState<'login' | 'register'>('login')
   const [loading, setLoading]   = useState(false)
   const [message, setMessage]   = useState('')
+  const [showPass, setShowPass] = useState(false)
 
   const supabase = createClient()
 
@@ -39,111 +40,160 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-tta to-tta-mid flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen flex flex-col md:flex-row">
 
-        {/* Logo MYTA */}
-        <div className="flex flex-col items-center gap-3 mb-8">
-          <div className="w-14 h-14 bg-white/10 backdrop-blur rounded-2xl flex items-center justify-center border border-white/20">
-            <Layers size={28} className="text-tta-accent" />
+      {/* ── Panneau gauche / haut : visuel brand ── */}
+      <div className="relative flex-1 flex flex-col items-center justify-center p-10 overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, #4B47A0 0%, #2BA8B0 50%, #22C55E 100%)' }}>
+
+        {/* Orbes décoratifs */}
+        <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full opacity-20"
+          style={{ background: 'radial-gradient(circle, #fff 0%, transparent 70%)' }} />
+        <div className="absolute -bottom-16 -right-16 w-56 h-56 rounded-full opacity-15"
+          style={{ background: 'radial-gradient(circle, #fff 0%, transparent 70%)' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full opacity-10"
+          style={{ background: 'radial-gradient(circle, #fff 0%, transparent 60%)' }} />
+
+        {/* Contenu brand */}
+        <div className="relative z-10 flex flex-col items-center gap-6 text-center">
+
+          {/* Logo PNG */}
+          <img
+            src="/logo_my_twin_app.png"
+            alt="My Twin App"
+            className="w-72 md:w-80 object-contain drop-shadow-xl"
+          />
+
+          {/* Pills modules */}
+          <div className="flex gap-3 mt-2">
+            <span className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/20 backdrop-blur text-white text-sm font-bold border border-white/30">
+              🥗 Nutrition
+            </span>
+            <span className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/20 backdrop-blur text-white text-sm font-bold border border-white/30">
+              🏋️ Sport
+            </span>
+            <span className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/20 backdrop-blur text-white text-sm font-bold border border-white/30">
+              😴 Sommeil
+            </span>
           </div>
-          <div className="text-center">
-            <p className="text-white/60 text-xs tracking-widest uppercase">My Twin App</p>
-            <h1 className="text-white text-2xl font-bold tracking-tight">MYTA</h1>
-          </div>
-          <p className="text-white/50 text-sm text-center">
-            Nutrition &amp; Sport — un seul espace
+
+          <p className="text-white/75 text-sm max-w-xs leading-relaxed">
+            Ton coach digital personnel — nutrition, entraînements et récupération dans un seul espace.
           </p>
         </div>
+      </div>
 
-        {/* Card */}
-        <div className="bg-white rounded-2xl p-6 shadow-2xl">
-          <h2 className="text-lg font-semibold text-zinc-900 mb-1">
-            {mode === 'login' ? 'Connexion' : 'Créer un compte'}
-          </h2>
-          <p className="text-sm text-zinc-500 mb-5">
-            {mode === 'login'
-              ? 'Bienvenue sur MYTA'
-              : 'Rejoignez My Twin App'}
-          </p>
+      {/* ── Panneau droit / bas : formulaire ── */}
+      <div className="flex-1 flex items-center justify-center bg-white p-6 md:p-12">
+        <div className="w-full max-w-sm">
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          {/* Titre */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-extrabold text-zinc-900 tracking-tight">
+              {mode === 'login' ? 'Bon retour ! 👋' : 'Créer un compte'}
+            </h2>
+            <p className="text-zinc-400 text-sm mt-1">
+              {mode === 'login'
+                ? 'Connecte-toi pour accéder à ton espace MYTA'
+                : 'Rejoins My Twin App gratuitement'}
+            </p>
+          </div>
+
+          {/* Tabs login / register */}
+          <div className="flex bg-zinc-100 rounded-2xl p-1 mb-6">
+            {(['login', 'register'] as const).map(m => (
+              <button
+                key={m}
+                onClick={() => { setMode(m); setMessage('') }}
+                className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${
+                  mode === m
+                    ? 'bg-white text-zinc-900 shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-600'
+                }`}
+              >
+                {m === 'login' ? 'Connexion' : 'Inscription'}
+              </button>
+            ))}
+          </div>
+
+          {/* Formulaire */}
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+
             {mode === 'register' && (
               <div className="relative">
-                <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
                 <input
                   type="text"
-                  placeholder="Prénom"
+                  placeholder="Ton prénom"
                   value={name}
                   onChange={e => setName(e.target.value)}
                   required
-                  className="input pl-9"
+                  className="w-full pl-10 pr-4 py-3 border-2 border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-[#4B47A0] focus:ring-2 focus:ring-[#4B47A0]/15 transition-all bg-white"
                 />
               </div>
             )}
 
             <div className="relative">
-              <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
               <input
                 type="email"
                 placeholder="Adresse e-mail"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
-                className="input pl-9"
+                className="w-full pl-10 pr-4 py-3 border-2 border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-[#4B47A0] focus:ring-2 focus:ring-[#4B47A0]/15 transition-all bg-white"
               />
             </div>
 
             <div className="relative">
-              <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
               <input
-                type="password"
+                type={showPass ? 'text' : 'password'}
                 placeholder="Mot de passe"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
                 minLength={8}
-                className="input pl-9"
+                className="w-full pl-10 pr-10 py-3 border-2 border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-[#4B47A0] focus:ring-2 focus:ring-[#4B47A0]/15 transition-all bg-white"
               />
+              <button type="button" onClick={() => setShowPass(v => !v)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition-colors">
+                {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
             </div>
 
             {message && (
-              <p className={`text-xs px-3 py-2 rounded-lg ${
+              <div className={`text-xs px-4 py-3 rounded-2xl flex items-start gap-2 ${
                 message.includes('Vérifiez')
-                  ? 'bg-green-50 text-green-700'
-                  : 'bg-red-50 text-red-600'
+                  ? 'bg-green-50 text-green-700 border border-green-200'
+                  : 'bg-red-50 text-red-600 border border-red-200'
               }`}>
-                {message}
-              </p>
+                <span>{message.includes('Vérifiez') ? '✅' : '⚠️'}</span>
+                <span>{message}</span>
+              </div>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary justify-center mt-1 py-2.5"
+              className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-white text-sm font-bold shadow-sm transition-all active:scale-[0.98] disabled:opacity-70 mt-1"
+              style={{ background: 'linear-gradient(90deg, #4B47A0 0%, #2BA8B0 100%)' }}
             >
               {loading
                 ? <Loader2 size={16} className="animate-spin" />
-                : <>{mode === 'login' ? 'Se connecter' : 'Créer mon compte'}<ArrowRight size={15} /></>
+                : <>
+                    {mode === 'login' ? 'Se connecter' : 'Créer mon compte'}
+                    <ArrowRight size={15} />
+                  </>
               }
             </button>
           </form>
 
-          <div className="mt-4 text-center">
-            <button
-              onClick={() => { setMode(m => m === 'login' ? 'register' : 'login'); setMessage('') }}
-              className="text-xs text-zinc-500 hover:text-tta-mid transition-colors"
-            >
-              {mode === 'login'
-                ? "Pas encore de compte ? S'inscrire"
-                : 'Déjà inscrit ? Se connecter'}
-            </button>
-          </div>
+          {/* Footer */}
+          <p className="text-center text-zinc-400 text-xs mt-8">
+            🔒 Données sécurisées · synchronisées avec Supabase
+          </p>
         </div>
-
-        <p className="text-center text-white/30 text-xs mt-6">
-          🔒 Données synchronisées sur Supabase
-        </p>
       </div>
     </div>
   )
