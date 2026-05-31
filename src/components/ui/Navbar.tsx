@@ -16,7 +16,6 @@ import type { Module } from '@/types'
 
 const NAV_NUTRI = [
   { href: '/nutrition/journal',    label: 'Journal',     icon: BookOpen,   desc: 'Suivi alimentaire du jour',  color: 'text-green-600',  bg: 'bg-green-50'  },
-  { href: '/nutrition/calculator', label: 'Calculateur', icon: Calculator, desc: 'IMC, TDEE & macros',         color: 'text-orange-500', bg: 'bg-orange-50' },
   { href: '/nutrition/recipes',    label: 'Recettes',    icon: ChefHat,    desc: 'Recettes IA en français',    color: 'text-green-500',  bg: 'bg-green-50'  },
   { href: '/nutrition/advice',     label: 'Conseils',    icon: Lightbulb,  desc: 'Nutrition & bien-être',      color: 'text-yellow-500', bg: 'bg-yellow-50' },
 ]
@@ -26,6 +25,9 @@ const NAV_SPORT = [
   { href: '/sport/tabata',   label: 'Tabata',     icon: Timer,    desc: 'Timer HIIT configurable', color: 'text-red-500',    bg: 'bg-red-50'    },
   { href: '/sport/history',  label: 'Historique', icon: History,  desc: 'Mes séances passées',     color: 'text-blue-500',   bg: 'bg-blue-50'   },
 ]
+
+// Pages indépendantes des modules Nutrition/Sport
+const INDEPENDENT_PATHS = ['/profile', '/sleep', '/dashboard']
 
 function QuitModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
   return (
@@ -72,9 +74,12 @@ export function Navbar() {
     return () => { document.body.style.overflow = '' }
   }, [sidebarOpen])
 
+  // ── Détection du module actif ────────────────────────────────────────────
+  // Pages indépendantes → pas de module actif (header neutre)
+  const isIndependent = INDEPENDENT_PATHS.some(p => pathname.startsWith(p))
   const activeModule: Module = pathname.startsWith('/nutrition') ? 'nutrition' : 'sport'
-  const navItems = activeModule === 'nutrition' ? NAV_NUTRI : NAV_SPORT
-  const isNutri  = activeModule === 'nutrition'
+  const isNutri = activeModule === 'nutrition'
+  const navItems = isNutri ? NAV_NUTRI : NAV_SPORT
 
   function handleNavClick(href: string) {
     if (pathname === '/sport/session' && href !== '/sport/session') {
@@ -97,17 +102,25 @@ export function Navbar() {
     router.push('/auth')
   }
 
+  // ── Couleurs header selon contexte ──────────────────────────────────────
+  const headerGradient = isIndependent
+    ? 'bg-gradient-to-r from-tta to-tta-mid border-tta-mid/50'   // violet neutre
+    : isNutri
+    ? 'bg-gradient-to-r from-nutri to-nutri-mid border-nutri-mid/50'
+    : 'bg-gradient-to-r from-tta-mid to-sport border-sport'
+
+  const sidebarHeaderGradient = isIndependent
+    ? 'bg-gradient-to-r from-tta to-tta-mid'
+    : isNutri
+    ? 'bg-gradient-to-r from-nutri to-nutri-mid'
+    : 'bg-gradient-to-r from-tta-mid to-sport'
+
   return (
     <>
       {showModal && <QuitModal onConfirm={confirmQuit} onCancel={() => setShowModal(false)} />}
 
-      {/* ── Header coloré ── */}
-      <header className={cn(
-        'sticky top-0 z-50 border-b',
-        isNutri
-          ? 'bg-gradient-to-r from-nutri to-nutri-mid border-nutri-mid/50'
-          : 'bg-gradient-to-r from-tta-mid to-sport border-sport'
-      )}>
+      {/* ── Header ── */}
+      <header className={cn('sticky top-0 z-50 border-b', headerGradient)}>
         <div className="px-4 h-14 flex items-center justify-between">
 
           {/* Burger */}
@@ -125,25 +138,34 @@ export function Navbar() {
             <span className="font-extrabold text-base tracking-tight text-white">MYTA</span>
           </button>
 
-          {/* Switch module — pills colorées */}
-          <div className="flex items-center bg-white/20 rounded-2xl p-0.5 gap-0.5">
-            <button
-              onClick={() => router.push('/nutrition/journal')}
-              className={cn(
-                'w-9 h-8 rounded-xl flex items-center justify-center text-base transition-all',
-                isNutri ? 'bg-white shadow-sm' : 'hover:bg-white/20'
-              )}>
-              🥗
-            </button>
-            <button
-              onClick={() => router.push('/sport/session')}
-              className={cn(
-                'w-9 h-8 rounded-xl flex items-center justify-center text-base transition-all',
-                !isNutri ? 'bg-white shadow-sm' : 'hover:bg-white/20'
-              )}>
-              🏋️
-            </button>
-          </div>
+          {/* Switch module — masqué sur pages indépendantes */}
+          {!isIndependent && (
+            <div className="flex items-center bg-white/20 rounded-2xl p-0.5 gap-0.5">
+              <button
+                onClick={() => router.push('/nutrition/journal')}
+                className={cn(
+                  'w-9 h-8 rounded-xl flex items-center justify-center text-base transition-all',
+                  isNutri ? 'bg-white shadow-sm' : 'hover:bg-white/20'
+                )}>
+                🥗
+              </button>
+              <button
+                onClick={() => router.push('/sport/session')}
+                className={cn(
+                  'w-9 h-8 rounded-xl flex items-center justify-center text-base transition-all',
+                  !isNutri ? 'bg-white shadow-sm' : 'hover:bg-white/20'
+                )}>
+                🏋️
+              </button>
+            </div>
+          )}
+
+          {/* Icône profil sur pages indépendantes */}
+          {isIndependent && (
+            <div className="w-9 h-9 flex items-center justify-center rounded-2xl bg-white/20 text-white">
+              {pathname.startsWith('/sleep') ? <Moon size={18} /> : <User size={18} />}
+            </div>
+          )}
         </div>
       </header>
 
@@ -153,19 +175,14 @@ export function Navbar() {
           onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* ── Sidebar fun ── */}
+      {/* ── Sidebar ── */}
       <aside className={cn(
         'fixed top-0 left-0 z-[56] h-full w-72 bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-in-out',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
 
-        {/* Header sidebar coloré */}
-        <div className={cn(
-          'px-5 py-5 flex items-center justify-between',
-          isNutri
-            ? 'bg-gradient-to-r from-nutri to-nutri-mid'
-            : 'bg-gradient-to-r from-tta-mid to-sport'
-        )}>
+        {/* Header sidebar */}
+        <div className={cn('px-5 py-5 flex items-center justify-between', sidebarHeaderGradient)}>
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 bg-white/25 rounded-xl flex items-center justify-center">
               <Layers size={18} className="text-white" />
@@ -188,7 +205,7 @@ export function Navbar() {
               onClick={() => { router.push('/nutrition/journal'); setSidebarOpen(false) }}
               className={cn(
                 'flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5',
-                isNutri ? 'bg-gradient-to-r from-nutri to-nutri-mid text-white shadow-sm' : 'text-zinc-400'
+                (!isIndependent && isNutri) ? 'bg-gradient-to-r from-nutri to-nutri-mid text-white shadow-sm' : 'text-zinc-400'
               )}>
               🥗 Nutrition
             </button>
@@ -196,7 +213,7 @@ export function Navbar() {
               onClick={() => { router.push('/sport/session'); setSidebarOpen(false) }}
               className={cn(
                 'flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5',
-                !isNutri ? 'bg-gradient-to-r from-tta-mid to-sport text-white shadow-sm' : 'text-zinc-400'
+                (!isIndependent && !isNutri) ? 'bg-gradient-to-r from-tta-mid to-sport text-white shadow-sm' : 'text-zinc-400'
               )}>
               🏋️ Sport
             </button>
@@ -210,9 +227,7 @@ export function Navbar() {
           <button onClick={() => handleNavClick('/dashboard')}
             className={cn(
               'w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-all',
-              pathname === '/dashboard'
-                ? 'bg-tta-light text-tta-mid'
-                : 'hover:bg-zinc-50 text-zinc-600'
+              pathname === '/dashboard' ? 'bg-tta-light text-tta-mid' : 'hover:bg-zinc-50 text-zinc-600'
             )}>
             <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center',
               pathname === '/dashboard' ? 'bg-tta-mid/20' : 'bg-zinc-100')}>
@@ -235,7 +250,7 @@ export function Navbar() {
 
           {/* Items module */}
           {navItems.map(({ href, label, icon: Icon, desc, color, bg }) => {
-            const active = pathname === href
+            const active = pathname === href || pathname.startsWith(href)
             return (
               <button key={href} onClick={() => handleNavClick(href)}
                 className={cn(
@@ -258,10 +273,11 @@ export function Navbar() {
             )
           })}
 
-          {/* Profil */}
-          <div className="px-3 pt-3 pb-1">
+          {/* ── Section Mon compte — toujours visible et indépendante ── */}
+          <div className="px-3 pt-4 pb-1">
             <p className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-300">Mon compte</p>
           </div>
+
           <button onClick={() => handleNavClick('/profile')}
             className={cn(
               'w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-all',
@@ -275,6 +291,7 @@ export function Navbar() {
               <p className="text-sm font-bold text-zinc-700">Profil & Bilan</p>
               <p className="text-[10px] text-zinc-400">Objectifs & statistiques</p>
             </div>
+            {pathname === '/profile' && <ChevronRight size={14} className="text-tta-mid" />}
           </button>
 
           <button onClick={() => handleNavClick('/sleep')}
@@ -290,12 +307,12 @@ export function Navbar() {
               <p className="text-sm font-bold text-zinc-700">Sommeil</p>
               <p className="text-[10px] text-zinc-400">Suivi de tes nuits</p>
             </div>
+            {pathname === '/sleep' && <ChevronRight size={14} className="text-tta-mid" />}
           </button>
         </nav>
 
         {/* Footer */}
         <div className="px-4 py-4 border-t border-zinc-100 flex flex-col gap-2">
-          {/* Dark mode toggle */}
           <button onClick={toggle}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-left hover:bg-zinc-50 transition-all">
             <div className="w-9 h-9 rounded-xl bg-zinc-100 flex items-center justify-center">
