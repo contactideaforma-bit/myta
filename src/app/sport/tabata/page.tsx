@@ -67,19 +67,25 @@ function countdown(finalWord: string, onDone?: () => void) {
   window.speechSynthesis.cancel()
   const words = ['3', '2', '1', finalWord]
   let i = 0
+
   function sayNext() {
     if (i >= words.length) { onDone?.(); return }
-    const utt = new SpeechSynthesisUtterance(words[i])
-    utt.lang  = 'fr-FR'
-    utt.rate  = 1.1
-    utt.pitch = words[i] === finalWord ? 1.3 : 1.0
+    const word = words[i]
+    const utt  = new SpeechSynthesisUtterance(word)
+    utt.lang   = 'fr-FR'
+    utt.rate   = 1.0
+    utt.pitch  = word === finalWord ? 1.3 : 1.0
     utt.volume = 1
-    utt.onend = () => { i++; setTimeout(sayNext, 100) }
+    utt.onend  = () => {
+      i++
+      setTimeout(sayNext, 150)
+    }
+    // Hack iOS : reprendre si suspendu
+    if (window.speechSynthesis.paused) window.speechSynthesis.resume()
     window.speechSynthesis.speak(utt)
-    i++
+    // NE PAS incrémenter i ici — seulement dans onend
   }
-  // Hack iOS : reprendre si suspendu
-  if (window.speechSynthesis.paused) window.speechSynthesis.resume()
+
   sayNext()
 }
 
