@@ -1,0 +1,20 @@
+{
+  "crons": [
+    {
+      "path": "/api/notifications?type=journal",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/notifications?type=journal",
+      "schedule": "0 19 * * *"
+    },
+    {
+      "path": "/api/notifications?type=poids",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/notifications?type=bilan",
+      "schedule": "0 9 * * 0"
+    }
+  ]
+}
