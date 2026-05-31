@@ -6,17 +6,34 @@ export const maxDuration = 60
 const client = new Anthropic()
 
 export async function POST(req: NextRequest) {
-  const { calTarget, nutrition, sport, sleep, weight, goal, condition } = await req.json()
+  const { calTarget, nutrition, sport, sleep, weight, goal, condition, weightGoal, age } = await req.json()
 
-  const prompt = `Tu es Waty, coach de l'app MYTA. Rapport motivant sur 7 jours, 200 mots max, emojis, tutoiement.
+  const contextLines = [
+    age          ? `Âge : ${age}` : null,
+    goal         ? `Objectif déclaré : ${goal}` : null,
+    weightGoal   ? `Poids cible : ${weightGoal}` : null,
+    condition    ? `Conditions : ${condition}` : null,
+  ].filter(Boolean).join(' | ')
 
-NUTRITION (objectif ${calTarget} kcal/j): ${nutrition}
-SPORT: ${sport}
-SOMMEIL: ${sleep}
-POIDS: ${weight}
-OBJECTIF: ${goal}${condition ? ` | ${condition}` : ''}
+  const prompt = `Tu es Waty, la mascotte coach de MYTA. Tu dois rédiger un bilan de santé personnalisé, bienveillant et ultra-pertinent.
 
-Analyse chaque domaine, donne 2 conseils concrets, termine par une motivation.`
+PROFIL UTILISATEUR : ${contextLines || 'Non renseigné'}
+OBJECTIF CALORIQUE : ${calTarget} kcal/jour
+
+DONNÉES DES 7 DERNIERS JOURS :
+📊 Nutrition : ${nutrition}
+🏋️ Sport : ${sport}
+😴 Sommeil : ${sleep}
+⚖️ Poids : ${weight}
+
+CONSIGNES DE RÉDACTION :
+- Tutoie l'utilisateur
+- Sois précis et concret : cite les chiffres réels (calories, durées, poids)
+- Adapte le ton aux conditions de santé si présentes (ex: diabète → parle glycémie, gluten → alternatives sans gluten)
+- Si poids cible : commente la progression vers cet objectif
+- Structure : 1 phrase d'intro motivante → analyse nutrition → analyse sport → analyse sommeil → 2 conseils actionnables → 1 phrase de motivation finale
+- Maximum 220 mots, emojis pour aérer
+- Ne mentionne pas les données manquantes sauf si c'est critique`
 
   const encoder = new TextEncoder()
 
@@ -25,14 +42,11 @@ Analyse chaque domaine, donne 2 conseils concrets, termine par une motivation.`
       try {
         const response = await client.messages.stream({
           model: 'claude-haiku-4-5-20251001',
-          max_tokens: 600,
+          max_tokens: 700,
           messages: [{ role: 'user', content: prompt }],
         })
         for await (const chunk of response) {
-          if (
-            chunk.type === 'content_block_delta' &&
-            chunk.delta.type === 'text_delta'
-          ) {
+          if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
             controller.enqueue(encoder.encode(chunk.delta.text))
           }
         }

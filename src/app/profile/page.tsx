@@ -31,6 +31,7 @@ interface Profile {
   carb_target: number | null
   fat_target: number | null
   condition: string | null
+  health_conditions: string[] | null
 }
 interface WeightLog { date: string; weight_kg: number }
 interface JournalDay { date: string; cal: number }
@@ -69,6 +70,23 @@ const MACRO_GOALS = [
   { key: 'keto',     label: '🥑 Cétogène' },
 ]
 
+const HEALTH_CONDITIONS = [
+  { value: 'diabete_type2',      label: '🩸 Diabète type 2',          color: 'bg-red-50 border-red-200 text-red-700',
+    note: 'Glucides limités, index glycémique bas, répartition des repas régulière' },
+  { value: 'diabete_type1',      label: '🩸 Diabète type 1',          color: 'bg-red-50 border-red-200 text-red-700',
+    note: 'Suivi glycémique, adaptation des glucides aux insulines' },
+  { value: 'inflammatoire',      label: '🔥 Maladie inflammatoire',    color: 'bg-orange-50 border-orange-200 text-orange-700',
+    note: 'Régime anti-inflammatoire, oméga-3++, éviter sucres raffinés' },
+  { value: 'allergie_gluten',    label: '🌾 Allergie / Intolérance gluten', color: 'bg-amber-50 border-amber-200 text-amber-700',
+    note: 'Aliments sans gluten uniquement : riz, quinoa, sarrasin, patate douce' },
+  { value: 'intolerance_lactose',label: '🥛 Intolérance au lactose',   color: 'bg-blue-50 border-blue-200 text-blue-700',
+    note: 'Produits laitiers sans lactose ou alternatives végétales' },
+  { value: 'hypertension',       label: '❤️ Hypertension',            color: 'bg-rose-50 border-rose-200 text-rose-700',
+    note: 'Sel limité à 5g/jour, potassium augmenté, hydratation++' },
+  { value: 'hypothyroidie',      label: '🦋 Hypothyroïdie',           color: 'bg-purple-50 border-purple-200 text-purple-700',
+    note: 'Iode et sélénium, éviter soja et chou cru en excès' },
+]
+
 const CONDITIONS_FEMME = [
   { value: '',                   label: '— Aucune' },
   { value: 'enceinte',           label: '🤰 Enceinte' },
@@ -77,14 +95,59 @@ const CONDITIONS_FEMME = [
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function calcTDEE(w: number, h: number, age: number, sex: string, activity: number, condition?: string | null) {
+function calcTDEE(w: number, h: number, age: number, sex: string, activity: number, condition?: string | null, healthConditions?: string[] | null) {
   let bmr = sex === 'femme'
     ? 10 * w + 6.25 * h - 5 * age - 161
     : 10 * w + 6.25 * h - 5 * age + 5
   if (condition === 'enceinte')           bmr += 300
   if (condition === 'post-partum')        bmr += 500
   if (condition === 'post-partum-allait') bmr += 600
+  // Hypothyroïdie : métabolisme ralenti de ~10%
+  if (healthConditions?.includes('hypothyroidie')) bmr = Math.round(bmr * 0.90)
   return Math.round(bmr * activity)
+}
+
+// Adapter les macros selon les conditions de santé
+function adaptMacrosForHealth(
+  cal: number, prot: number, carb: number, fat: number,
+  healthConditions?: string[] | null
+): { cal: number; prot: number; carb: number; fat: number; notes: string[] } {
+  let c = cal, p = prot, g = carb, l = fat
+  const notes: string[] = []
+
+  if (healthConditions?.includes('diabete_type1') || healthConditions?.includes('diabete_type2')) {
+    // Glucides max 40% des calories, index glycémique bas
+    const maxCarb = Math.round(c * 0.40 / 4)
+    if (g > maxCarb) {
+      g = maxCarb
+      l = Math.round((c - p * 4 - g * 4) / 9)
+    }
+    notes.push('🩸 Glucides limités à 40% — privilégie riz complet, légumineuses, légumes')
+  }
+
+  if (healthConditions?.includes('inflammatoire')) {
+    // Protéines légèrement augmentées, lipides anti-inflam
+    p = Math.round(p * 1.1)
+    notes.push('🔥 Protéines + 10% — oméga-3, curcuma, gingembre conseillés')
+  }
+
+  if (healthConditions?.includes('allergie_gluten')) {
+    notes.push('🌾 Sources de glucides : riz, quinoa, patate douce, sarrasin uniquement')
+  }
+
+  if (healthConditions?.includes('hypertension')) {
+    notes.push('❤️ Sel < 5g/jour — potassium++ : banane, avocat, haricots')
+  }
+
+  if (healthConditions?.includes('hypothyroidie')) {
+    notes.push('🦋 Sélénium++ : noix du Brésil. Évite soja et crucifères crus en excès')
+  }
+
+  if (healthConditions?.includes('intolerance_lactose')) {
+    notes.push('🥛 Substituts : lait d'amande, soja, avoine. Fromages affinés tolérés')
+  }
+
+  return { cal: c, prot: p, carb: g, fat: l, notes }
 }
 
 function imcCategory(bmi: number) {
@@ -177,6 +240,7 @@ export default function ProfilePage() {
     birth_date: '', sex: 'homme', activity_factor: '1.55',
     goal: '', calorie_target: '', prot_target: '', carb_target: '', fat_target: '',
     condition: '',
+    health_conditions: [] as string[],
   })
 
   // ── États calculateur ───────────────────────────────────────────────────────
@@ -232,6 +296,7 @@ export default function ProfilePage() {
         carb_target:     data.carb_target     ? String(data.carb_target)     : '',
         fat_target:      data.fat_target      ? String(data.fat_target)      : '',
         condition:       data.condition       ?? '',
+        health_conditions: data.health_conditions ?? [],
       })
     }
     setLoading(false)
@@ -279,6 +344,7 @@ export default function ProfilePage() {
       fat_target:      parseInt(form.fat_target)        || null,
       condition:       form.condition                   || null,
       weight_goal:     parseFloat(form.weight_goal)    || null,
+      health_conditions: (form as any).health_conditions?.length ? (form as any).health_conditions : null,
     }
     const { error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' })
     if (!error) {
@@ -320,21 +386,32 @@ export default function ProfilePage() {
         jMap[r.date].carb += Number(r.carb)
         jMap[r.date].fat  += Number(r.fat)
       }
-      const conditionNote = form.condition === 'enceinte' ? 'La personne est enceinte.'
-        : form.condition === 'post-partum' ? 'La personne est en post-partum.'
-        : form.condition === 'post-partum-allait' ? 'La personne est en post-partum avec allaitement.'
-        : ''
+      const hc = (form as any).health_conditions as string[] ?? []
+      const conditionNote = [
+        form.condition === 'enceinte'           ? 'La personne est enceinte (+300 kcal).'           : '',
+        form.condition === 'post-partum'        ? 'La personne est en post-partum (+500 kcal).'     : '',
+        form.condition === 'post-partum-allait' ? 'Post-partum avec allaitement (+600 kcal).'        : '',
+        hc.includes('diabete_type1')            ? 'Diabétique type 1 — glycémie à surveiller.'      : '',
+        hc.includes('diabete_type2')            ? 'Diabétique type 2 — glucides à limiter.'         : '',
+        hc.includes('inflammatoire')            ? 'Maladie inflammatoire — régime anti-inflam.'     : '',
+        hc.includes('allergie_gluten')          ? 'Intolérance au gluten — sans gluten strict.'     : '',
+        hc.includes('intolerance_lactose')      ? 'Intolérance au lactose.'                         : '',
+        hc.includes('hypertension')             ? 'Hypertension — sel < 5g/jour.'                   : '',
+        hc.includes('hypothyroidie')            ? 'Hypothyroïdie — métabolisme ralenti.'             : '',
+      ].filter(Boolean).join(' ')
       const res = await fetch('/api/health-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          calTarget:  profile?.calorie_target ?? 2000,
-          nutrition:  Object.entries(jMap).map(([d, m]) => `${d}: ${Math.round(m.cal)} kcal`).join('\n') || 'Aucune donnée',
-          sport:      (ses ?? []).map(s => `${s.session_date}: ${s.duration_min} min`).join('\n') || 'Aucune séance',
-          sleep:      (slp ?? []).map(s => `${s.date}: ${Math.floor(s.duration_min/60)}h${s.duration_min%60}min`).join('\n') || 'Aucune donnée',
-          weight:     (wts ?? []).map(w => `${w.date}: ${w.weight_kg} kg`).join('\n') || 'Aucune donnée',
-          goal:       profile?.goal ?? 'non défini',
-          condition:  conditionNote,
+          calTarget:    profile?.calorie_target ?? 2000,
+          nutrition:    Object.entries(jMap).map(([d, m]) => `${d}: ${Math.round(m.cal)} kcal — P:${Math.round(m.prot)}g G:${Math.round(m.carb)}g L:${Math.round(m.fat)}g`).join('\n') || 'Aucune donnée',
+          sport:        (ses ?? []).map(s => `${s.session_date}: ${s.duration_min}min — ${s.calories_burned ?? 0} kcal brûlées`).join('\n') || 'Aucune séance',
+          sleep:        (slp ?? []).map(s => `${s.date}: ${Math.floor(s.duration_min/60)}h${s.duration_min%60}min`).join('\n') || 'Aucune donnée',
+          weight:       (wts ?? []).map(w => `${w.date}: ${w.weight_kg} kg`).join('\n') || 'Aucune donnée',
+          goal:         profile?.goal ?? 'non défini',
+          weightGoal:   profile?.weight_goal ? `Objectif poids : ${profile.weight_goal} kg` : null,
+          age:          form.birth_date ? `${new Date().getFullYear() - new Date(form.birth_date).getFullYear()} ans` : null,
+          condition:    conditionNote,
         }),
       })
       const data = await res.json()
@@ -386,7 +463,7 @@ export default function ProfilePage() {
     const act = parseFloat(form.activity_factor)
     if (!w || !h || !bd || !act) return null
     const age = new Date().getFullYear() - new Date(bd).getFullYear()
-    return calcTDEE(w, h, age, form.sex, act, form.condition)
+    return calcTDEE(w, h, age, form.sex, act, form.condition, (form as any).health_conditions)
   })()
 
   const bilanStats = (() => {
@@ -637,6 +714,47 @@ export default function ProfilePage() {
               </div>
             )}
 
+            {/* ── Conditions de santé ── */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs text-zinc-400 font-bold uppercase tracking-wide">
+                Conditions de santé
+                <span className="font-normal normal-case ml-1 text-zinc-300">— adapte tes objectifs automatiquement</span>
+              </label>
+              <div className="flex flex-col gap-2">
+                {HEALTH_CONDITIONS.map(hc => {
+                  const selected = ((form as any).health_conditions as string[] ?? []).includes(hc.value)
+                  return (
+                    <button
+                      key={hc.value}
+                      onClick={() => {
+                        const current = (form as any).health_conditions as string[] ?? []
+                        const next = selected
+                          ? current.filter((v: string) => v !== hc.value)
+                          : [...current, hc.value]
+                        setForm(f => ({ ...f, health_conditions: next }))
+                      }}
+                      className={`flex items-start gap-3 text-left px-3 py-2.5 rounded-2xl border-2 transition-all ${
+                        selected ? hc.color + ' border-current' : 'border-zinc-100 bg-zinc-50 text-zinc-600 hover:border-zinc-200'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${selected ? 'bg-current border-current' : 'border-zinc-300'}`}>
+                        {selected && <Check size={11} className="text-white" strokeWidth={3} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold leading-tight">{hc.label}</p>
+                        {selected && <p className="text-[10px] mt-0.5 opacity-80 leading-relaxed">{hc.note}</p>}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+              {((form as any).health_conditions as string[] ?? []).length > 0 && (
+                <p className="text-[10px] text-tta-mid font-semibold">
+                  ✓ Tes objectifs nutritionnels seront adaptés lors du calcul TDEE
+                </p>
+              )}
+            </div>
+
             {/* Date naissance + poids + taille dans une grille propre */}
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
@@ -716,12 +834,61 @@ export default function ProfilePage() {
           )}
 
           <div className="card flex flex-col gap-3">
-            <h2 className="text-sm font-semibold text-zinc-700">🎯 Objectifs personnalisés</h2>
+            <h2 className="text-sm font-semibold text-zinc-700">🎯 Objectifs nutritionnels</h2>
+
+            {/* Suggestions automatiques selon profil + conditions */}
+            {tdee && (() => {
+              const hc = (form as any).health_conditions as string[] ?? []
+              const adapted = adaptMacrosForHealth(
+                tdee,
+                form.weight_kg ? Math.round(parseFloat(form.weight_kg) * 1.4) : Math.round(tdee * 0.25 / 4),
+                Math.round(tdee * 0.40 / 4),
+                Math.round(tdee * 0.30 / 9),
+                hc
+              )
+              // Ajuster selon objectif
+              const goalAdjust = form.goal === 'perte de poids' ? -300
+                : form.goal === 'prise de masse' ? +300
+                : 0
+              const suggestedCal = adapted.cal + goalAdjust
+              return (
+                <div className="bg-tta-light border border-tta-mid/20 rounded-2xl p-3 flex flex-col gap-2">
+                  <p className="text-xs font-bold text-tta-mid">
+                    ✨ Objectifs suggérés pour ton profil
+                    {hc.length > 0 && <span className="font-normal"> · adaptés à tes conditions</span>}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: 'Calories', val: suggestedCal, unit: 'kcal', key: 'calorie_target' },
+                      { label: 'Protéines', val: adapted.prot, unit: 'g', key: 'prot_target' },
+                      { label: 'Glucides', val: adapted.carb, unit: 'g', key: 'carb_target' },
+                      { label: 'Lipides', val: adapted.fat, unit: 'g', key: 'fat_target' },
+                    ].map(({ label, val, unit, key }) => (
+                      <button key={key}
+                        onClick={() => setForm(f => ({ ...f, [key]: String(val) }))}
+                        className="flex items-center justify-between bg-white rounded-xl px-3 py-2 hover:bg-tta-mid hover:text-white transition-all group">
+                        <span className="text-xs text-zinc-500 group-hover:text-white/80">{label}</span>
+                        <span className="text-sm font-extrabold text-tta-mid group-hover:text-white">{val}<span className="text-[10px] font-normal ml-0.5">{unit}</span></span>
+                      </button>
+                    ))}
+                  </div>
+                  {adapted.notes.length > 0 && (
+                    <div className="flex flex-col gap-1 pt-1 border-t border-tta-mid/10">
+                      {adapted.notes.map((n, i) => (
+                        <p key={i} className="text-[10px] text-tta-mid leading-relaxed">{n}</p>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-[10px] text-zinc-400">Clique sur une valeur pour l'appliquer</p>
+                </div>
+              )
+            })()}
+
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className="text-xs text-zinc-400 mb-1 block">Calories/jour (kcal)</label>
                 <input type="number" min="1000" max="6000" className="input"
-                  placeholder={tdee ? `TDEE : ${tdee}` : 'ex: 2000'}
+                  placeholder={tdee ? `TDEE calculé : ${tdee}` : 'ex: 2000'}
                   value={form.calorie_target} onChange={e => setForm(f => ({ ...f, calorie_target: e.target.value }))} />
               </div>
               <div>
