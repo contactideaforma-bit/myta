@@ -144,7 +144,7 @@ function adaptMacrosForHealth(
   }
 
   if (healthConditions?.includes('intolerance_lactose')) {
-    notes.push('🥛 Substituts : lait d'amande, soja, avoine. Fromages affinés tolérés')
+    notes.push("🥛 Substituts : lait d'amande, soja, avoine. Fromages affinés tolérés")
   }
 
   return { cal: c, prot: p, carb: g, fat: l, notes }
