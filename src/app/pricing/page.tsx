@@ -2,40 +2,39 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, Loader2, Zap, Crown } from 'lucide-react'
+import { Check, Loader2, Zap, Crown, Star, Shield, Smartphone } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const FEATURES = [
-  'Journal nutritionnel illimité',
-  'Suivi sport & historique complet',
-  'Coach IA personnalisé (Waty)',
-  'Recettes IA anti-inflammatoires',
-  'Suivi du sommeil',
-  'Rapport santé hebdomadaire',
-  'Mode sombre',
-  'App installable sur mobile',
+  { icon: '📔', label: 'Journal alimentaire illimité',      desc: 'Base de milliers d\'aliments, macros automatiques' },
+  { icon: '🤖', label: 'Coach IA Waty personnalisé',        desc: 'Conseils basés sur tes vraies données' },
+  { icon: '🏋️', label: 'Suivi sport complet',              desc: 'Séances, Tabata vocal, historique' },
+  { icon: '😴', label: 'Suivi du sommeil',                  desc: 'Analyse de tes nuits et impact sur ta forme' },
+  { icon: '🍽️', label: 'Recettes IA personnalisées',       desc: 'Générées selon tes ingrédients et objectifs' },
+  { icon: '📊', label: 'Bilan santé hebdomadaire',          desc: 'Rapport complet nutrition, sport, sommeil' },
+  { icon: '💊', label: 'Conditions médicales intégrées',    desc: 'Diabète, gluten, inflammatoire, hypothyroïdie...' },
+  { icon: '📱', label: 'App installable sur mobile',        desc: 'PWA — sans App Store, comme une vraie app' },
+]
+
+const TESTIMONIALS = [
+  { name: 'Sophie M.', role: 'Perte de poids', text: 'En 3 semaines, Waty m\'a aidée à comprendre mes erreurs alimentaires. J\'ai perdu 2kg sans régime strict !', stars: 5 },
+  { name: 'Thomas K.', role: 'Prise de masse', text: 'Le calcul automatique des macros est bluffant. Je n\'avais jamais réussi à atteindre mes objectifs protéines avant.', stars: 5 },
+  { name: 'Marie L.', role: 'Forme générale', text: 'Le bilan santé du dimanche est devenu mon rituel. Je vois enfin mes progrès en un coup d\'œil.', stars: 5 },
 ]
 
 export default function PricingPage() {
-  const [billing, setBilling] = useState<'monthly' | 'yearly'>('yearly')
-  const [loading, setLoading] = useState<string | null>(null)
-  const router = useRouter()
+  const [billing, setBilling]   = useState<'monthly' | 'yearly'>('yearly')
+  const [loading, setLoading]   = useState<string | null>(null)
+  const router   = useRouter()
   const supabase = createClient()
 
-  const yearlyTotal = '39,99'
-  const savings     = Math.round((1 - 39.99 / (3.99 * 12)) * 100)
+  const savings = Math.round((1 - 39.99 / (3.99 * 12)) * 100)
 
   async function handleSubscribe(plan: 'monthly' | 'yearly') {
     setLoading(plan)
     try {
-      // Récupère la session côté client
       const { data: { session } } = await supabase.auth.getSession()
-
-      if (!session) {
-        router.push('/auth')
-        setLoading(null)
-        return
-      }
+      if (!session) { router.push('/auth'); setLoading(null); return }
 
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
@@ -45,142 +44,170 @@ export default function PricingPage() {
         },
         body: JSON.stringify({ plan }),
       })
-
       const data = await res.json()
-
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        alert('Erreur : ' + (data.error || 'Impossible de créer la session'))
-        setLoading(null)
-      }
-    } catch (err) {
-      console.error(err)
-      setLoading(null)
-    }
+      if (data.url) window.location.href = data.url
+      else { alert('Erreur : ' + (data.error ?? 'Impossible de créer la session')); setLoading(null) }
+    } catch (err) { console.error(err); setLoading(null) }
   }
 
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center px-5 py-12"
-      style={{ background: 'linear-gradient(160deg, #f0f0ff 0%, #e8fbf8 50%, #f0fdf4 100%)' }}
-    >
-      <div className="w-full max-w-sm flex flex-col gap-6">
+    <div className="min-h-screen flex flex-col"
+      style={{ background: 'linear-gradient(160deg, #f0f0ff 0%, #e8fbf8 50%, #f0fdf4 100%)' }}>
+      <div className="max-w-sm mx-auto w-full px-5 py-10 flex flex-col gap-8">
 
         {/* Header */}
-        <div className="text-center">
-          <img src="/logo_my_twin_app.png" alt="MYTA" className="w-40 mx-auto mb-4 object-contain" />
-          <h1 className="text-2xl font-extrabold text-zinc-900 tracking-tight">
-            Commence gratuitement
-          </h1>
-          <p className="text-zinc-400 text-sm mt-1">
-            3 jours d'essai · Sans engagement · Annule quand tu veux
-          </p>
+        <div className="text-center flex flex-col items-center gap-3">
+          <img src="/logo_my_twin_app.png" alt="MYTA" className="w-40 object-contain" />
+          <div>
+            <h1 className="text-2xl font-extrabold text-zinc-900 tracking-tight">
+              Ton coach digital personnel
+            </h1>
+            <p className="text-zinc-400 text-sm mt-1">
+              Nutrition · Sport · Sommeil — tout en une app
+            </p>
+          </div>
         </div>
 
-        {/* Toggle mensuel / annuel */}
+        {/* Badges confiance */}
+        <div className="flex flex-wrap justify-center gap-2">
+          {[
+            { icon: <Zap size={11} />, label: '3 jours gratuits' },
+            { icon: <Shield size={11} />, label: 'Sans engagement' },
+            { icon: <Smartphone size={11} />, label: 'App mobile' },
+          ].map(b => (
+            <span key={b.label}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white"
+              style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
+              {b.icon}{b.label}
+            </span>
+          ))}
+        </div>
+
+        {/* Toggle billing */}
         <div className="flex bg-white rounded-2xl p-1 border border-zinc-100 shadow-sm">
-          <button
-            onClick={() => setBilling('monthly')}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
-              billing === 'monthly' ? 'bg-zinc-900 text-white shadow-sm' : 'text-zinc-400'
-            }`}
-          >
+          <button onClick={() => setBilling('monthly')}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${billing === 'monthly' ? 'bg-zinc-900 text-white shadow-sm' : 'text-zinc-400'}`}>
             Mensuel
           </button>
-          <button
-            onClick={() => setBilling('yearly')}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-              billing === 'yearly' ? 'text-white shadow-sm' : 'text-zinc-400'
-            }`}
-            style={billing === 'yearly' ? { background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' } : {}}
-          >
+          <button onClick={() => setBilling('yearly')}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${billing === 'yearly' ? 'text-white shadow-sm' : 'text-zinc-400'}`}
+            style={billing === 'yearly' ? { background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' } : {}}>
             Annuel
             {billing === 'yearly' && (
-              <span className="text-[10px] bg-white/25 px-1.5 py-0.5 rounded-full">
-                -{savings}%
-              </span>
+              <span className="text-[10px] bg-white/25 px-1.5 py-0.5 rounded-full">-{savings}%</span>
             )}
           </button>
         </div>
 
         {/* Card prix */}
-        <div className="bg-white rounded-3xl p-6 border border-zinc-100 shadow-lg">
+        <div className="bg-white rounded-3xl border border-zinc-100 shadow-xl overflow-hidden">
 
-          {/* Badge essai */}
-          <div className="flex items-center gap-2 mb-4">
-            <span
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white"
-              style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}
-            >
-              <Zap size={11} /> 3 jours gratuits
-            </span>
-            <span className="text-xs text-zinc-400">puis facturation automatique</span>
-          </div>
-
-          {/* Prix */}
-          <div className="mb-5">
-            <div className="flex items-end gap-1">
-              <span className="text-4xl font-extrabold text-zinc-900">
-                {billing === 'yearly' ? yearlyTotal : '3,99'}€
-              </span>
-              <span className="text-zinc-400 text-sm mb-1.5">
-                /{billing === 'yearly' ? 'an' : 'mois'}
-              </span>
+          {/* Bandeau populaire */}
+          {billing === 'yearly' && (
+            <div className="text-center text-xs font-bold text-white py-2"
+              style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
+              ⭐ Choix le plus populaire — économise {savings}%
             </div>
-            {billing === 'yearly' && (
-              <p className="text-xs text-zinc-400 mt-0.5">
-                soit <span className="font-bold text-[#4B47A0]">3,33€/mois</span> — économise {savings}% vs mensuel
-              </p>
-            )}
-            {billing === 'monthly' && (
-              <p className="text-xs text-zinc-400 mt-0.5">
-                Passe à l'annuel et économise <span className="font-bold text-[#4B47A0]">{savings}%</span>
-              </p>
-            )}
+          )}
+
+          <div className="p-6 flex flex-col gap-5">
+            {/* Prix */}
+            <div>
+              <div className="flex items-end gap-1">
+                <span className="text-5xl font-black text-zinc-900">
+                  {billing === 'yearly' ? '39,99' : '3,99'}€
+                </span>
+                <span className="text-zinc-400 text-sm mb-2">/{billing === 'yearly' ? 'an' : 'mois'}</span>
+              </div>
+              {billing === 'yearly' ? (
+                <p className="text-sm text-zinc-400">
+                  soit <span className="font-bold text-[#4B47A0]">3,33€/mois</span>
+                  {' '}— au lieu de 3,99€
+                </p>
+              ) : (
+                <p className="text-sm text-zinc-400">
+                  Passe à l'annuel et économise{' '}
+                  <span className="font-bold text-[#4B47A0]">{savings}%</span>
+                </p>
+              )}
+            </div>
+
+            {/* Essai */}
+            <div className="bg-green-50 border border-green-100 rounded-2xl px-4 py-3 text-sm text-green-700 font-medium">
+              🎁 3 jours gratuits — aucun débit pendant l'essai
+            </div>
+
+            {/* Features */}
+            <ul className="flex flex-col gap-2.5">
+              {FEATURES.map(f => (
+                <li key={f.label} className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                    style={{ background: 'linear-gradient(135deg, #4B47A0, #2BA8B0)' }}>
+                    <Check size={11} className="text-white" strokeWidth={3} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-zinc-800">{f.label}</p>
+                    <p className="text-xs text-zinc-400">{f.desc}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            {/* CTA */}
+            <button
+              onClick={() => handleSubscribe(billing)}
+              disabled={!!loading}
+              className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl text-white font-bold text-base shadow-lg transition-all active:scale-[0.98] disabled:opacity-70"
+              style={{ background: 'linear-gradient(90deg, #4B47A0 0%, #2BA8B0 100%)' }}>
+              {loading === billing
+                ? <Loader2 size={18} className="animate-spin" />
+                : <><Crown size={16} /> Commencer l'essai gratuit</>
+              }
+            </button>
+            <p className="text-center text-zinc-400 text-xs">
+              Annulable à tout moment · Paiement sécurisé par Stripe 🔒
+            </p>
           </div>
-
-          {/* Features */}
-          <ul className="flex flex-col gap-2.5 mb-6">
-            {FEATURES.map(f => (
-              <li key={f} className="flex items-center gap-2.5 text-sm text-zinc-700">
-                <div
-                  className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'linear-gradient(135deg, #4B47A0, #2BA8B0)' }}
-                >
-                  <Check size={11} className="text-white" strokeWidth={3} />
-                </div>
-                {f}
-              </li>
-            ))}
-          </ul>
-
-          {/* CTA */}
-          <button
-            onClick={() => handleSubscribe(billing)}
-            disabled={!!loading}
-            className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl text-white text-sm font-bold shadow-sm transition-all active:scale-[0.98] disabled:opacity-70"
-            style={{ background: 'linear-gradient(90deg, #4B47A0 0%, #2BA8B0 100%)' }}
-          >
-            {loading === billing
-              ? <Loader2 size={16} className="animate-spin" />
-              : <><Crown size={15} /> Commencer l'essai gratuit</>
-            }
-          </button>
-
-          <p className="text-center text-zinc-400 text-xs mt-3">
-            Aucun débit pendant 3 jours · Annulable à tout moment
-          </p>
         </div>
 
-        {/* Retour */}
-        <button
-          onClick={() => router.back()}
-          className="text-center text-zinc-400 text-xs hover:text-zinc-600 transition-colors"
-        >
-          ← Retour
-        </button>
+        {/* Témoignages */}
+        <div className="flex flex-col gap-3">
+          <p className="text-center text-sm font-bold text-zinc-500">Ce que disent nos utilisateurs</p>
+          {TESTIMONIALS.map(t => (
+            <div key={t.name} className="bg-white rounded-2xl p-4 border border-zinc-100 shadow-sm flex flex-col gap-2">
+              <div className="flex items-center gap-1">
+                {Array.from({ length: t.stars }).map((_, i) => (
+                  <Star key={i} size={12} className="fill-amber-400 text-amber-400" />
+                ))}
+              </div>
+              <p className="text-sm text-zinc-600 leading-relaxed italic">"{t.text}"</p>
+              <div>
+                <p className="text-xs font-bold text-zinc-800">{t.name}</p>
+                <p className="text-[10px] text-zinc-400">{t.role}</p>
+              </div>
+            </div>
+          ))}
+        </div>
 
+        {/* Garanties */}
+        <div className="bg-white rounded-2xl p-4 border border-zinc-100 shadow-sm flex flex-col gap-2">
+          <p className="text-sm font-bold text-zinc-900 text-center">Tes garanties</p>
+          {[
+            '✅ 3 jours d\'essai gratuit — aucune CB débitée',
+            '✅ Annulation en 1 clic depuis l\'app',
+            '✅ Données sécurisées et hébergées en Europe',
+            '✅ Support par email sous 24h',
+          ].map(g => (
+            <p key={g} className="text-xs text-zinc-500">{g}</p>
+          ))}
+        </div>
+
+        {/* Legal */}
+        <div className="flex justify-center gap-4 pb-4">
+          <a href="/legal" className="text-xs text-zinc-400 hover:text-tta-mid transition-colors">CGU</a>
+          <a href="/legal" className="text-xs text-zinc-400 hover:text-tta-mid transition-colors">Confidentialité</a>
+          <a href="mailto:contact@mytwinapp.fr" className="text-xs text-zinc-400 hover:text-tta-mid transition-colors">Contact</a>
+        </div>
       </div>
     </div>
   )
