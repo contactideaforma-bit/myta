@@ -53,6 +53,15 @@ const ACTIVITY_LEVELS = [
   { value: 1.9,   label: 'Extrêmement actif (sport intensif quotidien)' },
 ]
 
+const MACRO_GOALS = [
+  { key: 'perte',    label: '🔥 Perte de poids' },
+  { key: 'maintien', label: '⚖️ Maintien' },
+  { key: 'masse',    label: '💪 Prise de masse' },
+  { key: 'sport',    label: '🏆 Performance' },
+  { key: 'keto',     label: '🥑 Cétogène' },
+]
+
+
 const PERIODS = [
   { key: '1m',  label: '1 mois',   days: 30 },
   { key: '3m',  label: '3 mois',   days: 90 },
@@ -70,13 +79,14 @@ function calcTDEE(w: number, h: number, age: number, sex: string, activity: numb
   if (condition === 'enceinte') bmr += 300
   // Post-partum allaitement : +500 kcal
   if (condition === 'post-partum') bmr += 500
+  if (condition === 'post-partum-allait') bmr += 600
   return Math.round(bmr * activity)
 }
 
 function calcAutoMacros(cal: number, w: number, goal: string, condition?: string) {
   let protPerKg = goal === 'prise de masse' ? 2.0 : goal === 'perte de poids' ? 1.8 : 1.6
   // Grossesse / post-partum : protéines augmentées
-  if (condition === 'enceinte' || condition === 'post-partum') protPerKg = 1.8
+  if (condition === 'enceinte' || condition === 'post-partum' || condition === 'post-partum-allait') protPerKg = 1.8
   const prot = Math.round(w * protPerKg)
   const fat  = Math.round(cal * 0.28 / 9)
   const carb = Math.round((cal - prot * 4 - fat * 9) / 4)
@@ -117,8 +127,20 @@ function ConditionBanner({ condition }: { condition: string }) {
       <div>
         <p className="text-xs font-bold text-purple-700">Mode Post-partum activé</p>
         <p className="text-[11px] text-purple-500 leading-relaxed mt-0.5">
-          Objectifs adaptés pour la récupération et l'allaitement : +500 kcal/jour, protéines augmentées.
-          Reprise du sport progressive recommandée.
+          Objectifs adaptés pour la récupération : +500 kcal/jour, protéines augmentées.
+          Reprise du sport progressive recommandée. Consultez votre médecin.
+        </p>
+      </div>
+    </div>
+  )
+  if (condition === 'post-partum-allait') return (
+    <div className="flex items-start gap-2 bg-rose-50 border border-rose-200 rounded-2xl p-3">
+      <span className="text-lg">🤱</span>
+      <div>
+        <p className="text-xs font-bold text-rose-700">Mode Post-partum + Allaitement activé</p>
+        <p className="text-[11px] text-rose-500 leading-relaxed mt-0.5">
+          Objectifs adaptés pour l'allaitement : +600 kcal/jour, protéines augmentées, hydratation renforcée.
+          Évitez les régimes restrictifs pendant l'allaitement.
         </p>
       </div>
     </div>
@@ -127,7 +149,7 @@ function ConditionBanner({ condition }: { condition: string }) {
 }
 
 // ─── Page principale ───────────────────────────────────────────────────────────
-type Tab = 'bilan' | 'profil' | 'objectifs'
+type Tab = 'bilan' | 'profil' | 'calculateur'
 
 export default function ProfilePage() {
   const router   = useRouter()
@@ -398,6 +420,78 @@ export default function ProfilePage() {
     </div>
   )
 
+
+  // ── États Calculateur ────────────────────────────────────────────────────
+  const [calcTab, setCalcTab]         = useState<'tdee' | 'imc' | 'macros'>('tdee')
+  const [calcSex, setCalcSex]         = useState<'homme' | 'femme'>('homme')
+  const [calcAge, setCalcAge]         = useState('')
+  const [calcHeight, setCalcHeight]   = useState('')
+  const [calcWeight, setCalcWeight]   = useState('')
+  const [calcActivity, setCalcActivity] = useState(1.55)
+  const [tdeeResult, setTdeeResult]   = useState<{ bmr: number; tdee: number } | null>(null)
+  const [savingCalc, setSavingCalc]   = useState(false)
+  const [imcHeight, setImcHeight]     = useState('')
+  const [imcWeight, setImcWeight]     = useState('')
+  const [imcResult, setImcResult]     = useState<number | null>(null)
+  const [macroGoalKey, setMacroGoalKey] = useState<'perte' | 'maintien' | 'masse' | 'sport' | 'keto'>('maintien')
+  const [macroCal, setMacroCal]       = useState('')
+  const [macroWeight, setMacroWeight] = useState('')
+  const [macroResult, setMacroResult] = useState<{ prot: number; carb: number; fat: number } | null>(null)
+
+  // Pré-remplir le calculateur depuis le profil
+  useEffect(() => {
+    if (profile) {
+      if (profile.birth_date) setCalcAge(String(new Date().getFullYear() - new Date(profile.birth_date).getFullYear()))
+      if (profile.height_cm)  { setCalcHeight(String(profile.height_cm)); setImcHeight(String(profile.height_cm)) }
+      if (profile.weight_kg)  { setCalcWeight(String(profile.weight_kg)); setImcWeight(String(profile.weight_kg)); setMacroWeight(String(profile.weight_kg)) }
+      if (profile.sex)        setCalcSex(profile.sex as any)
+      if (profile.activity_factor) setCalcActivity(profile.activity_factor)
+    }
+  }, [profile])
+
+  async function computeTDEE() {
+    const a = Number(calcAge), h = Number(calcHeight), w = Number(calcWeight)
+    if (!a || !h || !w) return
+    const bmr = calcSex === 'femme'
+      ? 10 * w + 6.25 * h - 5 * a - 161
+      : 10 * w + 6.25 * h - 5 * a + 5
+    const tdee = Math.round(bmr * calcActivity)
+    setTdeeResult({ bmr: Math.round(bmr), tdee })
+    setMacroCal(String(tdee))
+    setSavingCalc(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      await supabase.from('profiles').upsert({ id: user.id, height_cm: h, weight_kg: w, calorie_target: tdee }, { onConflict: 'id' })
+      await supabase.from('weight_log').upsert({ user_id: user.id, date: new Date().toISOString().split('T')[0], weight_kg: w }, { onConflict: 'date,user_id' })
+    }
+    setSavingCalc(false)
+  }
+
+  function computeIMC() {
+    const h = Number(imcHeight), w = Number(imcWeight)
+    if (!h || !w) return
+    setImcResult(Math.round((w / ((h / 100) ** 2)) * 10) / 10)
+  }
+
+  function computeMacros() {
+    const cal = Number(macroCal), w = Number(macroWeight)
+    if (!cal) return
+    const protPerKg: Record<string, number> = { perte: 1.8, maintien: 1.4, masse: 1.6, sport: 1.8, keto: 1.6 }
+    const prot = w ? Math.round(w * protPerKg[macroGoalKey]) : Math.round(cal * 0.25 / 4)
+    const remaining = cal - prot * 4
+    const carbRatio = macroGoalKey === 'keto' ? 0.05 : 0.6
+    const carb = Math.round(remaining * carbRatio / 4)
+    const fat  = Math.round((remaining - carb * 4) / 9)
+    setMacroResult({ prot, carb, fat })
+  }
+
+  function imcCategory(bmi: number) {
+    if (bmi < 18.5) return { label: 'Insuffisance pondérale', color: 'text-orange-600', bg: 'bg-orange-100', advice: 'En dessous du poids santé. Enrichissement calorique progressif conseillé.' }
+    if (bmi < 25)   return { label: 'Poids normal',           color: 'text-nutri-dark', bg: 'bg-nutri-light', advice: 'Vous êtes dans la fourchette de poids sain. Continuez votre équilibre.' }
+    if (bmi < 30)   return { label: 'Surpoids',               color: 'text-orange-600', bg: 'bg-orange-100', advice: 'Légère surcharge pondérale. Rééquilibrage alimentaire conseillé.' }
+    return           { label: 'Obésité',                      color: 'text-red-600',    bg: 'bg-red-100',    advice: 'Consultation avec un médecin ou diététicien conseillée.' }
+  }
+
   const isFemme = form.sex === 'femme'
 
   return (
@@ -421,7 +515,7 @@ export default function ProfilePage() {
         {([
           { key: 'bilan',     label: '📊 Bilan santé' },
           { key: 'profil',    label: '👤 Profil' },
-          { key: 'objectifs', label: '🎯 Objectifs' },
+          { key: 'calculateur', label: '🧮 Calculateur' },
         ] as { key: Tab; label: string }[]).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${tab === t.key ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>
@@ -638,6 +732,7 @@ export default function ProfilePage() {
                     { value: '',            label: '— Aucune' },
                     { value: 'enceinte',    label: '🤰 Enceinte' },
                     { value: 'post-partum', label: '👶 Post-partum' },
+                    { value: 'post-partum-allait', label: '🤱 Post-partum + allaitement' },
                   ].map(c => (
                     <button key={c.value}
                       onClick={() => setForm(f => ({ ...f, condition: c.value }))}
@@ -653,8 +748,10 @@ export default function ProfilePage() {
                 {form.condition !== '' && (
                   <p className="text-[10px] text-pink-500 mt-1.5">
                     {form.condition === 'enceinte'
-                      ? '✓ Objectifs adaptés : +300 kcal, protéines augmentées, conseils grossesse'
-                      : '✓ Objectifs adaptés : récupération post-partum, allaitement pris en compte'}
+                      ? '✓ +300 kcal/j, protéines augmentées, conseils grossesse'
+                      : form.condition === 'post-partum'
+                      ? '✓ +500 kcal/j, récupération post-partum, sport progressif'
+                      : '✓ +600 kcal/j, allaitement — pas de régime restrictif'}
                   </p>
                 )}
               </div>
@@ -718,113 +815,175 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* ── ONGLET OBJECTIFS ── */}
-      {tab === 'objectifs' && (
+
+      {/* ── ONGLET CALCULATEUR ── */}
+      {tab === 'calculateur' && (
         <div className="flex flex-col gap-4">
 
-          {/* Bannière condition */}
-          {form.condition && form.condition !== '' && (
-            <ConditionBanner condition={form.condition} />
-          )}
-
-          {tdee && (
-            <div className="card bg-tta-light border-tta-mid/20 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-tta-mid font-semibold uppercase tracking-wide">TDEE calculé</p>
-                  <p className="text-3xl font-black text-tta-mid">{tdee} <span className="text-base font-semibold">kcal/jour</span></p>
-                  {form.condition === 'enceinte' && (
-                    <p className="text-[10px] text-pink-500 mt-0.5">+300 kcal grossesse inclus</p>
-                  )}
-                  {form.condition === 'post-partum' && (
-                    <p className="text-[10px] text-purple-500 mt-0.5">+500 kcal post-partum inclus</p>
-                  )}
-                </div>
-                <Activity size={28} className="text-tta-mid/50" />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { label: 'Perte de poids', cal: tdee - 300, color: 'text-blue-600' },
-                  { label: 'Maintien',        cal: tdee,       color: 'text-tta-mid' },
-                  { label: 'Prise de masse',  cal: tdee + 300, color: 'text-orange-600' },
-                ].map(g => (
-                  <button key={g.label} onClick={() => setForm(f => ({ ...f, calorie_target: String(g.cal) }))}
-                    className="bg-white/60 rounded-xl p-2 text-center hover:bg-white transition-colors">
-                    <p className={`text-base font-black ${g.color}`}>{g.cal}</p>
-                    <p className="text-[10px] text-zinc-500 leading-tight">{g.label}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {autoMacros && (
-            <div className="card flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
-                  <Target size={14} />Macros recommandées
-                </h2>
-                <button onClick={applyAutoMacros} className="btn-ghost text-xs gap-1 text-tta-mid">
-                  <RefreshCw size={11} />Appliquer
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { label: 'Protéines', val: autoMacros.prot, color: 'bg-blue-500' },
-                  { label: 'Glucides',  val: autoMacros.carb, color: 'bg-yellow-400' },
-                  { label: 'Lipides',   val: autoMacros.fat,  color: 'bg-purple-500' },
-                ].map(m => (
-                  <div key={m.label} className="kpi-card items-center text-center p-2">
-                    <p className="text-lg font-black text-zinc-900">{m.val}g</p>
-                    <p className="text-xs text-zinc-400">{m.label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="card flex flex-col gap-3">
-            <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
-              <Flame size={14} />Objectifs personnalisés
-            </h2>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <label className="text-xs text-zinc-400 mb-1 block">Calories/jour (kcal)</label>
-                <input type="number" min="1000" max="6000" className="input"
-                  placeholder={tdee ? `TDEE : ${tdee}` : 'ex: 2000'}
-                  value={form.calorie_target}
-                  onChange={e => setForm(f => ({ ...f, calorie_target: e.target.value }))} />
-              </div>
-              <div>
-                <label className="text-xs text-zinc-400 mb-1 block">Protéines (g)</label>
-                <input type="number" min="50" max="400" className="input"
-                  placeholder={autoMacros ? `Auto: ${autoMacros.prot}` : 'ex: 120'}
-                  value={form.prot_target}
-                  onChange={e => setForm(f => ({ ...f, prot_target: e.target.value }))} />
-              </div>
-              <div>
-                <label className="text-xs text-zinc-400 mb-1 block">Glucides (g)</label>
-                <input type="number" min="50" max="600" className="input"
-                  placeholder={autoMacros ? `Auto: ${autoMacros.carb}` : 'ex: 225'}
-                  value={form.carb_target}
-                  onChange={e => setForm(f => ({ ...f, carb_target: e.target.value }))} />
-              </div>
-              <div>
-                <label className="text-xs text-zinc-400 mb-1 block">Lipides (g)</label>
-                <input type="number" min="20" max="300" className="input"
-                  placeholder={autoMacros ? `Auto: ${autoMacros.fat}` : 'ex: 65'}
-                  value={form.fat_target}
-                  onChange={e => setForm(f => ({ ...f, fat_target: e.target.value }))} />
-              </div>
-            </div>
+          {/* Sous-onglets */}
+          <div className="flex gap-2 flex-wrap">
+            {([
+              { key: 'tdee',   label: '🔥 TDEE',   active: calcTab === 'tdee' },
+              { key: 'imc',    label: '📏 IMC',    active: calcTab === 'imc' },
+              { key: 'macros', label: '⚖️ Macros', active: calcTab === 'macros' },
+            ]).map(t => (
+              <button key={t.key} onClick={() => setCalcTab(t.key as any)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${t.active ? 'bg-tta-mid text-white' : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'}`}>
+                {t.label}
+              </button>
+            ))}
           </div>
 
-          <button onClick={save} disabled={saving}
-            className={`btn-primary justify-center py-3 ${saved ? 'bg-green-600 hover:bg-green-600' : ''}`}>
-            {saving ? <><Loader2 size={16} className="animate-spin" />Sauvegarde…</>
-              : saved ? <><Check size={16} />Objectifs sauvegardés !</>
-              : <><Check size={16} />Sauvegarder</>}
-          </button>
+          {/* TDEE */}
+          {calcTab === 'tdee' && (
+            <div className="flex flex-col gap-4">
+              <div className="card flex flex-col gap-4">
+                <h2 className="text-sm font-semibold text-zinc-700">🔥 Calcul de votre TDEE</h2>
+                <div>
+                  <label className="text-xs text-zinc-400 mb-1.5 block">Sexe</label>
+                  <div className="flex gap-2">
+                    {(['homme', 'femme'] as const).map(s => (
+                      <button key={s} onClick={() => setCalcSex(s)}
+                        className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors capitalize ${calcSex === s ? 'bg-tta-mid text-white border-tta-mid' : 'border-zinc-200 text-zinc-500'}`}>
+                        {s === 'homme' ? '♂ Homme' : '♀ Femme'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="text-xs text-zinc-400 mb-1 block">Âge</label>
+                    <input type="number" min="10" max="100" placeholder="25" value={calcAge} onChange={e => setCalcAge(e.target.value)} className="input" /></div>
+                  <div><label className="text-xs text-zinc-400 mb-1 block">Taille (cm)</label>
+                    <input type="number" min="100" max="250" placeholder="170" value={calcHeight} onChange={e => setCalcHeight(e.target.value)} className="input" /></div>
+                  <div><label className="text-xs text-zinc-400 mb-1 block">Poids (kg)</label>
+                    <input type="number" min="30" max="300" step="0.1" placeholder="70" value={calcWeight} onChange={e => setCalcWeight(e.target.value)} className="input" /></div>
+                  <div><label className="text-xs text-zinc-400 mb-1 block">Activité</label>
+                    <select value={calcActivity} onChange={e => setCalcActivity(Number(e.target.value))} className="input">
+                      {ACTIVITY_LEVELS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                    </select></div>
+                </div>
+                <button onClick={computeTDEE} disabled={savingCalc}
+                  className="btn-primary justify-center py-2.5">
+                  {savingCalc ? <Loader2 size={15} className="animate-spin" /> : '⚡'}
+                  Calculer mon TDEE
+                </button>
+              </div>
+              {tdeeResult && (
+                <div className="card flex flex-col gap-4">
+                  <div className="text-center py-3">
+                    <p className="text-xs text-zinc-400 uppercase tracking-wide mb-1">Dépense énergétique totale</p>
+                    <p className="text-5xl font-black text-tta-mid">{tdeeResult.tdee}</p>
+                    <p className="text-zinc-400 text-sm mt-1">kcal / jour</p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2">
+                    {[
+                      { label: 'Perte de poids', cal: tdeeResult.tdee - 300, color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200', sub: '-300 kcal' },
+                      { label: 'Maintien',        cal: tdeeResult.tdee,       color: 'text-tta-mid',  bg: 'bg-tta-light border-tta-mid/30', sub: 'équilibre' },
+                      { label: 'Prise de masse',  cal: tdeeResult.tdee + 300, color: 'text-orange-700', bg: 'bg-orange-50 border-orange-200', sub: '+300 kcal' },
+                    ].map(g => (
+                      <div key={g.label} className={`rounded-xl p-3 text-center border ${g.bg}`}>
+                        <p className={`text-lg font-black ${g.color}`}>{g.cal} kcal</p>
+                        <p className={`text-xs font-medium mt-0.5 ${g.color}`}>{g.label} · {g.sub}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-zinc-400 bg-zinc-50 rounded-xl p-3 leading-relaxed">
+                    💡 MB (métabolisme de base) : {tdeeResult.bmr} kcal · Formule Mifflin-St Jeor. Ajustez selon vos résultats sur 2–4 semaines.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* IMC */}
+          {calcTab === 'imc' && (
+            <div className="flex flex-col gap-4">
+              <div className="card flex flex-col gap-4">
+                <h2 className="text-sm font-semibold text-zinc-700">📏 Calcul de l'IMC</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="text-xs text-zinc-400 mb-1 block">Taille (cm)</label>
+                    <input type="number" min="100" max="250" placeholder="170" value={imcHeight} onChange={e => setImcHeight(e.target.value)} className="input" /></div>
+                  <div><label className="text-xs text-zinc-400 mb-1 block">Poids (kg)</label>
+                    <input type="number" min="30" max="300" step="0.1" placeholder="70" value={imcWeight} onChange={e => setImcWeight(e.target.value)} className="input" /></div>
+                </div>
+                <button onClick={computeIMC} className="btn-primary justify-center py-2.5">📏 Calculer mon IMC</button>
+              </div>
+              {imcResult !== null && (() => {
+                const cat = imcCategory(imcResult)
+                const pct = Math.min(Math.max(((imcResult - 16) / (40 - 16)) * 100, 0), 100)
+                const h = Number(imcHeight) / 100
+                return (
+                  <div className="card flex flex-col gap-4">
+                    <div className="text-center py-3">
+                      <p className="text-xs text-zinc-400 uppercase tracking-wide mb-1">Indice de Masse Corporelle</p>
+                      <p className={`text-5xl font-black ${cat.color}`}>{imcResult}</p>
+                      <p className="text-zinc-400 text-sm mt-1">kg/m²</p>
+                      <span className={`inline-block mt-2 px-3 py-1 rounded-full text-sm font-bold ${cat.bg} ${cat.color}`}>{cat.label}</span>
+                    </div>
+                    <div>
+                      <div className="relative h-3 rounded-full overflow-hidden" style={{ background: 'linear-gradient(to right, #dc2626 0%, #f97316 20%, #22c55e 35%, #22c55e 60%, #f97316 75%, #ef4444 87%, #991b1b 100%)' }}>
+                        <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-zinc-400 rounded-full shadow-md -translate-x-1/2" style={{ left: `${pct}%` }} />
+                      </div>
+                      <div className="flex justify-between text-[10px] text-zinc-400 mt-1">
+                        {['16', '18.5', '25', '30', '35', '40+'].map(v => <span key={v}>{v}</span>)}
+                      </div>
+                    </div>
+                    <div className={`rounded-xl p-3 text-sm ${cat.bg} ${cat.color}`}>{cat.advice}</div>
+                    <p className="text-xs text-zinc-400 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                      ⚠️ L'IMC est un indicateur limité. Il ne tient pas compte de la masse musculaire.
+                    </p>
+                  </div>
+                )
+              })()}
+            </div>
+          )}
+
+          {/* Macros */}
+          {calcTab === 'macros' && (
+            <div className="flex flex-col gap-4">
+              <div className="card flex flex-col gap-4">
+                <h2 className="text-sm font-semibold text-zinc-700">⚖️ Répartition des macros</h2>
+                <div>
+                  <label className="text-xs text-zinc-400 mb-1.5 block">Objectif</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {MACRO_GOALS.map(g => (
+                      <button key={g.key} onClick={() => setMacroGoalKey(g.key as any)}
+                        className={`py-2 px-3 rounded-lg text-xs font-medium border transition-colors ${macroGoalKey === g.key ? 'bg-tta-mid text-white border-tta-mid' : 'border-zinc-200 text-zinc-500'}`}>
+                        {g.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="text-xs text-zinc-400 mb-1 block">Calories (kcal)</label>
+                    <input type="number" min="1000" max="6000" placeholder="2000" value={macroCal} onChange={e => setMacroCal(e.target.value)} className="input" /></div>
+                  <div><label className="text-xs text-zinc-400 mb-1 block">Poids (kg)</label>
+                    <input type="number" min="30" max="300" step="0.1" placeholder="70" value={macroWeight} onChange={e => setMacroWeight(e.target.value)} className="input" /></div>
+                </div>
+                <button onClick={computeMacros} className="btn-primary justify-center py-2.5">⚖️ Calculer mes macros</button>
+              </div>
+              {macroResult && (
+                <div className="card flex flex-col gap-4">
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: 'Protéines', val: macroResult.prot, color: 'text-blue-600' },
+                      { label: 'Glucides',  val: macroResult.carb, color: 'text-yellow-600' },
+                      { label: 'Lipides',   val: macroResult.fat,  color: 'text-purple-600' },
+                    ].map(({ label, val, color }) => (
+                      <div key={label} className="kpi-card items-center text-center p-3">
+                        <p className={`text-2xl font-black ${color}`}>{val}g</p>
+                        <p className="text-xs text-zinc-400">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-zinc-400 bg-zinc-50 rounded-xl p-3">
+                    💡 Calculé pour <strong>{MACRO_GOALS.find(g => g.key === macroGoalKey)?.label}</strong>.
+                    Enregistre tes aliments dans le journal pour voir ta progression.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
