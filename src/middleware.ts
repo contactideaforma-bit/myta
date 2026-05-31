@@ -1,21 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const PUBLIC_PATHS = ['/auth', '/pricing', '/api', '/_next', '/static']
+// Pages accessibles sans abonnement
+const PUBLIC_PATHS = ['/auth', '/pricing', '/onboarding', '/legal', '/api', '/_next', '/static']
+// Page d'accueil marketing — accessible sans connexion
+const MARKETING_PATH = '/'
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  if (
-    PUBLIC_PATHS.some(p => pathname.startsWith(p)) ||
-    pathname.includes('.')
-  ) {
-    return NextResponse.next()
-  }
+  // Page d'accueil marketing
+  if (pathname === '/') return NextResponse.next()
 
+  // Fichiers statiques
+  if (pathname.includes('.')) return NextResponse.next()
+
+  // Pages publiques
+  if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) return NextResponse.next()
+
+  // Cherche le token dans les cookies Supabase
   let token: string | undefined
-
-  // Parcourt tous les cookies et extrait le access_token
   req.cookies.getAll().forEach(cookie => {
     if (token) return
     if (cookie.name.includes('auth-token') || cookie.name.includes('access-token')) {
@@ -28,9 +32,7 @@ export async function middleware(req: NextRequest) {
     }
   })
 
-  if (!token) {
-    return NextResponse.redirect(new URL('/auth', req.url))
-  }
+  if (!token) return NextResponse.redirect(new URL('/auth', req.url))
 
   try {
     const supabase = createClient(
@@ -39,23 +41,15 @@ export async function middleware(req: NextRequest) {
     )
 
     const { data: { user } } = await supabase.auth.getUser(token)
-
-    if (!user) {
-      return NextResponse.redirect(new URL('/auth', req.url))
-    }
+    if (!user) return NextResponse.redirect(new URL('/auth', req.url))
 
     const { data: profile } = await supabase
-      .from('profiles')
-      .select('subscription_status')
-      .eq('id', user.id)
-      .single()
+      .from('profiles').select('subscription_status').eq('id', user.id).single()
 
-    const status = profile?.subscription_status
+    const status    = profile?.subscription_status
     const hasAccess = ['trialing', 'active', 'vip'].includes(status ?? '')
 
-    if (!hasAccess) {
-      return NextResponse.redirect(new URL('/pricing', req.url))
-    }
+    if (!hasAccess) return NextResponse.redirect(new URL('/pricing', req.url))
 
     return NextResponse.next()
 

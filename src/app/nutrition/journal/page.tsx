@@ -159,6 +159,7 @@ export default function JournalPage() {
   const [entries, setEntries]         = useState<JournalEntry[]>([])
   const [profile, setProfile]         = useState<Profile | null>(null)
   const [weights, setWeights]         = useState<WeightLog[]>([])
+  const [recentFoods, setRecentFoods]   = useState<JournalEntry[]>([])
   const [weekCal, setWeekCal]         = useState<Record<string, number>>({})
   const [loading, setLoading]         = useState(true)
 
@@ -220,6 +221,20 @@ export default function JournalPage() {
     const map: Record<string, number> = {}
     for (const r of calRows ?? []) map[r.date] = (map[r.date] ?? 0) + Number(r.cal)
     setWeekCal(map)
+
+    // Charger les 8 aliments les plus récents (derniers 7 jours)
+    const { data: recent } = await supabase.from('journal_entries')
+      .select('*').eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(30)
+    // Dédupliquer par food_name, garder le plus récent de chaque
+    const seen = new Set<string>()
+    const deduped: JournalEntry[] = []
+    for (const r of recent ?? []) {
+      if (!seen.has(r.food_name)) { seen.add(r.food_name); deduped.push(r) }
+      if (deduped.length >= 8) break
+    }
+    setRecentFoods(deduped)
 
     await loadDay(currentDate)
     setLoading(false)
@@ -454,6 +469,39 @@ export default function JournalPage() {
             <p className="text-xs text-white/70">"J'ai mangé un bol de riz avec du poulet..."</p>
           </div>
         </button>
+      )}
+
+      {/* ── Aliments récents — accès rapide ── */}
+      {recentFoods.length > 0 && !query && (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-bold text-zinc-400 uppercase tracking-wide">⚡ Récents</p>
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+            {recentFoods.map((food, i) => (
+              <button
+                key={i}
+                onClick={() => setSelectedFood({
+                  id: food.food_id ?? food.food_name,
+                  name: food.food_name,
+                  cal: Number(food.cal),
+                  prot: Number(food.prot),
+                  carb: Number(food.carb),
+                  fat: Number(food.fat),
+                  image_url: food.image_url ?? null,
+                  category: food.food_cat ?? null,
+                })}
+                className="flex-shrink-0 flex flex-col items-center gap-1 bg-white border border-zinc-100 rounded-2xl p-2.5 shadow-sm hover:border-nutri/40 hover:shadow-md transition-all active:scale-95 w-20"
+              >
+                <div className="w-10 h-10 rounded-xl bg-nutri-light flex items-center justify-center text-lg flex-shrink-0">
+                  {food.image_url
+                    ? <img src={food.image_url} alt="" className="w-full h-full object-cover rounded-xl" />
+                    : '🍴'}
+                </div>
+                <p className="text-[10px] font-semibold text-zinc-700 text-center leading-tight line-clamp-2 w-full">{food.food_name}</p>
+                <p className="text-[9px] text-orange-400 font-bold">{Math.round(Number(food.cal))} kcal</p>
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Recherche */}
