@@ -487,6 +487,7 @@ export default function JournalPage() {
                   carb: Number(food.carb),
                   fat: Number(food.fat),
                   image_url: food.image_url ?? null,
+                  cat: food.food_cat ?? null,
                 })}
                 className="flex-shrink-0 flex flex-col items-center gap-1 bg-white border border-zinc-100 rounded-2xl p-2.5 shadow-sm hover:border-nutri/40 hover:shadow-md transition-all active:scale-95 w-20"
               >
