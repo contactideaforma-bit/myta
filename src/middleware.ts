@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// Pages accessibles sans abonnement
-const PUBLIC_PATHS = ['/auth', '/pricing', '/onboarding', '/legal', '/api', '/_next', '/static']
-// Page d'accueil marketing — accessible sans connexion
-const MARKETING_PATH = '/'
+// Pages accessibles sans auth
+const PUBLIC_PATHS = ['/auth', '/pricing', '/onboarding', '/legal', '/_next', '/static']
+
+// Routes API publiques (sans auth requise)
+const PUBLIC_API  = [
+  '/api/stripe',
+  '/api/webhook',
+  '/api/notifications', // cron jobs Vercel
+]
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // Page d'accueil marketing
+  // Page marketing
   if (pathname === '/') return NextResponse.next()
 
   // Fichiers statiques
@@ -18,7 +23,14 @@ export async function middleware(req: NextRequest) {
   // Pages publiques
   if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) return NextResponse.next()
 
-  // Cherche le token dans les cookies Supabase
+  // Routes API publiques (Stripe webhooks etc.)
+  if (PUBLIC_API.some(p => pathname.startsWith(p))) return NextResponse.next()
+
+  // Routes API privées : pas de redirect, juste passer
+  // (chaque route gère son propre requireAuth)
+  if (pathname.startsWith('/api/')) return NextResponse.next()
+
+  // Pages app : vérifier auth + abonnement
   let token: string | undefined
   req.cookies.getAll().forEach(cookie => {
     if (token) return
@@ -52,7 +64,6 @@ export async function middleware(req: NextRequest) {
     if (!hasAccess) return NextResponse.redirect(new URL('/pricing', req.url))
 
     return NextResponse.next()
-
   } catch {
     return NextResponse.next()
   }

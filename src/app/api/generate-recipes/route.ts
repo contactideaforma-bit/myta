@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { requireAuth, checkRateLimit } from '@/lib/auth'
 
 export const maxDuration = 60
 
@@ -27,6 +28,11 @@ function cleanJSON(text: string): string {
 }
 
 export async function GET(req: NextRequest) {
+  const auth = await requireAuth(req)
+  if (auth.error) return auth.error
+  if (!checkRateLimit(auth.userId, 15)) {
+    return NextResponse.json({ error: 'Trop de requêtes — réessaie dans 1h' }, { status: 429 })
+  }
   const category = req.nextUrl.searchParams.get('category') ?? ''
   const keywords = req.nextUrl.searchParams.get('keywords') ?? ''
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuth, checkRateLimit } from '@/lib/auth'
 import Anthropic from '@anthropic-ai/sdk'
 
 const anthropic = new Anthropic()
@@ -61,6 +62,11 @@ Règles :
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAuth(req)
+  if (auth.error) return auth.error
+  if (!checkRateLimit(auth.userId, 20)) {
+    return NextResponse.json({ error: 'Trop de requêtes' }, { status: 429 })
+  }
   try {
     const contentType = req.headers.get('content-type') ?? ''
     let transcript = ''

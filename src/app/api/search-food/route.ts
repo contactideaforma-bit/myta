@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuth, checkRateLimit } from '@/lib/auth'
 import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic()
@@ -129,6 +130,11 @@ ${list}`
 
 // ─── Route GET /api/search-food?q=... ────────────────────────────────────────
 export async function GET(req: NextRequest) {
+  const auth = await requireAuth(req)
+  if (auth.error) return auth.error
+  if (!checkRateLimit(auth.userId, 50)) {
+    return NextResponse.json({ error: 'Trop de requêtes' }, { status: 429 })
+  }
   const query = req.nextUrl.searchParams.get('q')?.trim()
   if (!query || query.length < 2) return NextResponse.json({ results: [] })
 

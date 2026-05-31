@@ -1,11 +1,17 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { requireAuth, checkRateLimit } from '@/lib/auth'
 
 export const maxDuration = 60
 
 const client = new Anthropic()
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAuth(req)
+  if (auth.error) return auth.error
+  if (!checkRateLimit(auth.userId, 5)) {
+    return NextResponse.json({ error: 'Trop de requêtes — réessaie dans 1h' }, { status: 429 })
+  }
   const { calTarget, nutrition, sport, sleep, weight, goal, condition, weightGoal, age } = await req.json()
 
   const contextLines = [

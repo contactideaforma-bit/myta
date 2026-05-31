@@ -54,14 +54,9 @@ const DIFF_COLOR: Record<string, string> = {
 
 async function fetchPexelsPhoto(keyword: string): Promise<string | null> {
   try {
-    const apiKey = process.env.NEXT_PUBLIC_PEXELS_API_KEY
-    if (!apiKey) return null
-    const res = await fetch(
-      `https://api.pexels.com/v1/search?query=${encodeURIComponent(keyword + ' food')}&per_page=1&orientation=landscape`,
-      { headers: { Authorization: apiKey } }
-    )
+    const res = await fetch(`/api/photos?keyword=${encodeURIComponent(keyword)}`)
     const data = await res.json()
-    return data.photos?.[0]?.src?.medium ?? null
+    return data.url ?? null
   } catch { return null }
 }
 
