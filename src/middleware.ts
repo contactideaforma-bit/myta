@@ -6,7 +6,6 @@ const PUBLIC_PATHS = ['/auth', '/pricing', '/api', '/_next', '/static']
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // Laisse passer les pages publiques et fichiers statiques
   if (
     PUBLIC_PATHS.some(p => pathname.startsWith(p)) ||
     pathname.includes('.')
@@ -14,26 +13,21 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
-  // Cherche le token dans tous les cookies possibles de Supabase
-  const cookies = req.cookies
   let token: string | undefined
 
-  // Supabase peut stocker le token dans différents cookies selon la version
-  for (const [key, value] of cookies) {
-    if (key.includes('auth-token') || key.includes('access-token')) {
+  // Parcourt tous les cookies et extrait le access_token
+  req.cookies.getAll().forEach(cookie => {
+    if (token) return
+    if (cookie.name.includes('auth-token') || cookie.name.includes('access-token')) {
       try {
-        // Le cookie peut être un JSON
-        const parsed = JSON.parse(decodeURIComponent(value))
+        const parsed = JSON.parse(decodeURIComponent(cookie.value))
         token = parsed?.access_token ?? parsed?.[0] ?? undefined
       } catch {
-        // Ou juste une string directe
-        token = value
+        token = cookie.value
       }
-      if (token) break
     }
-  }
+  })
 
-  // Pas de token → page de connexion
   if (!token) {
     return NextResponse.redirect(new URL('/auth', req.url))
   }
@@ -66,7 +60,6 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
 
   } catch {
-    // En cas d'erreur on laisse passer pour ne pas bloquer
     return NextResponse.next()
   }
 }
