@@ -1,32 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 
+// Augmenter le timeout Vercel à 60s
+export const maxDuration = 60
+
 const client = new Anthropic()
 
 const CATEGORY_PROMPTS: Record<string, string> = {
-  'anti-inflammatoire': 'recettes anti-inflammatoires à base de saumon, sardines, maquereau, avocat, myrtilles, noix, curcuma, gingembre, épinards, brocoli, huile d\'olive',
-  'sans-gluten':        'recettes 100% sans gluten avec riz, quinoa, patate douce, lentilles, maïs, sarrasin, tapioca — sans blé, orge, seigle ni avoine',
-  'faible-calories':    'recettes légères de moins de 400 kcal par portion, rassasiantes et savoureuses',
-  'rapide':             'recettes prêtes en 20 minutes maximum, simples et délicieuses',
-  'cheat-meal':         'recettes gourmandes et indulgentes : burger maison, pizza, pasta crémeuses, desserts généreux',
-  'proteinee':          'recettes riches en protéines (plus de 30g par portion) pour la musculation et la récupération',
-  'vegetarien':         'recettes végétariennes savoureuses sans viande ni poisson',
-  'monde':              'recettes du monde variées : marocain, japonais, mexicain, indien, libanais, thaï',
+  'anti-inflammatoire': 'anti-inflammatoires à base de saumon, avocat, myrtilles, noix, curcuma, épinards, huile d\'olive',
+  'sans-gluten':        '100% sans gluten avec riz, quinoa, patate douce, lentilles, sarrasin',
+  'faible-calories':    'légères de moins de 400 kcal par portion, rassasiantes',
+  'rapide':             'prêtes en 20 minutes maximum, simples',
+  'cheat-meal':         'gourmandes : burger maison, pizza, pasta crémeuses, desserts',
+  'proteinee':          'riches en protéines (plus de 30g par portion) pour la musculation',
+  'vegetarien':         'végétariennes savoureuses sans viande ni poisson',
+  'monde':              'du monde : marocain, japonais, mexicain, indien, thaï',
 }
 
 export async function GET(req: NextRequest) {
   const category = req.nextUrl.searchParams.get('category') ?? 'rapide'
   const context  = CATEGORY_PROMPTS[category] ?? CATEGORY_PROMPTS['rapide']
 
-  const prompt = `Tu es un chef cuisinier expert. Génère 8 recettes ${context}.
+  const prompt = `Tu es un chef cuisinier expert. Génère 4 recettes ${context}.
 
-Réponds UNIQUEMENT avec un tableau JSON valide, sans texte autour.
-Format exact (respecte scrupuleusement cette structure) :
+Réponds UNIQUEMENT avec un tableau JSON valide, sans texte autour, sans markdown.
+Format exact :
 [
   {
     "id": "1",
-    "titre": "Nom précis de la recette",
-    "description": "Description appétissante de 2 phrases maximum",
+    "titre": "Nom de la recette",
+    "description": "Description courte appétissante.",
     "temps_prep": 10,
     "temps_cuisson": 20,
     "temps": 30,
@@ -36,45 +39,37 @@ Format exact (respecte scrupuleusement cette structure) :
     "glucides": 35,
     "lipides": 12,
     "difficulte": "Facile",
-    "ustensiles": ["poêle antiadhésive", "spatule"],
+    "ustensiles": ["poêle", "spatule"],
     "ingredients": [
       { "qte": "200g", "nom": "filet de saumon", "note": "sans peau" },
-      { "qte": "2 c.s.", "nom": "huile d'olive", "note": "" },
-      { "qte": "2", "nom": "gousses d'ail", "note": "émincées" },
-      { "qte": "1", "nom": "citron", "note": "jus + zeste" },
-      { "qte": "sel, poivre", "nom": "assaisonnement", "note": "selon goût" }
+      { "qte": "2 c.s.", "nom": "huile d'olive", "note": "" }
     ],
     "etapes": [
-      { "num": 1, "titre": "Préparation", "detail": "Sortir le saumon du réfrigérateur 15 minutes avant la cuisson. Éplucher et émincer finement l'ail. Prélever le zeste du citron et presser son jus. Sécher le saumon avec du papier absorbant.", "duree": "5 min", "astuce": "Le saumon à température ambiante cuit plus uniformément" },
-      { "num": 2, "titre": "Cuisson du saumon", "detail": "Chauffer l'huile d'olive dans une poêle à feu moyen-vif. Déposer le saumon côté peau vers le bas. Cuire 4 minutes sans bouger — la peau doit être dorée et croustillante. Retourner délicatement et cuire encore 3 minutes.", "duree": "7 min", "astuce": "Ne pas déplacer le saumon pendant les premières minutes pour obtenir une belle dorure" },
-      { "num": 3, "titre": "Sauce à l'ail et citron", "detail": "Réduire le feu à moyen. Ajouter l'ail émincé dans la poêle et faire revenir 1 minute en remuant. Déglacer avec le jus de citron. Ajouter le zeste. Laisser réduire 2 minutes en arrosant le saumon.", "duree": "3 min", "astuce": "L'ail ne doit pas brunir — surveillance obligatoire" },
-      { "num": 4, "titre": "Dressage", "detail": "Déposer le saumon dans une assiette creuse chaude. Napper généreusement de sauce. Parsemer de zeste de citron et de persil frais si disponible. Servir immédiatement.", "duree": "2 min", "astuce": "Réchauffe les assiettes au four à 60°C pour que le plat reste chaud plus longtemps" }
+      { "num": 1, "titre": "Préparation", "detail": "Instructions claires.", "duree": "5 min", "astuce": "Conseil utile" },
+      { "num": 2, "titre": "Cuisson", "detail": "Instructions claires.", "duree": "10 min", "astuce": "Conseil utile" }
     ],
-    "conseils_chef": "Pour un résultat optimal, utilise du saumon Label Rouge ou sauvage. La cuisson reste rosée à cœur pour une texture parfaite.",
-    "accompagnements": ["Riz basmati", "Légumes vapeur", "Salade verte"],
-    "photo_keyword": "pan seared salmon lemon garlic"
+    "conseils_chef": "Conseil principal du chef.",
+    "accompagnements": ["Riz", "Salade"],
+    "photo_keyword": "salmon lemon garlic"
   }
 ]
 
-Contraintes IMPORTANTES :
-- Titres et toutes descriptions en français uniquement
-- photo_keyword en anglais (2-4 mots descriptifs pour une belle photo)
-- calories/protéines/glucides/lipides = valeurs réalistes par portion
-- difficulte = "Facile", "Moyen" ou "Avancé"
-- 5 à 8 ingrédients avec quantités PRÉCISES (grammes, cuillères, unités)
-- 4 à 6 étapes TRÈS DÉTAILLÉES avec durée et astuce de chef
-- Les étapes doivent permettre à quelqu'un qui ne cuisine pas de réussir la recette
-- Recettes variées entre elles, vraiment réalisables à la maison`
+Règles :
+- 4 recettes variées en français
+- photo_keyword en anglais (3 mots max)
+- 4 à 6 ingrédients
+- 3 à 4 étapes concises
+- Valeurs nutritionnelles réalistes`
 
   try {
     const msg = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 8000,
+      max_tokens: 4000,
       messages: [{ role: 'user', content: prompt }],
     })
     const text  = (msg.content[0] as any).text ?? ''
     const match = text.match(/\[[\s\S]*\]/)
-    if (!match) throw new Error('No JSON array')
+    if (!match) throw new Error('No JSON array in response')
     const recipes = JSON.parse(match[0])
     return NextResponse.json({ recipes })
   } catch (err) {
