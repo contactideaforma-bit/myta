@@ -6,7 +6,7 @@ import { Waty, WATY_MESSAGES } from '@/components/ui/Waty'
 import {
   ChevronLeft, Clock, Users, Flame,
   Loader2, ChefHat, Star,
-  Bookmark, BookmarkCheck, Share2, Copy, Check, Search, X,
+  Bookmark, BookmarkCheck, Share2, Check, Search, X,
 } from 'lucide-react'
 
 interface Ingredient { qte: string; nom: string; note?: string }
@@ -132,7 +132,6 @@ export default function RecipesPage() {
   // ── Recherche par mots-clés ─────────────────────────────────────────────────
   const [searchQuery, setSearchQuery]     = useState('')
   const [searchCategory, setSearchCategory] = useState<string>('')
-  const [showSearch, setShowSearch]       = useState(false)
 
   useEffect(() => { loadSavedIds() }, [])
 
@@ -399,78 +398,68 @@ export default function RecipesPage() {
           <h1 className="text-xl font-bold text-zinc-900">Recettes</h1>
           <p className="text-sm text-zinc-400">Générées par IA · 100% en français</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setShowSearch(v => !v)}
-            className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-colors ${showSearch ? 'bg-nutri text-white border-nutri' : 'border-zinc-200 text-zinc-600 hover:border-nutri/40'}`}>
-            <Search size={16} />
-          </button>
-          <button onClick={() => { setView('saved'); setDetail(null); loadSavedRecipes() }}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${view === 'saved' ? 'bg-nutri text-white border-nutri' : 'border-zinc-200 text-zinc-600 hover:border-nutri/40'}`}>
-            <BookmarkCheck size={14} />
-            {savedIds.size > 0 && savedIds.size}
-          </button>
-        </div>
+        <button onClick={() => { setView('saved'); setDetail(null); loadSavedRecipes() }}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${view === 'saved' ? 'bg-nutri text-white border-nutri' : 'border-zinc-200 text-zinc-600 hover:border-nutri/40'}`}>
+          <BookmarkCheck size={14} />
+          {savedIds.size > 0 && savedIds.size}
+        </button>
       </div>
 
-      {/* ── Moteur de recherche ── */}
-      {showSearch && (
+      {/* ── Barre de recherche permanente ── */}
+      {view !== 'saved' && (
         <div className="card flex flex-col gap-3">
-          <h2 className="text-sm font-bold text-zinc-900 flex items-center gap-1.5">
-            <Search size={14} />Recherche personnalisée
-          </h2>
-
-          {/* Mots-clés */}
-          <div>
-            <label className="text-xs text-zinc-400 mb-1.5 block font-semibold">
-              Ingrédients ou mots-clés
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && searchRecipes()}
-                placeholder="ex: saumon, patate douce, citron..."
-                className="input pr-8"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-            <p className="text-[10px] text-zinc-400 mt-1">Sépare les ingrédients par des virgules</p>
+          {/* Barre search */}
+          <div className="relative">
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && (searchQuery.trim() || searchCategory) && searchRecipes()}
+              placeholder="Ingrédients : saumon, patate douce, citron..."
+              className="input pl-10 pr-8"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">
+                <X size={14} />
+              </button>
+            )}
           </div>
 
-          {/* Catégorie optionnelle */}
-          <div>
-            <label className="text-xs text-zinc-400 mb-1.5 block font-semibold">
-              Catégorie <span className="font-normal">(optionnel)</span>
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {CATEGORIES.map(cat => (
-                <button key={cat.key}
-                  onClick={() => setSearchCategory(prev => prev === cat.key ? '' : cat.key)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${searchCategory === cat.key ? 'bg-nutri text-white border-nutri' : 'border-zinc-200 text-zinc-600 hover:border-nutri/40'}`}>
-                  {cat.label}
-                </button>
-              ))}
-            </div>
+          {/* Catégories en pills */}
+          <div className="flex flex-wrap gap-1.5">
+            {CATEGORIES.map(cat => (
+              <button key={cat.key}
+                onClick={() => setSearchCategory(prev => prev === cat.key ? '' : cat.key)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${searchCategory === cat.key ? 'bg-nutri text-white border-nutri' : 'border-zinc-200 text-zinc-600 hover:border-nutri/40'}`}>
+                {cat.label}
+              </button>
+            ))}
           </div>
 
-          <button
-            onClick={searchRecipes}
-            disabled={!searchQuery.trim() && !searchCategory}
-            className="btn-nutri justify-center py-2.5 disabled:opacity-50">
-            <Search size={15} />
-            Générer 4 recettes
-          </button>
+          {/* Bouton générer — visible si sélection active */}
+          {(searchQuery.trim() || searchCategory) && (
+            <button onClick={searchRecipes} className="btn-nutri justify-center py-2.5">
+              <Search size={15} />
+              Générer 4 recettes{searchQuery ? ` · "${searchQuery.trim()}"` : ''}{searchCategory ? ` · ${CATEGORIES.find(c=>c.key===searchCategory)?.label}` : ''}
+            </button>
+          )}
         </div>
       )}
 
-      {/* Catégories rapides */}
-      {view !== 'saved' && !showSearch && (
+      {/* Waty rappel sauvegarde */}
+      {view === 'generated' && recipes.length > 0 && !loading && (
+        <Waty
+          mode="nutrition"
+          message="N'oublie pas de sauvegarder les recettes qui te plaisent 🔖 — elles seront perdues si tu changes de catégorie !"
+          size="sm"
+          dismissible={true}
+        />
+      )}
+
+      {/* Catégories rapides si rien de sélectionné */}
+      {view !== 'saved' && !searchQuery && !searchCategory && (
         <div className="grid grid-cols-2 gap-2">
           {CATEGORIES.map(cat => (
             <button key={cat.key} onClick={() => loadCategory(cat.key)}
@@ -490,7 +479,7 @@ export default function RecipesPage() {
       )}
 
       {/* État initial */}
-      {view === 'categories' && !showSearch && (
+      {view === 'categories' && !searchQuery && !searchCategory && (
         <div className="card text-center py-12 text-zinc-400">
           <ChefHat size={40} className="mx-auto mb-3 text-zinc-300" />
           <p className="text-sm font-medium">Choisis une catégorie</p>
