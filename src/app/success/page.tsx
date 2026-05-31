@@ -1,15 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useState, Suspense } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { CheckCircle, ArrowRight, Loader2 } from 'lucide-react'
 import { Waty } from '@/components/ui/Waty'
 
-export default function SuccessPage() {
-  const router       = useRouter()
-  const searchParams = useSearchParams()
-  const supabase     = createClient()
+function SuccessContent() {
+  const router   = useRouter()
+  const supabase = createClient()
   const [loading, setLoading] = useState(true)
   const [userName, setUserName] = useState('')
 
@@ -104,5 +103,13 @@ export default function SuccessPage() {
         </button>
       </div>
     </div>
+  )
+}
+
+export default function SuccessPage() {
+  return (
+    <Suspense>
+      <SuccessContent />
+    </Suspense>
   )
 }
