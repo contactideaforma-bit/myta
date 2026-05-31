@@ -4,6 +4,11 @@ import { NextRequest, NextResponse } from 'next/server'
 const client = new Anthropic()
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAuth(req)
+  if (auth.error) return auth.error
+  if (!checkRateLimit(auth.userId, 30)) {
+    return NextResponse.json({ error: 'Trop de requêtes' }, { status: 429 })
+  }
   const { meal_name, ingredients, instructions } = await req.json()
   if (!meal_name) return NextResponse.json({ error: 'Missing meal_name' }, { status: 400 })
 
@@ -30,7 +35,7 @@ Instructions : ${String(instructions).slice(0, 2500)}`
 
   try {
     const msg = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       messages: [{ role: 'user', content: prompt }],
     })

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { requireAuth } from '@/lib/auth'
 
 export const maxDuration = 30
 
@@ -9,8 +10,12 @@ const supabaseAdmin = createClient(
 )
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAuth(req)
+  if (auth.error) return auth.error
+
   try {
-    const { userId, category, message, email } = await req.json()
+    const { category, message, email } = await req.json()
+    const userId = auth.userId  // Vient du token, pas du body
 
     if (!message?.trim()) {
       return NextResponse.json({ error: 'Message vide' }, { status: 400 })

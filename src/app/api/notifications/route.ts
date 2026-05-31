@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { requireAuth } from '@/lib/auth'
 import webpush from 'web-push'
 
 export const maxDuration = 60
@@ -18,8 +19,47 @@ export async function POST(req: NextRequest) {
       process.env.VAPID_PRIVATE_KEY
     )
   }
+  // Cron : vérification par secret header (pas de token utilisateur)
+  const body = await req.json()
+  const { subscription, action } = body
+
+  if (action === 'cron') {
+    const secret = req.headers.get('x-cron-secret')
+    if (secret !== process.env.CRON_SECRET) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    // Traitement cron — pas besoin d'auth utilisateur
+    const type = req.nextUrl.searchParams.get('type') ?? 'journal'
+    const { data: subs } = await supabaseAdmin.from('push_subscriptions').select('user_id, subscription')
+    if (!subs?.length) return NextResponse.json({ sent: 0 })
+    const messages: Record<string, { title: string; body: string }> = {
+      journal:  { title: '🥗 MYTA — Journal alimentaire', body: "N'oublie pas de noter ton repas !" },
+      sport:    { title: '🏋️ MYTA — Séance du jour',    body: 'Lance le timer Tabata ! 💪' },
+      bilan:    { title: '📊 MYTA — Bilan de la semaine', body: 'Ton bilan est prêt !' },
+      poids:    { title: '⚖️ MYTA — Pesée du matin',    body: 'Note ton poids pour suivre ta progression !' },
+    }
+    const msg = messages[type] ?? messages.journal
+    let sent = 0
+    for (const sub of subs) {
+      try {
+        await webpush.sendNotification(sub.subscription, JSON.stringify(msg))
+        sent++
+      } catch (err: any) {
+        if (err.statusCode === 410) {
+          await supabaseAdmin.from('push_subscriptions').delete().eq('user_id', sub.user_id)
+        }
+      }
+    }
+    return NextResponse.json({ sent })
+  }
+
+  // Autres actions : vérifier le token utilisateur
+  const auth = await requireAuth(req)
+  if (auth.error) return auth.error
+  const userId = auth.userId  // Vient du token, pas du body
+
   try {
-    const { userId, subscription, action } = await req.json()
+    const ignoreBody = subscription  // déjà lu
 
     // ── Sauvegarder / supprimer une souscription ──
     if (action === 'subscribe') {
@@ -46,43 +86,6 @@ export async function POST(req: NextRequest) {
         JSON.stringify({ title: 'MYTA 🎉', body: 'Les notifications fonctionnent !' })
       )
       return NextResponse.json({ ok: true })
-    }
-
-    // ── Cron : envoyer rappels à tous les utilisateurs ──
-    // Appelé par Vercel Cron Job (voir vercel.json)
-    if (action === 'cron') {
-      const secret = req.headers.get('x-cron-secret')
-      if (secret !== process.env.CRON_SECRET) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-      }
-
-      const type = req.nextUrl.searchParams.get('type') ?? 'journal'
-      const { data: subs } = await supabaseAdmin.from('push_subscriptions').select('user_id, subscription')
-      if (!subs?.length) return NextResponse.json({ sent: 0 })
-
-      const messages: Record<string, { title: string; body: string }> = {
-        journal:  { title: '🥗 MYTA — Journal alimentaire', body: 'N\'oublie pas de noter ton repas pour suivre tes objectifs !' },
-        sport:    { title: '🏋️ MYTA — Séance du jour',    body: 'Tu as prévu une séance ? Lance le timer Tabata ! 💪' },
-        bilan:    { title: '📊 MYTA — Bilan de la semaine', body: 'Ton bilan santé hebdomadaire est prêt. Consulte-le maintenant !' },
-        poids:    { title: '⚖️ MYTA — Pesée du matin',    body: 'Commence bien ta journée : note ton poids pour suivre ta progression !' },
-      }
-
-      const msg = messages[type] ?? messages.journal
-      let sent = 0
-
-      for (const sub of subs) {
-        try {
-          await webpush.sendNotification(sub.subscription, JSON.stringify(msg))
-          sent++
-        } catch (err: any) {
-          // Supprimer les souscriptions expirées
-          if (err.statusCode === 410) {
-            await supabaseAdmin.from('push_subscriptions').delete().eq('user_id', sub.user_id)
-          }
-        }
-      }
-
-      return NextResponse.json({ sent })
     }
 
     return NextResponse.json({ error: 'Action inconnue' }, { status: 400 })
