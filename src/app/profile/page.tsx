@@ -9,6 +9,7 @@ import {
   Check, Loader2, User, Scale,
   Dumbbell, LogOut, Layers, BarChart3,
 } from 'lucide-react'
+import { Waty } from '@/components/ui/Waty'
 import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, AreaChart, Area,
@@ -20,6 +21,7 @@ interface Profile {
   full_name: string | null
   weight_kg: number | null
   height_cm: number | null
+  weight_goal: number | null
   birth_date: string | null
   sex: string | null
   activity_factor: number | null
@@ -171,7 +173,7 @@ export default function ProfilePage() {
 
   // ── États formulaire profil ─────────────────────────────────────────────────
   const [form, setForm] = useState({
-    full_name: '', weight_kg: '', height_cm: '',
+    full_name: '', weight_kg: '', height_cm: '', weight_goal: '',
     birth_date: '', sex: 'homme', activity_factor: '1.55',
     goal: '', calorie_target: '', prot_target: '', carb_target: '', fat_target: '',
     condition: '',
@@ -220,6 +222,7 @@ export default function ProfilePage() {
         full_name:       data.full_name       ?? '',
         weight_kg:       data.weight_kg       ? String(data.weight_kg)       : '',
         height_cm:       data.height_cm       ? String(data.height_cm)       : '',
+        weight_goal:     data.weight_goal     ? String(data.weight_goal)     : '',
         birth_date:      data.birth_date      ?? '',
         sex:             data.sex             ?? 'homme',
         activity_factor: data.activity_factor ? String(data.activity_factor) : '1.55',
@@ -275,6 +278,7 @@ export default function ProfilePage() {
       carb_target:     parseInt(form.carb_target)       || null,
       fat_target:      parseInt(form.fat_target)        || null,
       condition:       form.condition                   || null,
+      weight_goal:     parseFloat(form.weight_goal)    || null,
     }
     const { error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' })
     if (!error) {
@@ -333,18 +337,8 @@ export default function ProfilePage() {
           condition:  conditionNote,
         }),
       })
-      // Lire le stream progressivement
-      if (!res.ok) throw new Error('Erreur serveur')
-      const reader = res.body?.getReader()
-      const decoder = new TextDecoder()
-      if (reader) {
-        setAiReport('')
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          setAiReport(prev => prev + decoder.decode(value, { stream: true }))
-        }
-      }
+      const data = await res.json()
+      setAiReport(data.report ?? '')
     } catch (err) { console.error(err) }
     setLoadingReport(false)
   }
@@ -643,13 +637,18 @@ export default function ProfilePage() {
               </div>
             )}
 
-            <div>
-              <label className="text-xs text-zinc-400 mb-1 block">Date de naissance</label>
-              <input type="date" className="input w-full" value={form.birth_date}
-                onChange={e => setForm(f => ({ ...f, birth_date: e.target.value }))} />
-            </div>
-
+            {/* Date naissance + poids + taille dans une grille propre */}
             <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="text-xs text-zinc-400 mb-1 block">Date de naissance</label>
+                <input
+                  type="date"
+                  className="input w-full"
+                  value={form.birth_date}
+                  onChange={e => setForm(f => ({ ...f, birth_date: e.target.value }))}
+                  style={{ colorScheme: 'light' }}
+                />
+              </div>
               <div>
                 <label className="text-xs text-zinc-400 mb-1 block">Poids (kg)</label>
                 <input type="number" min="30" max="250" step="0.1" className="input" placeholder="ex: 68"
@@ -659,6 +658,14 @@ export default function ProfilePage() {
                 <label className="text-xs text-zinc-400 mb-1 block">Taille (cm)</label>
                 <input type="number" min="100" max="250" className="input" placeholder="ex: 168"
                   value={form.height_cm} onChange={e => setForm(f => ({ ...f, height_cm: e.target.value }))} />
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs text-zinc-400 mb-1 block">
+                  🎯 Poids cible (kg)
+                  <span className="font-normal text-zinc-300 ml-1">— affiché sur ta courbe de poids</span>
+                </label>
+                <input type="number" min="30" max="250" step="0.1" className="input w-full" placeholder="ex: 65"
+                  value={form.weight_goal} onChange={e => setForm(f => ({ ...f, weight_goal: e.target.value }))} />
               </div>
             </div>
 
@@ -769,6 +776,12 @@ export default function ProfilePage() {
             <div className="flex flex-col gap-4">
               <div className="card flex flex-col gap-4">
                 <h2 className="text-sm font-semibold text-zinc-700">🔥 Calcul du TDEE</h2>
+                <Waty
+                  mode="nutrition"
+                  message="Le TDEE (Total Daily Energy Expenditure) est ta dépense énergétique totale journalière. C'est le nombre de calories que ton corps brûle en une journée. Ces données sont indicatives — consulte un professionnel de santé pour un suivi personnalisé. 📊"
+                  size="sm"
+                  dismissible={true}
+                />
                 <div>
                   <label className="text-xs text-zinc-400 mb-1.5 block">Sexe</label>
                   <div className="flex gap-2">
@@ -828,6 +841,12 @@ export default function ProfilePage() {
             <div className="flex flex-col gap-4">
               <div className="card flex flex-col gap-4">
                 <h2 className="text-sm font-semibold text-zinc-700">📏 Calcul de l'IMC</h2>
+                <Waty
+                  mode="nutrition"
+                  message="L'IMC (Indice de Masse Corporelle) est un indicateur général. Il ne tient pas compte de la masse musculaire ni de la répartition des graisses. À utiliser à titre indicatif uniquement — ton médecin reste le meilleur interlocuteur. 💡"
+                  size="sm"
+                  dismissible={true}
+                />
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className="text-xs text-zinc-400 mb-1 block">Taille (cm)</label>
                     <input type="number" placeholder="170" value={imcHeight} onChange={e => setImcHeight(e.target.value)} className="input" /></div>
@@ -870,6 +889,12 @@ export default function ProfilePage() {
             <div className="flex flex-col gap-4">
               <div className="card flex flex-col gap-4">
                 <h2 className="text-sm font-semibold text-zinc-700">⚖️ Répartition des macros</h2>
+                <Waty
+                  mode="nutrition"
+                  message="Les macronutriments (protéines, glucides, lipides) sont calculés selon des formules standard. Ces recommandations sont indicatives et peuvent varier selon ton métabolisme, ta santé et tes objectifs précis. Consulte un diététicien pour un plan sur mesure. 🥗"
+                  size="sm"
+                  dismissible={true}
+                />
                 <div>
                   <label className="text-xs text-zinc-400 mb-1.5 block">Objectif</label>
                   <div className="grid grid-cols-2 gap-2">
