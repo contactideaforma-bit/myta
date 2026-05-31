@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Play, Pause, RotateCcw, Settings } from 'lucide-react'
 import { Waty } from '@/components/ui/Waty'
+import { createClient } from '@/lib/supabase/client'
 
 type Phase = 'effort' | 'pause' | 'repos' | 'idle'
 
@@ -50,43 +51,59 @@ function Confettis() {
 }
 
 // ─── Synthèse vocale ──────────────────────────────────────────────────────────
-function speak(text: string, lang = 'fr-FR') {
+// Garde une référence globale aux timeouts du countdown pour pouvoir les annuler
+const countdownTimeouts: ReturnType<typeof setTimeout>[] = []
+
+function cancelCountdown() {
+  countdownTimeouts.forEach(t => clearTimeout(t))
+  countdownTimeouts.length = 0
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    window.speechSynthesis.cancel()
+  }
+}
+
+function speakWord(text: string, pitch = 1.0) {
   if (typeof window === 'undefined' || !window.speechSynthesis) return
-  window.speechSynthesis.cancel()
-  const utt = new SpeechSynthesisUtterance(text)
-  utt.lang = lang
-  utt.rate = 0.95
-  utt.pitch = 1.1
-  utt.volume = 1
+  // Ne pas cancel ici pour ne pas interrompre la séquence
+  const utt   = new SpeechSynthesisUtterance(text)
+  utt.lang    = 'fr-FR'
+  utt.rate    = 0.85
+  utt.pitch   = pitch
+  utt.volume  = 1
+  if (window.speechSynthesis.paused) window.speechSynthesis.resume()
   window.speechSynthesis.speak(utt)
 }
 
-// Compte à rebours vocal 3,2,1 + message final
-function countdown(finalWord: string, onDone?: () => void) {
-  if (typeof window === 'undefined' || !window.speechSynthesis) { onDone?.(); return }
+function speak(text: string) {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return
   window.speechSynthesis.cancel()
-  const words = ['3', '2', '1', finalWord]
-  let i = 0
+  speakWord(text, 1.1)
+}
 
-  function sayNext() {
-    if (i >= words.length) { onDone?.(); return }
-    const word = words[i]
-    const utt  = new SpeechSynthesisUtterance(word)
-    utt.lang   = 'fr-FR'
-    utt.rate   = 1.0
-    utt.pitch  = word === finalWord ? 1.3 : 1.0
-    utt.volume = 1
-    utt.onend  = () => {
-      i++
-      setTimeout(sayNext, 150)
-    }
-    // Hack iOS : reprendre si suspendu
-    if (window.speechSynthesis.paused) window.speechSynthesis.resume()
-    window.speechSynthesis.speak(utt)
-    // NE PAS incrémenter i ici — seulement dans onend
+// Compte à rebours vocal — séquence avec délais fixes
+// Chaque mot espacé de 900ms, callback après le dernier
+function countdown(finalWord: string, onDone?: () => void) {
+  if (typeof window === 'undefined' || !window.speechSynthesis) {
+    onDone?.()
+    return
   }
+  cancelCountdown()
 
-  sayNext()
+  const steps = [
+    { word: '3',        delay: 100,  pitch: 1.0 },
+    { word: '2',        delay: 1000, pitch: 1.0 },
+    { word: '1',        delay: 1900, pitch: 1.0 },
+    { word: finalWord,  delay: 2800, pitch: finalWord === 'Go !' ? 1.4 : 1.2 },
+  ]
+
+  steps.forEach(({ word, delay, pitch }) => {
+    const t = setTimeout(() => speakWord(word, pitch), delay)
+    countdownTimeouts.push(t)
+  })
+
+  // Callback ~700ms après le dernier mot
+  const done = setTimeout(() => { onDone?.() }, 3800)
+  countdownTimeouts.push(done)
 }
 
 export default function TabataPage() {
@@ -104,6 +121,7 @@ export default function TabataPage() {
   const [finished, setFinished]         = useState(false)
   const [showConfig, setShowConfig]     = useState(true)
   const [showConfettis, setShowConfettis] = useState(false)
+  const [sessionSaved, setSessionSaved]   = useState(false)
 
   // Pour éviter les doublons de compte à rebours
   const countdownActiveRef = useRef(false)
@@ -138,6 +156,7 @@ export default function TabataPage() {
           setFinished(true)
           setShowConfettis(true)
           setTimeout(() => setShowConfettis(false), 5000)
+          saveTabataSession()
         })
         return
       }
@@ -173,6 +192,7 @@ export default function TabataPage() {
           setFinished(true)
           setShowConfettis(true)
           setTimeout(() => setShowConfettis(false), 5000)
+          saveTabataSession()
         })
       }
     } else if (phase === 'repos') {
@@ -195,6 +215,49 @@ export default function TabataPage() {
       setTimeLeft(stateRef.current.timeLeft)
       if (stateRef.current.timeLeft <= 0) nextPhase()
     }, 1000)
+  }
+
+  // ── Enregistrement automatique de la séance Tabata ──────────────────────────
+  async function saveTabataSession() {
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Récupérer le poids du profil pour calculer les calories
+      const { data: profile } = await supabase
+        .from('profiles').select('weight_kg').eq('id', user.id).single()
+      const weight = (profile as any)?.weight_kg ?? 70
+
+      // Trouver la discipline Cardio (Tabata = HIIT cardio)
+      const { data: discList } = await supabase
+        .from('disciplines').select('id').ilike('name', 'Cardio')
+      const discId = discList?.[0]?.id ?? null
+
+      // Calcul durée et calories
+      // Durée réelle = séries × (effort + pause) × tours + repos entre tours
+      const durationMin = Math.round(
+        (tours * series * (effortSec + pauseSec) + (tours - 1) * reposSec) / 60
+      )
+      // MET Tabata/HIIT ≈ 8 : calories = MET × poids(kg) × durée(h)
+      const calBurned = Math.round(8 * weight * (durationMin / 60))
+
+      const today = new Date().toISOString().split('T')[0]
+      const notes = `Tabata : ${series} séries × ${tours} tour${tours > 1 ? 's' : ''} — ${effortSec}s effort / ${pauseSec}s pause`
+
+      await supabase.from('sessions').insert({
+        user_id:         user.id,
+        discipline_id:   discId,
+        session_date:    today,
+        duration_min:    durationMin,
+        calories_burned: calBurned,
+        notes,
+      })
+
+      setSessionSaved(true)
+    } catch (err) {
+      console.error('[tabata] saveSession error:', err)
+    }
   }
 
   function start() {
@@ -224,14 +287,14 @@ export default function TabataPage() {
 
   function reset() {
     clearTimer()
-    window.speechSynthesis?.cancel()
+    cancelCountdown()
     countdownActiveRef.current = false
     setPhase('idle'); setTimeLeft(0); setCurrentSerie(1)
     setCurrentTour(1); setPaused(false); setFinished(false)
-    setShowConfig(true); setShowConfettis(false)
+    setShowConfig(true); setShowConfettis(false); setSessionSaved(false)
   }
 
-  useEffect(() => () => { clearTimer(); window.speechSynthesis?.cancel() }, [])
+  useEffect(() => () => { clearTimer(); cancelCountdown() }, [])
 
   const totalSecs = tours * series * (effortSec + pauseSec)
   const totalMin  = Math.floor(totalSecs / 60)
@@ -355,6 +418,11 @@ export default function TabataPage() {
             <p className="text-sm text-zinc-400 mb-1">Séance complète</p>
             <p className="text-2xl font-black text-sport">{series * tours} séries</p>
             <p className="text-sm text-zinc-400 mt-1">{totalMin} min {totalSecs % 60} sec d'effort</p>
+            {sessionSaved && (
+              <p className="text-xs text-nutri-mid font-semibold mt-2">
+                ✓ Séance enregistrée dans l'historique sport
+              </p>
+            )}
           </div>
 
           <button onClick={reset} className="btn-sport justify-center px-10 py-3">
