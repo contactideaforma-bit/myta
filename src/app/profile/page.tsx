@@ -7,7 +7,7 @@ import { format, subDays, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import {
   Check, Loader2, User, Scale,
-  Dumbbell, LogOut, Layers, BarChart3,
+  Dumbbell, LogOut, Layers, BarChart3, CreditCard,
 } from 'lucide-react'
 import { Waty } from '@/components/ui/Waty'
 import {
@@ -500,9 +500,15 @@ export default function ProfilePage() {
           </h1>
           <p className="text-sm text-zinc-400">{email}</p>
         </div>
-        <button onClick={signOut} className="btn-ghost text-zinc-400 hover:text-red-500 text-xs gap-1.5">
-          <LogOut size={14} />Déconnexion
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => router.push('/billing')}
+            className="btn-ghost text-zinc-400 hover:text-tta-mid text-xs gap-1.5">
+            <CreditCard size={14} />Abonnement
+          </button>
+          <button onClick={signOut} className="btn-ghost text-zinc-400 hover:text-red-500 text-xs gap-1.5">
+            <LogOut size={14} />Déconnexion
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}

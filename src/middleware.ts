@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 // Pages accessibles sans auth
-const PUBLIC_PATHS = ['/auth', '/pricing', '/onboarding', '/legal', '/_next', '/static']
+const PUBLIC_PATHS = ['/auth', '/pricing', '/onboarding', '/legal', '/success', '/cancel', '/_next', '/static']
 
 // Routes API publiques (sans auth requise)
 const PUBLIC_API  = [
