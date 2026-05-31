@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { format, subDays, subMonths, parseISO } from 'date-fns'
+import { format, subDays, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import {
   Check, Loader2, User, Scale, Ruler, Calendar,
@@ -30,6 +30,7 @@ interface Profile {
   prot_target: number | null
   carb_target: number | null
   fat_target: number | null
+  condition?: string | null
 }
 
 interface WeightLog { date: string; weight_kg: number }
@@ -61,15 +62,21 @@ const PERIODS = [
 ]
 
 // ─── Calculs nutritionnels ─────────────────────────────────────────────────────
-function calcTDEE(w: number, h: number, age: number, sex: string, activity: number) {
-  const bmr = sex === 'femme'
+function calcTDEE(w: number, h: number, age: number, sex: string, activity: number, condition?: string) {
+  let bmr = sex === 'femme'
     ? 10 * w + 6.25 * h - 5 * age - 161
     : 10 * w + 6.25 * h - 5 * age + 5
+  // Ajustement grossesse : +300 kcal au T2/T3 (on prend +300 en général)
+  if (condition === 'enceinte') bmr += 300
+  // Post-partum allaitement : +500 kcal
+  if (condition === 'post-partum') bmr += 500
   return Math.round(bmr * activity)
 }
 
-function calcAutoMacros(cal: number, w: number, goal: string) {
-  const protPerKg = goal === 'prise de masse' ? 2.0 : goal === 'perte de poids' ? 1.8 : 1.6
+function calcAutoMacros(cal: number, w: number, goal: string, condition?: string) {
+  let protPerKg = goal === 'prise de masse' ? 2.0 : goal === 'perte de poids' ? 1.8 : 1.6
+  // Grossesse / post-partum : protéines augmentées
+  if (condition === 'enceinte' || condition === 'post-partum') protPerKg = 1.8
   const prot = Math.round(w * protPerKg)
   const fat  = Math.round(cal * 0.28 / 9)
   const carb = Math.round((cal - prot * 4 - fat * 9) / 4)
@@ -90,13 +97,43 @@ function KpiCard({ label, value, sub, icon, color = 'text-zinc-900' }: {
   )
 }
 
+// ─── Bannière condition féminine ──────────────────────────────────────────────
+function ConditionBanner({ condition }: { condition: string }) {
+  if (condition === 'enceinte') return (
+    <div className="flex items-start gap-2 bg-pink-50 border border-pink-200 rounded-2xl p-3">
+      <span className="text-lg">🤰</span>
+      <div>
+        <p className="text-xs font-bold text-pink-700">Mode Grossesse activé</p>
+        <p className="text-[11px] text-pink-500 leading-relaxed mt-0.5">
+          Objectifs adaptés : +300 kcal/jour, protéines augmentées, conseils nutritionnels spécifiques.
+          Consultez toujours votre médecin ou sage-femme.
+        </p>
+      </div>
+    </div>
+  )
+  if (condition === 'post-partum') return (
+    <div className="flex items-start gap-2 bg-purple-50 border border-purple-200 rounded-2xl p-3">
+      <span className="text-lg">👶</span>
+      <div>
+        <p className="text-xs font-bold text-purple-700">Mode Post-partum activé</p>
+        <p className="text-[11px] text-purple-500 leading-relaxed mt-0.5">
+          Objectifs adaptés pour la récupération et l'allaitement : +500 kcal/jour, protéines augmentées.
+          Reprise du sport progressive recommandée.
+        </p>
+      </div>
+    </div>
+  )
+  return null
+}
+
 // ─── Page principale ───────────────────────────────────────────────────────────
-type Tab = 'profil' | 'objectifs' | 'bilan'
+type Tab = 'bilan' | 'profil' | 'objectifs'
 
 export default function ProfilePage() {
   const router   = useRouter()
   const supabase = createClient()
 
+  // Bilan en premier
   const [tab, setTab]         = useState<Tab>('bilan')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving]   = useState(false)
@@ -119,31 +156,33 @@ export default function ProfilePage() {
     full_name: '', weight_kg: '', height_cm: '',
     birth_date: '', sex: 'homme', activity_factor: '1.55',
     goal: '', calorie_target: '', prot_target: '', carb_target: '', fat_target: '',
+    condition: '',
   })
 
   useEffect(() => { loadProfile() }, [])
   useEffect(() => { if (tab === 'bilan') loadBilan() }, [tab, period])
-  useEffect(() => { loadBilan() }, []) // charge au montage car bilan est l'onglet par défaut
+  useEffect(() => { loadBilan() }, [])
 
   async function loadProfile() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/auth'); return }
     setEmail(user.email ?? '')
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
     if (data) {
       setProfile(data)
       setForm({
-        full_name:       data.full_name      ?? '',
-        weight_kg:       data.weight_kg      ? String(data.weight_kg)      : '',
-        height_cm:       data.height_cm      ? String(data.height_cm)      : '',
-        birth_date:      data.birth_date     ?? '',
-        sex:             data.sex            ?? 'homme',
+        full_name:       data.full_name       ?? '',
+        weight_kg:       data.weight_kg       ? String(data.weight_kg)       : '',
+        height_cm:       data.height_cm       ? String(data.height_cm)       : '',
+        birth_date:      data.birth_date      ?? '',
+        sex:             data.sex             ?? 'homme',
         activity_factor: data.activity_factor ? String(data.activity_factor) : '1.55',
-        goal:            data.goal           ?? '',
-        calorie_target:  data.calorie_target ? String(data.calorie_target)  : '',
-        prot_target:     data.prot_target    ? String(data.prot_target)     : '',
-        carb_target:     data.carb_target    ? String(data.carb_target)     : '',
-        fat_target:      data.fat_target     ? String(data.fat_target)      : '',
+        goal:            data.goal            ?? '',
+        calorie_target:  data.calorie_target  ? String(data.calorie_target)  : '',
+        prot_target:     data.prot_target     ? String(data.prot_target)     : '',
+        carb_target:     data.carb_target     ? String(data.carb_target)     : '',
+        fat_target:      data.fat_target      ? String(data.fat_target)      : '',
+        condition:       data.condition       ?? '',
       })
     }
     setLoading(false)
@@ -194,7 +233,6 @@ export default function ProfilePage() {
         supabase.from('weight_log').select('date,weight_kg').eq('user_id', user.id).gte('date', from7).order('date'),
       ])
 
-      // Agréger nutrition par jour
       const jMap: Record<string, { cal: number; prot: number; carb: number; fat: number }> = {}
       for (const r of jnl ?? []) {
         if (!jMap[r.date]) jMap[r.date] = { cal: 0, prot: 0, carb: 0, fat: 0 }
@@ -214,10 +252,16 @@ export default function ProfilePage() {
       ).join('\n') || 'Aucune séance enregistrée'
 
       const sleepSummary = (slp ?? []).map(s =>
-        `${s.date}: ${Math.floor(s.duration_min / 60)}h${s.duration_min % 60 > 0 ? s.duration_min % 60 + 'min' : ''} (couché ${s.bedtime?.slice(0,5)} réveil ${s.wake_time?.slice(0,5)})`
+        `${s.date}: ${Math.floor(s.duration_min / 60)}h${s.duration_min % 60 > 0 ? s.duration_min % 60 + 'min' : ''}`
       ).join('\n') || 'Aucune donnée sommeil'
 
       const weightSummary = (wts ?? []).map(w => `${w.date}: ${w.weight_kg} kg`).join('\n') || 'Aucune donnée poids'
+
+      const conditionNote = form.condition === 'enceinte'
+        ? 'Note importante : la personne est enceinte. Adapter les conseils en conséquence.'
+        : form.condition === 'post-partum'
+        ? 'Note importante : la personne est en post-partum. Adapter les conseils en conséquence.'
+        : ''
 
       const res = await fetch('/api/health-report', {
         method: 'POST',
@@ -229,6 +273,7 @@ export default function ProfilePage() {
           sleep:     sleepSummary,
           weight:    weightSummary,
           goal:      profile?.goal ?? 'non défini',
+          condition: conditionNote,
         }),
       })
       const data = await res.json()
@@ -245,15 +290,14 @@ export default function ProfilePage() {
     const act = parseFloat(form.activity_factor)
     if (!w || !h || !bd || !act) return null
     const age = new Date().getFullYear() - new Date(bd).getFullYear()
-    return calcTDEE(w, h, age, form.sex, act)
+    return calcTDEE(w, h, age, form.sex, act, form.condition)
   })()
 
-  // Macros auto
   const autoMacros = (() => {
     const cal = tdee ?? parseInt(form.calorie_target)
     const w   = parseFloat(form.weight_kg)
     if (!cal || !w) return null
-    return calcAutoMacros(cal, w, form.goal)
+    return calcAutoMacros(cal, w, form.goal, form.condition)
   })()
 
   function applyAutoMacros() {
@@ -272,24 +316,24 @@ export default function ProfilePage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setSaving(false); return }
 
-    const payload = {
+    const payload: any = {
       id:              user.id,
-      full_name:       form.full_name.trim()           || null,
-      weight_kg:       parseFloat(form.weight_kg)      || null,
-      height_cm:       parseInt(form.height_cm)        || null,
-      birth_date:      form.birth_date                 || null,
-      sex:             form.sex                        || null,
-      activity_factor: parseFloat(form.activity_factor)|| null,
-      goal:            form.goal                       || null,
-      calorie_target:  parseInt(form.calorie_target)   || null,
-      prot_target:     parseInt(form.prot_target)      || null,
-      carb_target:     parseInt(form.carb_target)      || null,
-      fat_target:      parseInt(form.fat_target)       || null,
+      full_name:       form.full_name.trim()            || null,
+      weight_kg:       parseFloat(form.weight_kg)       || null,
+      height_cm:       parseInt(form.height_cm)         || null,
+      birth_date:      form.birth_date                  || null,
+      sex:             form.sex                         || null,
+      activity_factor: parseFloat(form.activity_factor) || null,
+      goal:            form.goal                        || null,
+      calorie_target:  parseInt(form.calorie_target)    || null,
+      prot_target:     parseInt(form.prot_target)       || null,
+      carb_target:     parseInt(form.carb_target)       || null,
+      fat_target:      parseInt(form.fat_target)        || null,
+      condition:       form.condition                   || null,
     }
 
     const { error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' })
     if (!error) {
-      // Enregistrer aussi le poids dans weight_log
       if (payload.weight_kg) {
         await supabase.from('weight_log').upsert(
           { user_id: user.id, date: format(new Date(), 'yyyy-MM-dd'), weight_kg: payload.weight_kg },
@@ -319,17 +363,19 @@ export default function ProfilePage() {
     const totalCalBurned = sessionDays.reduce((s, d) => s + d.calories_burned, 0)
     const avgDeficit = avgCal ? avgCal - calTarget : null
 
-    const firstWeight = weights[0]?.weight_kg ?? null
-    const lastWeight  = weights[weights.length - 1]?.weight_kg ?? null
+    // Poids : du plus ancien au plus récent
+    const sortedWeights = [...weights].sort((a, b) => a.date.localeCompare(b.date))
+    const firstWeight = sortedWeights[0]?.weight_kg ?? null
+    const lastWeight  = sortedWeights[sortedWeights.length - 1]?.weight_kg ?? null
     const weightDiff  = firstWeight && lastWeight ? Math.round((lastWeight - firstWeight) * 10) / 10 : null
 
-    // Graphique poids
-    const weightData = weights.map(w => ({
-      date: format(parseISO(w.date), 'd MMM', { locale: fr }),
+    // Courbe de poids (toutes les mesures triées)
+    const weightData = sortedWeights.map(w => ({
+      date:  format(parseISO(w.date), 'd MMM', { locale: fr }),
       poids: w.weight_kg,
     }))
 
-    // Graphique calories (journal - sport = net)
+    // Calories
     const allDates = new Set([...journalDays.map(d => d.date), ...sessionDays.map(d => d.date)])
     const calData = [...allDates].sort().map(date => {
       const consumed = journalDays.find(d => d.date === date)?.cal ?? 0
@@ -352,6 +398,8 @@ export default function ProfilePage() {
     </div>
   )
 
+  const isFemme = form.sex === 'femme'
+
   return (
     <div className="page">
 
@@ -368,12 +416,12 @@ export default function ProfilePage() {
         </button>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — Bilan en premier */}
       <div className="flex bg-zinc-100 rounded-xl p-1 gap-1">
         {([
+          { key: 'bilan',     label: '📊 Bilan santé' },
           { key: 'profil',    label: '👤 Profil' },
           { key: 'objectifs', label: '🎯 Objectifs' },
-          { key: 'bilan',     label: '📊 Bilan santé' },
         ] as { key: Tab; label: string }[]).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${tab === t.key ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>
@@ -382,188 +430,14 @@ export default function ProfilePage() {
         ))}
       </div>
 
-      {/* ── ONGLET PROFIL ── */}
-      {tab === 'profil' && (
-        <div className="flex flex-col gap-4">
-          <div className="card flex flex-col gap-4">
-            <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
-              <User size={14} />Informations personnelles
-            </h2>
-            <div>
-              <label className="text-xs text-zinc-400 mb-1 block">Prénom et nom</label>
-              <input className="input" placeholder="ex: Marie Dupont" value={form.full_name}
-                onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-zinc-400 mb-1 block">Sexe</label>
-                <div className="flex gap-2">
-                  {['homme', 'femme'].map(s => (
-                    <button key={s} onClick={() => setForm(f => ({ ...f, sex: s }))}
-                      className={`flex-1 py-2 rounded-lg text-xs font-medium border capitalize transition-colors ${form.sex === s ? 'bg-tta-mid text-white border-tta-mid' : 'border-zinc-200 text-zinc-500'}`}>
-                      {s === 'homme' ? '♂ Homme' : '♀ Femme'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-zinc-400 mb-1 block">Date de naissance</label>
-                <input type="date" className="input" value={form.birth_date}
-                  onChange={e => setForm(f => ({ ...f, birth_date: e.target.value }))} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-zinc-400 mb-1 block">Poids (kg)</label>
-                <input type="number" min="30" max="250" step="0.1" className="input" placeholder="ex: 68"
-                  value={form.weight_kg} onChange={e => setForm(f => ({ ...f, weight_kg: e.target.value }))} />
-              </div>
-              <div>
-                <label className="text-xs text-zinc-400 mb-1 block">Taille (cm)</label>
-                <input type="number" min="100" max="250" className="input" placeholder="ex: 168"
-                  value={form.height_cm} onChange={e => setForm(f => ({ ...f, height_cm: e.target.value }))} />
-              </div>
-            </div>
-            <div>
-              <label className="text-xs text-zinc-400 mb-1 block">Niveau d'activité</label>
-              <select className="input" value={form.activity_factor}
-                onChange={e => setForm(f => ({ ...f, activity_factor: e.target.value }))}>
-                {ACTIVITY_LEVELS.map(l => (
-                  <option key={l.value} value={l.value}>{l.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Objectif sport */}
-          <div className="card flex flex-col gap-3">
-            <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
-              <Dumbbell size={14} />Objectif principal
-            </h2>
-            <div className="flex flex-wrap gap-2">
-              {SPORT_GOALS.map(g => (
-                <button key={g.value} onClick={() => setForm(f => ({ ...f, goal: g.value }))}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${form.goal === g.value ? 'bg-tta-mid text-white border-tta-mid' : 'border-zinc-200 text-zinc-600 hover:border-zinc-300'}`}>
-                  {g.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <button onClick={save} disabled={saving}
-            className={`btn-primary justify-center py-3 transition-all ${saved ? 'bg-green-600 hover:bg-green-600' : ''}`}>
-            {saving ? <><Loader2 size={16} className="animate-spin" />Sauvegarde…</>
-              : saved ? <><Check size={16} />Profil sauvegardé !</>
-              : <><Check size={16} />Sauvegarder</>}
-          </button>
-        </div>
-      )}
-
-      {/* ── ONGLET OBJECTIFS ── */}
-      {tab === 'objectifs' && (
-        <div className="flex flex-col gap-4">
-
-          {/* TDEE calculé */}
-          {tdee && (
-            <div className="card bg-tta-light border-tta-mid/20 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-tta-mid font-semibold uppercase tracking-wide">TDEE calculé</p>
-                  <p className="text-3xl font-black text-tta-mid">{tdee} <span className="text-base font-semibold">kcal/jour</span></p>
-                </div>
-                <Activity size={28} className="text-tta-mid/50" />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { label: 'Perte de poids', cal: tdee - 300, color: 'text-blue-600' },
-                  { label: 'Maintien',        cal: tdee,       color: 'text-tta-mid' },
-                  { label: 'Prise de masse',  cal: tdee + 300, color: 'text-orange-600' },
-                ].map(g => (
-                  <button key={g.label} onClick={() => setForm(f => ({ ...f, calorie_target: String(g.cal) }))}
-                    className="bg-white/60 rounded-xl p-2 text-center hover:bg-white transition-colors">
-                    <p className={`text-base font-black ${g.color}`}>{g.cal}</p>
-                    <p className="text-[10px] text-zinc-500 leading-tight">{g.label}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Macros auto */}
-          {autoMacros && (
-            <div className="card flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
-                  <Target size={14} />Macros recommandées
-                </h2>
-                <button onClick={applyAutoMacros} className="btn-ghost text-xs gap-1 text-tta-mid">
-                  <RefreshCw size={11} />Appliquer
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { label: 'Protéines', val: autoMacros.prot, color: 'bg-blue-500' },
-                  { label: 'Glucides',  val: autoMacros.carb, color: 'bg-yellow-400' },
-                  { label: 'Lipides',   val: autoMacros.fat,  color: 'bg-purple-500' },
-                ].map(m => (
-                  <div key={m.label} className="kpi-card items-center text-center p-2">
-                    <p className="text-lg font-black text-zinc-900">{m.val}g</p>
-                    <p className="text-xs text-zinc-400">{m.label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Objectifs manuels */}
-          <div className="card flex flex-col gap-3">
-            <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
-              <Flame size={14} />Objectifs personnalisés
-            </h2>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <label className="text-xs text-zinc-400 mb-1 block">Calories/jour (kcal)</label>
-                <input type="number" min="1000" max="6000" className="input"
-                  placeholder={tdee ? `TDEE : ${tdee}` : 'ex: 2000'}
-                  value={form.calorie_target}
-                  onChange={e => setForm(f => ({ ...f, calorie_target: e.target.value }))} />
-              </div>
-              <div>
-                <label className="text-xs text-zinc-400 mb-1 block">Protéines (g)</label>
-                <input type="number" min="50" max="400" className="input"
-                  placeholder={autoMacros ? `Auto: ${autoMacros.prot}` : 'ex: 120'}
-                  value={form.prot_target}
-                  onChange={e => setForm(f => ({ ...f, prot_target: e.target.value }))} />
-              </div>
-              <div>
-                <label className="text-xs text-zinc-400 mb-1 block">Glucides (g)</label>
-                <input type="number" min="50" max="600" className="input"
-                  placeholder={autoMacros ? `Auto: ${autoMacros.carb}` : 'ex: 225'}
-                  value={form.carb_target}
-                  onChange={e => setForm(f => ({ ...f, carb_target: e.target.value }))} />
-              </div>
-              <div>
-                <label className="text-xs text-zinc-400 mb-1 block">Lipides (g)</label>
-                <input type="number" min="20" max="300" className="input"
-                  placeholder={autoMacros ? `Auto: ${autoMacros.fat}` : 'ex: 65'}
-                  value={form.fat_target}
-                  onChange={e => setForm(f => ({ ...f, fat_target: e.target.value }))} />
-              </div>
-            </div>
-          </div>
-
-          <button onClick={save} disabled={saving}
-            className={`btn-primary justify-center py-3 ${saved ? 'bg-green-600 hover:bg-green-600' : ''}`}>
-            {saving ? <><Loader2 size={16} className="animate-spin" />Sauvegarde…</>
-              : saved ? <><Check size={16} />Objectifs sauvegardés !</>
-              : <><Check size={16} />Sauvegarder</>}
-          </button>
-        </div>
-      )}
-
       {/* ── ONGLET BILAN SANTÉ ── */}
       {tab === 'bilan' && (
         <div className="flex flex-col gap-5">
+
+          {/* Bannière condition si active */}
+          {profile?.condition && profile.condition !== '' && (
+            <ConditionBanner condition={profile.condition} />
+          )}
 
           {/* Sélecteur période */}
           <div className="flex gap-1.5 bg-zinc-100 rounded-xl p-1">
@@ -617,58 +491,51 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              {/* Courbe de poids */}
-              {bilanStats.weightData.length > 1 && (
+              {/* ── Courbe de poids (maintenant en premier, remplace cal vs brûlées) ── */}
+              {bilanStats.weightData.length > 1 ? (
                 <div className="card flex flex-col gap-3">
                   <h3 className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
                     <Scale size={14} />Courbe de poids
+                    <span className="ml-auto text-[10px] text-zinc-400 font-normal">{bilanStats.weightData.length} mesures</span>
                   </h3>
-                  <ResponsiveContainer width="100%" height={180}>
+                  <ResponsiveContainer width="100%" height={200}>
                     <AreaChart data={bilanStats.weightData}>
+                      <defs>
+                        <linearGradient id="weightGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%"  stopColor="#4B47A0" stopOpacity={0.15} />
+                          <stop offset="95%" stopColor="#4B47A0" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
                       <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} />
                       <YAxis tick={{ fontSize: 10 }} tickLine={false} domain={['auto', 'auto']} />
                       <Tooltip formatter={(v: number) => [`${v} kg`, 'Poids']} />
-                      <Area type="monotone" dataKey="poids" stroke="#16a34a" fill="#dcfce7" strokeWidth={2} dot={false} />
+                      <Area type="monotone" dataKey="poids" stroke="#4B47A0" fill="url(#weightGrad)" strokeWidth={2.5} dot={{ r: 3, fill: '#4B47A0' }} />
                       {profile?.weight_kg && (
-                        <ReferenceLine y={profile.weight_kg} stroke="#16a34a" strokeDasharray="4 2" label={{ value: 'Actuel', fontSize: 10 }} />
+                        <ReferenceLine y={profile.weight_kg} stroke="#22c55e" strokeDasharray="4 2"
+                          label={{ value: 'Actuel', fontSize: 9, fill: '#22c55e' }} />
                       )}
                     </AreaChart>
                   </ResponsiveContainer>
-                </div>
-              )}
-
-              {/* Calories consommées vs brûlées */}
-              {bilanStats.calData.length > 1 && (
-                <div className="card flex flex-col gap-3">
-                  <h3 className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
-                    <Flame size={14} />Calories consommées vs brûlées
-                  </h3>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <LineChart data={bilanStats.calData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
-                      <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} />
-                      <YAxis tick={{ fontSize: 10 }} tickLine={false} />
-                      <Tooltip />
-                      <ReferenceLine y={profile?.calorie_target ?? tdee ?? 2000} stroke="#6366f1" strokeDasharray="4 2" label={{ value: 'Objectif', fontSize: 9 }} />
-                      <Line type="monotone" dataKey="consommées" stroke="#f97316" strokeWidth={2} dot={false} name="Consommées" />
-                      <Line type="monotone" dataKey="brûlées"   stroke="#3b82f6" strokeWidth={2} dot={false} name="Brûlées sport" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                  <div className="flex gap-4 justify-center text-xs text-zinc-500">
-                    <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-orange-400 inline-block" />Consommées</span>
-                    <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-blue-400 inline-block" />Brûlées sport</span>
-                    <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-indigo-400 inline-block border-dashed" />Objectif</span>
+                  {/* Mini stats poids */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: 'Min', val: `${Math.min(...bilanStats.weightData.map(d => d.poids))} kg` },
+                      { label: 'Max', val: `${Math.max(...bilanStats.weightData.map(d => d.poids))} kg` },
+                      { label: 'Évolution', val: bilanStats.weightDiff !== null ? `${bilanStats.weightDiff > 0 ? '+' : ''}${bilanStats.weightDiff} kg` : '—' },
+                    ].map(({ label, val }) => (
+                      <div key={label} className="bg-zinc-50 rounded-xl p-2 text-center">
+                        <p className="text-sm font-bold text-zinc-900">{val}</p>
+                        <p className="text-[10px] text-zinc-400">{label}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              )}
-
-
-              {/* Pas assez de données */}
-              {bilanStats.weightData.length <= 1 && bilanStats.calData.length <= 1 && (
-                <div className="card text-center py-8 text-zinc-400">
-                  <p className="text-sm">Pas encore assez de données sur cette période.</p>
-                  <p className="text-xs mt-1">Essaie une période plus longue ou continue à enregistrer.</p>
+              ) : (
+                <div className="card text-center py-6 text-zinc-400 border-dashed">
+                  <Scale size={28} className="mx-auto mb-2 text-zinc-300" />
+                  <p className="text-sm">Pas encore assez de mesures de poids</p>
+                  <p className="text-xs mt-1">Entre ton poids dans le journal chaque jour pour voir la courbe</p>
                 </div>
               )}
 
@@ -689,23 +556,22 @@ export default function ProfilePage() {
                       </div>
                     ))}
                   </div>
-                  {/* Mini graphique sommeil */}
                   <div className="flex items-end gap-1 h-16">
                     {sleepLogs.slice(-14).map((l, i) => {
                       const pct = Math.min(100, Math.round((l.duration_min / 540) * 100))
                       const color = l.duration_min >= 420 ? '#22c55e' : l.duration_min >= 360 ? '#eab308' : '#ef4444'
                       return (
-                        <div key={i} className="flex-1 flex flex-col items-center gap-0.5" title={`${l.date}: ${Math.floor(l.duration_min/60)}h${l.duration_min%60}min`}>
+                        <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
                           <div className="w-full rounded-t-sm transition-all" style={{ height: `${pct}%`, background: color, minHeight: '4px' }} />
                         </div>
                       )
                     })}
                   </div>
-                  <p className="text-[10px] text-zinc-400 text-center">Barre verte = 7h+, jaune = 6-7h, rouge = {'<'}6h</p>
+                  <p className="text-[10px] text-zinc-400 text-center">Vert = 7h+, jaune = 6-7h, rouge = {'<'}6h</p>
                 </div>
               )}
 
-              {/* Rapport IA 7 jours */}
+              {/* Rapport IA */}
               <div className="card flex flex-col gap-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-zinc-700">🤖 Rapport IA — 7 jours</h3>
@@ -717,7 +583,6 @@ export default function ProfilePage() {
                     }
                   </button>
                 </div>
-
                 {aiReport ? (
                   <div className="text-sm text-zinc-700 leading-relaxed whitespace-pre-line bg-tta-light rounded-2xl p-4">
                     {aiReport}
@@ -725,13 +590,241 @@ export default function ProfilePage() {
                 ) : (
                   <div className="text-center py-6 text-zinc-400">
                     <p className="text-3xl mb-2">🤖</p>
-                    <p className="text-sm">Clique sur "Générer" pour obtenir un rapport personnalisé basé sur tes 7 derniers jours.</p>
+                    <p className="text-sm">Clique sur "Générer" pour un rapport personnalisé basé sur tes 7 derniers jours.</p>
                     <p className="text-xs mt-1 text-zinc-300">Nutrition · Sport · Sommeil · Poids</p>
                   </div>
                 )}
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* ── ONGLET PROFIL ── */}
+      {tab === 'profil' && (
+        <div className="flex flex-col gap-4">
+          <div className="card flex flex-col gap-4">
+            <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
+              <User size={14} />Informations personnelles
+            </h2>
+            <div>
+              <label className="text-xs text-zinc-400 mb-1 block">Prénom et nom</label>
+              <input className="input" placeholder="ex: Marie Dupont" value={form.full_name}
+                onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} />
+            </div>
+
+            {/* Sexe — pleine largeur */}
+            <div>
+              <label className="text-xs text-zinc-400 mb-1 block">Sexe</label>
+              <div className="flex gap-2">
+                {['homme', 'femme'].map(s => (
+                  <button key={s} onClick={() => setForm(f => ({
+                    ...f, sex: s,
+                    condition: s === 'homme' ? '' : f.condition,
+                  }))}
+                    className={`flex-1 py-2 rounded-lg text-xs font-medium border capitalize transition-colors ${form.sex === s ? 'bg-tta-mid text-white border-tta-mid' : 'border-zinc-200 text-zinc-500'}`}>
+                    {s === 'homme' ? '♂ Homme' : '♀ Femme'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Condition féminine — apparaît si femme */}
+            {isFemme && (
+              <div>
+                <label className="text-xs text-zinc-400 mb-1 block">Condition particulière</label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: '',            label: '— Aucune' },
+                    { value: 'enceinte',    label: '🤰 Enceinte' },
+                    { value: 'post-partum', label: '👶 Post-partum' },
+                  ].map(c => (
+                    <button key={c.value}
+                      onClick={() => setForm(f => ({ ...f, condition: c.value }))}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                        form.condition === c.value
+                          ? 'bg-pink-500 text-white border-pink-500'
+                          : 'border-zinc-200 text-zinc-600 hover:border-zinc-300'
+                      }`}>
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+                {form.condition !== '' && (
+                  <p className="text-[10px] text-pink-500 mt-1.5">
+                    {form.condition === 'enceinte'
+                      ? '✓ Objectifs adaptés : +300 kcal, protéines augmentées, conseils grossesse'
+                      : '✓ Objectifs adaptés : récupération post-partum, allaitement pris en compte'}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Date de naissance — pleine largeur pour éviter le débordement */}
+            <div>
+              <label className="text-xs text-zinc-400 mb-1 block">Date de naissance</label>
+              <input
+                type="date"
+                className="input w-full"
+                value={form.birth_date}
+                onChange={e => setForm(f => ({ ...f, birth_date: e.target.value }))}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-zinc-400 mb-1 block">Poids (kg)</label>
+                <input type="number" min="30" max="250" step="0.1" className="input" placeholder="ex: 68"
+                  value={form.weight_kg} onChange={e => setForm(f => ({ ...f, weight_kg: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400 mb-1 block">Taille (cm)</label>
+                <input type="number" min="100" max="250" className="input" placeholder="ex: 168"
+                  value={form.height_cm} onChange={e => setForm(f => ({ ...f, height_cm: e.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-zinc-400 mb-1 block">Niveau d'activité</label>
+              <select className="input" value={form.activity_factor}
+                onChange={e => setForm(f => ({ ...f, activity_factor: e.target.value }))}>
+                {ACTIVITY_LEVELS.map(l => (
+                  <option key={l.value} value={l.value}>{l.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Objectif sport */}
+          <div className="card flex flex-col gap-3">
+            <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
+              <Dumbbell size={14} />Objectif principal
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {SPORT_GOALS.map(g => (
+                <button key={g.value} onClick={() => setForm(f => ({ ...f, goal: g.value }))}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${form.goal === g.value ? 'bg-tta-mid text-white border-tta-mid' : 'border-zinc-200 text-zinc-600 hover:border-zinc-300'}`}>
+                  {g.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button onClick={save} disabled={saving}
+            className={`btn-primary justify-center py-3 transition-all ${saved ? 'bg-green-600 hover:bg-green-600' : ''}`}>
+            {saving ? <><Loader2 size={16} className="animate-spin" />Sauvegarde…</>
+              : saved ? <><Check size={16} />Profil sauvegardé !</>
+              : <><Check size={16} />Sauvegarder</>}
+          </button>
+        </div>
+      )}
+
+      {/* ── ONGLET OBJECTIFS ── */}
+      {tab === 'objectifs' && (
+        <div className="flex flex-col gap-4">
+
+          {/* Bannière condition */}
+          {form.condition && form.condition !== '' && (
+            <ConditionBanner condition={form.condition} />
+          )}
+
+          {tdee && (
+            <div className="card bg-tta-light border-tta-mid/20 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-tta-mid font-semibold uppercase tracking-wide">TDEE calculé</p>
+                  <p className="text-3xl font-black text-tta-mid">{tdee} <span className="text-base font-semibold">kcal/jour</span></p>
+                  {form.condition === 'enceinte' && (
+                    <p className="text-[10px] text-pink-500 mt-0.5">+300 kcal grossesse inclus</p>
+                  )}
+                  {form.condition === 'post-partum' && (
+                    <p className="text-[10px] text-purple-500 mt-0.5">+500 kcal post-partum inclus</p>
+                  )}
+                </div>
+                <Activity size={28} className="text-tta-mid/50" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: 'Perte de poids', cal: tdee - 300, color: 'text-blue-600' },
+                  { label: 'Maintien',        cal: tdee,       color: 'text-tta-mid' },
+                  { label: 'Prise de masse',  cal: tdee + 300, color: 'text-orange-600' },
+                ].map(g => (
+                  <button key={g.label} onClick={() => setForm(f => ({ ...f, calorie_target: String(g.cal) }))}
+                    className="bg-white/60 rounded-xl p-2 text-center hover:bg-white transition-colors">
+                    <p className={`text-base font-black ${g.color}`}>{g.cal}</p>
+                    <p className="text-[10px] text-zinc-500 leading-tight">{g.label}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {autoMacros && (
+            <div className="card flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
+                  <Target size={14} />Macros recommandées
+                </h2>
+                <button onClick={applyAutoMacros} className="btn-ghost text-xs gap-1 text-tta-mid">
+                  <RefreshCw size={11} />Appliquer
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: 'Protéines', val: autoMacros.prot, color: 'bg-blue-500' },
+                  { label: 'Glucides',  val: autoMacros.carb, color: 'bg-yellow-400' },
+                  { label: 'Lipides',   val: autoMacros.fat,  color: 'bg-purple-500' },
+                ].map(m => (
+                  <div key={m.label} className="kpi-card items-center text-center p-2">
+                    <p className="text-lg font-black text-zinc-900">{m.val}g</p>
+                    <p className="text-xs text-zinc-400">{m.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="card flex flex-col gap-3">
+            <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
+              <Flame size={14} />Objectifs personnalisés
+            </h2>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="text-xs text-zinc-400 mb-1 block">Calories/jour (kcal)</label>
+                <input type="number" min="1000" max="6000" className="input"
+                  placeholder={tdee ? `TDEE : ${tdee}` : 'ex: 2000'}
+                  value={form.calorie_target}
+                  onChange={e => setForm(f => ({ ...f, calorie_target: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400 mb-1 block">Protéines (g)</label>
+                <input type="number" min="50" max="400" className="input"
+                  placeholder={autoMacros ? `Auto: ${autoMacros.prot}` : 'ex: 120'}
+                  value={form.prot_target}
+                  onChange={e => setForm(f => ({ ...f, prot_target: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400 mb-1 block">Glucides (g)</label>
+                <input type="number" min="50" max="600" className="input"
+                  placeholder={autoMacros ? `Auto: ${autoMacros.carb}` : 'ex: 225'}
+                  value={form.carb_target}
+                  onChange={e => setForm(f => ({ ...f, carb_target: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400 mb-1 block">Lipides (g)</label>
+                <input type="number" min="20" max="300" className="input"
+                  placeholder={autoMacros ? `Auto: ${autoMacros.fat}` : 'ex: 65'}
+                  value={form.fat_target}
+                  onChange={e => setForm(f => ({ ...f, fat_target: e.target.value }))} />
+              </div>
+            </div>
+          </div>
+
+          <button onClick={save} disabled={saving}
+            className={`btn-primary justify-center py-3 ${saved ? 'bg-green-600 hover:bg-green-600' : ''}`}>
+            {saving ? <><Loader2 size={16} className="animate-spin" />Sauvegarde…</>
+              : saved ? <><Check size={16} />Objectifs sauvegardés !</>
+              : <><Check size={16} />Sauvegarder</>}
+          </button>
         </div>
       )}
 
