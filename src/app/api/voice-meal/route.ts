@@ -49,7 +49,7 @@ Exemples d'input → output attendu :
 "un bol de céréales avec du lait" → [{"name":"Céréales corn flakes","quantity":40,...},{"name":"Lait demi-écrémé","quantity":200,...}]`
 
   const msg = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+    model: 'claude-haiku-4-5',
     max_tokens: 1024,
     messages: [{ role: 'user', content: prompt }],
   })
