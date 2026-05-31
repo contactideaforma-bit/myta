@@ -1,18 +1,16 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { format, subDays, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import {
-  Check, Loader2, User, Scale, Ruler, Calendar,
-  Flame, Dumbbell, LogOut, Layers, TrendingDown,
-  TrendingUp, ChevronDown, BarChart3, Activity,
-  Target, RefreshCw,
+  Check, Loader2, User, Scale,
+  Dumbbell, LogOut, Layers, BarChart3,
 } from 'lucide-react'
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid,
+  XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine, AreaChart, Area,
 } from 'recharts'
 
