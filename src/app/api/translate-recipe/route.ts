@@ -1,5 +1,7 @@
-import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
+import Anthropic from '@anthropic-ai/sdk'
+import { requireAuth, checkRateLimit } from '@/lib/auth'
+
 
 const client = new Anthropic()
 
