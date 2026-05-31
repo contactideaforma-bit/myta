@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Play, Pause, RotateCcw, Settings } from 'lucide-react'
+import { Waty } from '@/components/ui/Waty'
 
 type Phase = 'effort' | 'pause' | 'repos' | 'idle'
 
@@ -9,6 +10,77 @@ function formatTime(secs: number) {
   const m = Math.floor(secs / 60).toString().padStart(2, '0')
   const s = (secs % 60).toString().padStart(2, '0')
   return `${m}:${s}`
+}
+
+// ─── Confettis ────────────────────────────────────────────────────────────────
+function Confettis() {
+  const colors = ['#4B47A0', '#22C55E', '#F97316', '#EAB308', '#EC4899', '#06B6D4']
+  const pieces = Array.from({ length: 60 }, (_, i) => ({
+    id: i,
+    color: colors[i % colors.length],
+    left: `${Math.random() * 100}%`,
+    delay: `${Math.random() * 1.5}s`,
+    duration: `${1.5 + Math.random() * 1.5}s`,
+    size: `${6 + Math.random() * 8}px`,
+    rotation: `${Math.random() * 360}deg`,
+  }))
+  return (
+    <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+      {pieces.map(p => (
+        <div key={p.id} style={{
+          position: 'absolute',
+          left: p.left,
+          top: '-20px',
+          width: p.size,
+          height: p.size,
+          backgroundColor: p.color,
+          borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+          transform: `rotate(${p.rotation})`,
+          animation: `confettiFall ${p.duration} ${p.delay} ease-in forwards`,
+        }} />
+      ))}
+      <style>{`
+        @keyframes confettiFall {
+          0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+// ─── Synthèse vocale ──────────────────────────────────────────────────────────
+function speak(text: string, lang = 'fr-FR') {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return
+  window.speechSynthesis.cancel()
+  const utt = new SpeechSynthesisUtterance(text)
+  utt.lang = lang
+  utt.rate = 0.95
+  utt.pitch = 1.1
+  utt.volume = 1
+  window.speechSynthesis.speak(utt)
+}
+
+// Compte à rebours vocal 3,2,1 + message final
+function countdown(finalWord: string, onDone?: () => void) {
+  if (typeof window === 'undefined' || !window.speechSynthesis) { onDone?.(); return }
+  window.speechSynthesis.cancel()
+  const words = ['3', '2', '1', finalWord]
+  let i = 0
+  function sayNext() {
+    if (i >= words.length) { onDone?.(); return }
+    const utt = new SpeechSynthesisUtterance(words[i])
+    utt.lang  = 'fr-FR'
+    utt.rate  = 1.1
+    utt.pitch = words[i] === finalWord ? 1.3 : 1.0
+    utt.volume = 1
+    utt.onend = () => { i++; setTimeout(sayNext, 100) }
+    window.speechSynthesis.speak(utt)
+    i++
+  }
+  // Hack iOS : reprendre si suspendu
+  if (window.speechSynthesis.paused) window.speechSynthesis.resume()
+  sayNext()
 }
 
 export default function TabataPage() {
@@ -25,7 +97,10 @@ export default function TabataPage() {
   const [paused, setPaused]             = useState(false)
   const [finished, setFinished]         = useState(false)
   const [showConfig, setShowConfig]     = useState(true)
+  const [showConfettis, setShowConfettis] = useState(false)
 
+  // Pour éviter les doublons de compte à rebours
+  const countdownActiveRef = useRef(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const stateRef    = useRef({ phase: 'idle' as Phase, timeLeft: 0, serie: 1, tour: 1 })
 
@@ -33,33 +108,77 @@ export default function TabataPage() {
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null }
   }
 
+  // Déclenche le compte à rebours vocal avant un changement de phase
+  function triggerCountdown(finalWord: string, afterCb: () => void) {
+    if (countdownActiveRef.current) return
+    countdownActiveRef.current = true
+    clearTimer()
+    countdown(finalWord, () => {
+      countdownActiveRef.current = false
+      afterCb()
+    })
+  }
+
   function nextPhase() {
     const { phase, serie, tour } = stateRef.current
+
     if (phase === 'effort') {
       if (serie === series && tour === tours) {
-        stateRef.current = { ...stateRef.current, phase: 'idle', timeLeft: 0 }
-        setPhase('idle'); setFinished(true); clearTimer(); return
+        // FIN de l'entraînement
+        clearTimer()
+        triggerCountdown('Entraînement terminé !', () => {
+          stateRef.current = { ...stateRef.current, phase: 'idle', timeLeft: 0 }
+          setPhase('idle')
+          setFinished(true)
+          setShowConfettis(true)
+          setTimeout(() => setShowConfettis(false), 5000)
+        })
+        return
       }
-      stateRef.current = { ...stateRef.current, phase: 'pause', timeLeft: pauseSec }
-      setPhase('pause'); setTimeLeft(pauseSec)
+      // → Pause
+      triggerCountdown('Pause', () => {
+        stateRef.current = { ...stateRef.current, phase: 'pause', timeLeft: pauseSec }
+        setPhase('pause')
+        setTimeLeft(pauseSec)
+        startTimer()
+      })
     } else if (phase === 'pause') {
       if (serie < series) {
         const nextSerie = serie + 1
-        stateRef.current = { ...stateRef.current, phase: 'effort', timeLeft: effortSec, serie: nextSerie }
-        setPhase('effort'); setTimeLeft(effortSec); setCurrentSerie(nextSerie)
-      } else {
-        if (tour < tours) {
+        triggerCountdown('Go !', () => {
+          stateRef.current = { ...stateRef.current, phase: 'effort', timeLeft: effortSec, serie: nextSerie }
+          setPhase('effort')
+          setTimeLeft(effortSec)
+          setCurrentSerie(nextSerie)
+          startTimer()
+        })
+      } else if (tour < tours) {
+        triggerCountdown('Repos', () => {
           stateRef.current = { ...stateRef.current, phase: 'repos', timeLeft: reposSec }
-          setPhase('repos'); setTimeLeft(reposSec)
-        } else {
+          setPhase('repos')
+          setTimeLeft(reposSec)
+          startTimer()
+        })
+      } else {
+        clearTimer()
+        triggerCountdown('Entraînement terminé !', () => {
           stateRef.current = { ...stateRef.current, phase: 'idle', timeLeft: 0 }
-          setPhase('idle'); setFinished(true); clearTimer()
-        }
+          setPhase('idle')
+          setFinished(true)
+          setShowConfettis(true)
+          setTimeout(() => setShowConfettis(false), 5000)
+        })
       }
     } else if (phase === 'repos') {
       const nextTour = tour + 1
-      stateRef.current = { ...stateRef.current, phase: 'effort', timeLeft: effortSec, serie: 1, tour: nextTour }
-      setPhase('effort'); setTimeLeft(effortSec); setCurrentSerie(1); setCurrentTour(nextTour)
+      triggerCountdown('Go !', () => {
+        stateRef.current = { ...stateRef.current, phase: 'effort', timeLeft: effortSec, serie: 1, tour: nextTour }
+        setPhase('effort')
+        setTimeLeft(effortSec)
+        setCurrentSerie(1)
+        setCurrentTour(nextTour)
+        startTimer()
+      })
     }
   }
 
@@ -73,36 +192,56 @@ export default function TabataPage() {
   }
 
   function start() {
-    setFinished(false); setCurrentSerie(1); setCurrentTour(1); setPaused(false); setShowConfig(false)
-    stateRef.current = { phase: 'effort', timeLeft: effortSec, serie: 1, tour: 1 }
-    setPhase('effort'); setTimeLeft(effortSec); startTimer()
+    setFinished(false); setCurrentSerie(1); setCurrentTour(1)
+    setPaused(false); setShowConfig(false); setShowConfettis(false)
+    countdownActiveRef.current = false
+    // Compte à rebours de départ → Go !
+    triggerCountdown('Go !', () => {
+      stateRef.current = { phase: 'effort', timeLeft: effortSec, serie: 1, tour: 1 }
+      setPhase('effort')
+      setTimeLeft(effortSec)
+      startTimer()
+    })
   }
 
   function togglePause() {
-    if (paused) { startTimer(); setPaused(false) }
-    else { clearTimer(); setPaused(true) }
+    if (paused) {
+      startTimer()
+      setPaused(false)
+      speak('Go !')
+    } else {
+      clearTimer()
+      setPaused(true)
+      speak('Pause')
+    }
   }
 
   function reset() {
-    clearTimer(); setPhase('idle'); setTimeLeft(0); setCurrentSerie(1)
-    setCurrentTour(1); setPaused(false); setFinished(false); setShowConfig(true)
+    clearTimer()
+    window.speechSynthesis?.cancel()
+    countdownActiveRef.current = false
+    setPhase('idle'); setTimeLeft(0); setCurrentSerie(1)
+    setCurrentTour(1); setPaused(false); setFinished(false)
+    setShowConfig(true); setShowConfettis(false)
   }
 
-  useEffect(() => () => clearTimer(), [])
+  useEffect(() => () => { clearTimer(); window.speechSynthesis?.cancel() }, [])
 
   const totalSecs = tours * series * (effortSec + pauseSec)
   const totalMin  = Math.floor(totalSecs / 60)
 
   const phaseConfig = {
-    effort: { label: 'EFFORT', bg: 'bg-red-500',   ring: 'border-red-400'   },
-    pause:  { label: 'PAUSE',  bg: 'bg-green-500', ring: 'border-green-400' },
-    repos:  { label: 'REPOS',  bg: 'bg-blue-500',  ring: 'border-blue-400'  },
-    idle:   { label: 'PRÊT',   bg: 'bg-zinc-400',  ring: 'border-zinc-300'  },
+    effort: { label: 'EFFORT 🔥', bg: 'bg-red-500',   ring: 'border-red-400',   text: 'text-red-500' },
+    pause:  { label: 'PAUSE 💚',  bg: 'bg-green-500', ring: 'border-green-400', text: 'text-green-500' },
+    repos:  { label: 'REPOS 💧',  bg: 'bg-blue-500',  ring: 'border-blue-400',  text: 'text-blue-500' },
+    idle:   { label: 'PRÊT ⚡',   bg: 'bg-zinc-400',  ring: 'border-zinc-300',  text: 'text-zinc-400' },
   }
   const pc = phaseConfig[phase]
 
   return (
     <div className="page flex flex-col gap-5">
+
+      {showConfettis && <Confettis />}
 
       <div className="flex items-center justify-between">
         <div>
@@ -146,6 +285,9 @@ export default function TabataPage() {
             <div className="flex justify-between"><span>Total séries</span><span className="font-mono font-medium">{series * tours}</span></div>
             <div className="flex justify-between"><span>Durée estimée</span><span className="font-mono font-medium">{totalMin} min {totalSecs % 60} sec</span></div>
           </div>
+          <div className="bg-tta-light rounded-xl p-3 text-xs text-tta-mid">
+            🔊 Active le son de ton téléphone pour le guidage vocal
+          </div>
           <button onClick={start} className="btn-primary justify-center py-3 text-base">
             <Play size={18} />Démarrer
           </button>
@@ -158,19 +300,26 @@ export default function TabataPage() {
           <div className={`w-full rounded-2xl py-3 text-center text-white font-bold text-lg tracking-widest ${pc.bg}`}>
             {pc.label}
           </div>
+
+          {/* Cercle timer */}
           <div className={`w-56 h-56 rounded-full border-8 ${pc.ring} flex flex-col items-center justify-center gap-1 transition-colors duration-300`}>
-            <span className="text-6xl font-mono font-bold text-zinc-900">{timeLeft}</span>
+            <span className={`text-6xl font-mono font-bold ${pc.text}`}>{timeLeft}</span>
             <span className="text-xs text-zinc-400">secondes</span>
           </div>
+
+          {/* Progression */}
           <div className="w-full flex flex-col gap-2">
             <div className="flex justify-between text-xs text-zinc-500">
               <span>Série {currentSerie} / {series}</span>
               <span>Tour {currentTour} / {tours}</span>
             </div>
             <div className="w-full h-2 bg-zinc-100 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full transition-all duration-1000 ${pc.bg}`} style={{ width: `${(currentSerie / series) * 100}%` }} />
+              <div className={`h-full rounded-full transition-all duration-1000 ${pc.bg}`}
+                style={{ width: `${(currentSerie / series) * 100}%` }} />
             </div>
           </div>
+
+          {/* Contrôles */}
           <div className="flex gap-3">
             <button onClick={togglePause}
               className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium text-sm transition-colors ${paused ? 'bg-tta-mid text-white hover:bg-tta' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'}`}>
@@ -183,17 +332,26 @@ export default function TabataPage() {
         </div>
       )}
 
-      {/* Terminé */}
+      {/* Terminé + Waty */}
       {finished && (
-        <div className="card flex flex-col items-center gap-4 py-8 text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-            <span className="text-3xl">🎉</span>
+        <div className="flex flex-col items-center gap-5 py-4">
+          <div className="text-6xl animate-bounce">🏆</div>
+
+          <Waty
+            mode="sport"
+            message={`Incroyable ! Tu viens de terminer ${series * tours} séries de Tabata — ${totalMin} minutes d'effort intense ! La récupération est aussi importante que l'entraînement. Pense à t'étirer et à bien t'hydrater 💧🎉`}
+            size="lg"
+            dismissible={false}
+            animate={true}
+          />
+
+          <div className="card w-full text-center">
+            <p className="text-sm text-zinc-400 mb-1">Séance complète</p>
+            <p className="text-2xl font-black text-sport">{series * tours} séries</p>
+            <p className="text-sm text-zinc-400 mt-1">{totalMin} min {totalSecs % 60} sec d'effort</p>
           </div>
-          <div>
-            <p className="text-lg font-semibold text-green-600">Séance terminée !</p>
-            <p className="text-sm text-zinc-500 mt-1">{series * tours} séries · {totalMin} min d'effort</p>
-          </div>
-          <button onClick={reset} className="btn-primary justify-center px-8">
+
+          <button onClick={reset} className="btn-sport justify-center px-10 py-3">
             <RotateCcw size={16} />Recommencer
           </button>
         </div>
