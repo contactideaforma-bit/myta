@@ -197,36 +197,40 @@ export default function SleepPage() {
         {/* ── Heures : chaque bloc occupe toute la largeur ── */}
         <div className="flex flex-col gap-3">
 
-          {/* Coucher */}
-          <div className="bg-tta-light rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 bg-tta-mid rounded-xl flex items-center justify-center flex-shrink-0">
-                <Moon size={16} className="text-white" />
-              </div>
-              <label className="text-sm font-bold text-zinc-700">Heure de coucher</label>
-            </div>
-            <input
-              type="time"
-              value={bedtime}
-              onChange={e => setBedtime(e.target.value)}
-              className="w-full bg-white border-2 border-tta-mid/30 rounded-xl px-4 py-3 font-mono text-2xl font-bold text-zinc-900 focus:outline-none focus:border-tta-mid text-center"
-            />
-          </div>
+          {/* Coucher + Réveil côte à côte */}
+          <div className="grid grid-cols-2 gap-3">
 
-          {/* Réveil */}
-          <div className="bg-yellow-50 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 bg-yellow-400 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Sun size={16} className="text-white" />
+            {/* Coucher */}
+            <div className="bg-tta-light rounded-2xl p-3 flex flex-col gap-2">
+              <div className="flex items-center gap-1.5">
+                <div className="w-7 h-7 bg-tta-mid rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Moon size={14} className="text-white" />
+                </div>
+                <label className="text-xs font-bold text-zinc-600">Coucher</label>
               </div>
-              <label className="text-sm font-bold text-zinc-700">Heure de réveil</label>
+              <input
+                type="time"
+                value={bedtime}
+                onChange={e => setBedtime(e.target.value)}
+                className="w-full bg-white border-2 border-tta-mid/30 rounded-xl px-2 py-2.5 font-mono text-lg font-bold text-zinc-900 focus:outline-none focus:border-tta-mid text-center"
+              />
             </div>
-            <input
-              type="time"
-              value={wakeTime}
-              onChange={e => setWakeTime(e.target.value)}
-              className="w-full bg-white border-2 border-yellow-300 rounded-xl px-4 py-3 font-mono text-2xl font-bold text-zinc-900 focus:outline-none focus:border-yellow-400 text-center"
-            />
+
+            {/* Réveil */}
+            <div className="bg-yellow-50 rounded-2xl p-3 flex flex-col gap-2">
+              <div className="flex items-center gap-1.5">
+                <div className="w-7 h-7 bg-yellow-400 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Sun size={14} className="text-white" />
+                </div>
+                <label className="text-xs font-bold text-zinc-600">Réveil</label>
+              </div>
+              <input
+                type="time"
+                value={wakeTime}
+                onChange={e => setWakeTime(e.target.value)}
+                className="w-full bg-white border-2 border-yellow-300 rounded-xl px-2 py-2.5 font-mono text-lg font-bold text-zinc-900 focus:outline-none focus:border-yellow-400 text-center"
+              />
+            </div>
           </div>
         </div>
 

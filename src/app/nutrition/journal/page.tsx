@@ -705,48 +705,81 @@ export default function JournalPage() {
           </div>
         </div>
 
-        {/* Calories 7 jours */}
+        {/* Calories 7 jours — version ergonomique */}
         <div className="card flex flex-col gap-3">
-          <h3 className="text-sm font-semibold flex items-center gap-1.5"><BarChart3 size={14} />Calories — 7 derniers jours</h3>
-          <div className="flex items-end gap-1.5 h-24 mt-2">
+          <h3 className="text-sm font-semibold flex items-center gap-1.5">
+            <BarChart3 size={14} />7 derniers jours
+          </h3>
+
+          {/* Barres par jour avec label jour + valeur */}
+          <div className="flex items-end gap-1 h-28">
             {Array.from({ length: 7 }, (_, i) => {
-              const d = addDays(todayISO(), -(6 - i))
+              const d   = addDays(todayISO(), -(6 - i))
               const val = weekCal[d] ?? 0
               const max = Math.max(...Object.values(weekCal), g.cal, 1)
-              const pct = Math.max(4, Math.round((val / max) * 100))
+              const pct = val > 0 ? Math.max(8, Math.round((val / max) * 100)) : 4
               const isT = d === currentDate
+              const atGoal = val >= g.cal
+              const dayLabel = format(new Date(d + 'T12:00'), 'EEE', { locale: fr }).slice(0, 2)
               return (
-                <div key={d} className="flex-1 flex flex-col items-center gap-0.5" title={`${format(new Date(d + 'T12:00'), 'd MMM', { locale: fr })} : ${val} kcal`}>
-                  <span className="text-[9px] text-zinc-400">{val > 0 ? val : ''}</span>
-                  <div
-                    className={`w-full rounded-t-sm transition-all ${val >= g.cal ? 'bg-orange-400' : 'bg-nutri'} ${isT ? 'opacity-100 ring-1 ring-offset-1 ring-nutri' : 'opacity-60'}`}
-                    style={{ height: `${pct}%` }}
-                  />
-                  <span className={`text-[9px] ${isT ? 'font-bold text-zinc-700' : 'text-zinc-400'}`}>
-                    {format(new Date(d + 'T12:00'), 'd', { locale: fr })}
+                <div key={d} className="flex-1 flex flex-col items-center gap-0.5">
+                  {/* Valeur au dessus */}
+                  {val > 0 && (
+                    <span className={`text-[9px] font-bold leading-none mb-0.5 ${isT ? 'text-zinc-700' : 'text-zinc-400'}`}>
+                      {val >= 1000 ? `${(val/1000).toFixed(1)}k` : val}
+                    </span>
+                  )}
+                  {/* Barre */}
+                  <div className="w-full flex-1 flex items-end">
+                    <div
+                      className={`w-full rounded-t-lg transition-all duration-500 ${
+                        val === 0 ? 'bg-zinc-100' :
+                        atGoal ? 'bg-orange-400' : 'bg-nutri/70'
+                      } ${isT ? 'ring-2 ring-tta-mid ring-offset-1' : ''}`}
+                      style={{ height: val === 0 ? '4px' : `${pct}%` }}
+                    />
+                  </div>
+                  {/* Jour */}
+                  <span className={`text-[10px] font-semibold mt-0.5 capitalize ${isT ? 'text-tta-mid font-extrabold' : 'text-zinc-400'}`}>
+                    {dayLabel}
                   </span>
                 </div>
               )
             })}
           </div>
-          {/* Quick stats */}
-          <div className="grid grid-cols-3 gap-2 mt-1">
-            {(() => {
-              const vals = Object.values(weekCal).filter(v => v > 0)
-              const avg = vals.length ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) : 0
-              const max = vals.length ? Math.max(...vals) : 0
-              return [
-                { label: 'Moy. kcal', val: avg || '—' },
-                { label: 'Max kcal',  val: max || '—' },
-                { label: 'Jours',     val: vals.length },
-              ].map(({ label, val }) => (
-                <div key={label} className="bg-zinc-50 rounded-lg p-2 text-center">
-                  <div className="text-sm font-bold text-zinc-900">{val}</div>
-                  <div className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</div>
-                </div>
-              ))
-            })()}
+
+          {/* Légende */}
+          <div className="flex items-center justify-center gap-4 text-[10px] text-zinc-400">
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-nutri/70 inline-block" />En dessous objectif</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-orange-400 inline-block" />Objectif atteint</span>
           </div>
+
+          {/* Stats résumé */}
+          {(() => {
+            const vals = Object.values(weekCal).filter(v => v > 0)
+            const avg  = vals.length ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) : 0
+            const daysLogged = vals.length
+            const daysAtGoal = vals.filter(v => v >= g.cal).length
+            if (!vals.length) return (
+              <p className="text-xs text-zinc-400 text-center py-2">Aucune donnée cette semaine — commence à noter tes repas !</p>
+            )
+            return (
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-zinc-100">
+                <div className="text-center">
+                  <p className="text-base font-extrabold text-zinc-900">{avg}</p>
+                  <p className="text-[10px] text-zinc-400">Moy. kcal/j</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-base font-extrabold text-zinc-900">{daysLogged}/7</p>
+                  <p className="text-[10px] text-zinc-400">Jours notés</p>
+                </div>
+                <div className="text-center">
+                  <p className={`text-base font-extrabold ${daysAtGoal >= 4 ? 'text-nutri-mid' : 'text-zinc-900'}`}>{daysAtGoal}/7</p>
+                  <p className="text-[10px] text-zinc-400">Objectif atteint</p>
+                </div>
+              </div>
+            )
+          })()}
         </div>
       </div>
     </div>

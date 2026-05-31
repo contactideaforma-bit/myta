@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { ArrowRight, ChevronRight } from 'lucide-react'
+import { ArrowRight, ChevronRight, Scale, Loader2 } from 'lucide-react'
 import { cn, todayISO, minutesToHuman } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { Waty } from '@/components/ui/Waty'
@@ -22,6 +22,7 @@ interface Stats {
   weekSessions: number
   weekMinutes: number
   lastSession: Session | null
+  lastWeight: { date: string; weight_kg: number } | null
 }
 
 function getWatyBilanMessage(calConsumed: number, calBurned: number, calTarget: number, period: Period): string {
@@ -40,9 +41,12 @@ function getWatyBilanMessage(calConsumed: number, calBurned: number, calTarget: 
 }
 
 export default function DashboardPage() {
-  const [stats, setStats]     = useState<Stats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [period, setPeriod]   = useState<Period>('semaine')
+  const [stats, setStats]       = useState<Stats | null>(null)
+  const [loading, setLoading]   = useState(true)
+  const [period, setPeriod]     = useState<Period>('semaine')
+  const [weightInput, setWeightInput] = useState('')
+  const [savingWeight, setSavingWeight] = useState(false)
+  const [weightSaved, setWeightSaved] = useState(false)
   const router   = useRouter()
   const supabase = createClient()
 
@@ -67,12 +71,14 @@ export default function DashboardPage() {
       { data: journalPeriod },
       { data: sessions },
       { data: lastSess },
+      { data: weightData },
     ] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
       supabase.from('journal_entries').select('cal').eq('user_id', user.id).eq('date', today),
       supabase.from('journal_entries').select('cal,prot').eq('user_id', user.id).gte('date', dateFrom).lte('date', dateTo),
       supabase.from('sessions').select('*').eq('user_id', user.id).gte('session_date', dateFrom).lte('session_date', dateTo),
       supabase.from('sessions').select('*, discipline:disciplines(*)').eq('user_id', user.id).order('session_date', { ascending: false }).limit(1),
+      supabase.from('weight_log').select('*').eq('user_id', user.id).order('date', { ascending: false }).limit(5),
     ])
 
     const calToday    = (journalToday ?? []).reduce((s, e) => s + Number(e.cal), 0)
@@ -91,8 +97,30 @@ export default function DashboardPage() {
       weekSessions: sessList.length,
       weekMinutes:  sessList.reduce((s, e) => s + Number(e.duration_min ?? 0), 0),
       lastSession:  lastSess?.[0] ?? null,
+      lastWeight:   weightData?.[0] ?? null,
     })
     setLoading(false)
+  }
+
+  async function logWeight() {
+    const val = parseFloat(weightInput)
+    if (!val || val < 20 || val > 300) return
+    setSavingWeight(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      await supabase.from('weight_log').upsert(
+        { user_id: user.id, date: todayISO(), weight_kg: val },
+        { onConflict: 'date,user_id' }
+      )
+      await supabase.from('profiles').upsert(
+        { id: user.id, weight_kg: val },
+        { onConflict: 'id' }
+      )
+      setWeightSaved(true)
+      setTimeout(() => setWeightSaved(false), 2000)
+      await loadData()
+    }
+    setSavingWeight(false)
   }
 
   if (loading) return (
@@ -276,6 +304,32 @@ export default function DashboardPage() {
           Nouvelle séance <ArrowRight size={14} />
         </div>
       </button>
+
+
+      {/* ── Poids du jour ── */}
+      <div className="card flex flex-col gap-3">
+        <h2 className="font-extrabold text-zinc-900 flex items-center gap-2">
+          <Scale size={16} className="text-tta-mid" />Poids du jour
+        </h2>
+        <div className="flex gap-2">
+          <input
+            type="number" step="0.1" min="30" max="300"
+            value={weightInput}
+            onChange={e => setWeightInput(e.target.value)}
+            placeholder={s.lastWeight ? `Dernier : ${s.lastWeight.weight_kg} kg` : 'ex: 72.5'}
+            className="input flex-1"
+          />
+          <button onClick={logWeight} disabled={savingWeight}
+            className={`px-4 py-2 rounded-2xl text-sm font-bold text-white transition-all whitespace-nowrap ${weightSaved ? 'bg-green-500' : 'bg-tta-mid hover:bg-tta'}`}>
+            {savingWeight ? <Loader2 size={14} className="animate-spin" /> : weightSaved ? '✓ Enregistré' : 'Enregistrer'}
+          </button>
+        </div>
+        {s.lastWeight && (
+          <p className="text-xs text-zinc-400">
+            Dernier pesage : <span className="font-bold text-zinc-700">{s.lastWeight.weight_kg} kg</span> — {s.lastWeight.date}
+          </p>
+        )}
+      </div>
 
       {/* ── Dernière séance ── */}
       {s.lastSession && (
