@@ -289,41 +289,6 @@ export default function DashboardPage() {
         </h1>
       </div>
 
-      {/* ── Poids du jour + courbe ── */}
-      <div className="card flex flex-col gap-4">
-        <h2 className="font-extrabold text-zinc-900 flex items-center gap-2">
-          <Scale size={16} className="text-tta-mid" />Poids
-          {lastWeight && (
-            <span className="ml-auto text-sm font-bold text-tta-mid">{lastWeight.weight_kg} kg</span>
-          )}
-        </h2>
-
-        {/* Saisie */}
-        <div className="flex gap-2">
-          <input
-            type="number" step="0.1" min="30" max="300"
-            value={weightInput}
-            onChange={e => setWeightInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && logWeight()}
-            placeholder={lastWeight ? `Dernier : ${lastWeight.weight_kg} kg` : 'ex: 72.5 kg'}
-            className="input flex-1"
-          />
-          <button onClick={logWeight} disabled={savingWeight}
-            className={`px-4 py-2 rounded-2xl text-sm font-bold text-white transition-all whitespace-nowrap ${weightSaved ? 'bg-green-500' : 'bg-tta-mid hover:bg-tta'}`}>
-            {savingWeight ? <Loader2 size={14} className="animate-spin" /> : weightSaved ? '✓ Enregistré' : 'Enregistrer'}
-          </button>
-        </div>
-
-        {/* Courbe */}
-        {s.weights.length >= 2 ? (
-          <WeightChart weights={s.weights} targetWeight={targetWeight} />
-        ) : (
-          <p className="text-xs text-zinc-400 text-center py-2">
-            Pèse-toi régulièrement pour voir ta courbe de progression 📈
-          </p>
-        )}
-      </div>
-
       {/* ── Objectifs semaine/mois ── */}
       <div className="card flex flex-col gap-4">
         <div className="flex items-center justify-between">
@@ -396,6 +361,41 @@ export default function DashboardPage() {
 
         {/* Waty bilan */}
         <Waty mode="nutrition" message={bilanMsg} size="sm" dismissible={true} />
+      </div>
+
+      {/* ── Poids du jour + courbe ── */}
+      <div className="card flex flex-col gap-4">
+        <h2 className="font-extrabold text-zinc-900 flex items-center gap-2">
+          <Scale size={16} className="text-tta-mid" />Poids
+          {lastWeight && (
+            <span className="ml-auto text-sm font-bold text-tta-mid">{lastWeight.weight_kg} kg</span>
+          )}
+        </h2>
+
+        {/* Saisie */}
+        <div className="flex gap-2">
+          <input
+            type="number" step="0.1" min="30" max="300"
+            value={weightInput}
+            onChange={e => setWeightInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && logWeight()}
+            placeholder={lastWeight ? `Dernier : ${lastWeight.weight_kg} kg` : 'ex: 72.5 kg'}
+            className="input flex-1"
+          />
+          <button onClick={logWeight} disabled={savingWeight}
+            className={`px-4 py-2 rounded-2xl text-sm font-bold text-white transition-all whitespace-nowrap ${weightSaved ? 'bg-green-500' : 'bg-tta-mid hover:bg-tta'}`}>
+            {savingWeight ? <Loader2 size={14} className="animate-spin" /> : weightSaved ? '✓ Enregistré' : 'Enregistrer'}
+          </button>
+        </div>
+
+        {/* Courbe */}
+        {s.weights.length >= 2 ? (
+          <WeightChart weights={s.weights} targetWeight={targetWeight} />
+        ) : (
+          <p className="text-xs text-zinc-400 text-center py-2">
+            Pèse-toi régulièrement pour voir ta courbe de progression 📈
+          </p>
+        )}
       </div>
 
       {/* ── Nutrition aujourd'hui ── */}

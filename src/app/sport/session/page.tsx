@@ -3,6 +3,9 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { todayISO } from '@/lib/utils'
+import { format } from 'date-fns'
+import { fr } from 'date-fns/locale'
 import {
   Loader2, X, Check, AlertTriangle,
   Mic, ChevronDown, ChevronUp, PenLine, Send,
@@ -152,8 +155,23 @@ export default function SessionPage() {
 
   const [inputMode, setInputMode] = useState<InputMode>('none')
   const [shuffledTips]            = useState(() => [...SPORT_TIPS].sort(() => Math.random() - 0.5))
+  const [saved, setSaved]         = useState(false)
+  const [todaySessions, setTodaySessions] = useState<any[]>([])
 
-  const [saved, setSaved] = useState(false)
+  useEffect(() => {
+    async function loadToday() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from('sessions')
+        .select('*, discipline:disciplines(name)')
+        .eq('user_id', user.id)
+        .eq('session_date', todayISO())
+        .order('created_at', { ascending: false })
+      setTodaySessions(data ?? [])
+    }
+    loadToday()
+  }, [saved])
 
   async function handleVoiceConfirm(voiceSession: any) {
     const { data: { user } } = await supabase.auth.getUser()
@@ -227,6 +245,30 @@ export default function SessionPage() {
         <h1 className="text-xl font-extrabold text-zinc-900">Nouvelle séance</h1>
         <p className="text-sm text-zinc-400 mt-0.5">Décris ta séance à voix haute ou par écrit</p>
       </div>
+
+      {/* ── Séances du jour ── */}
+      {todaySessions.length > 0 && (
+        <div className="card flex flex-col gap-2">
+          <p className="text-xs font-bold text-zinc-400 uppercase tracking-wide">
+            ✅ Séances aujourd'hui
+          </p>
+          {todaySessions.map((s: any) => (
+            <div key={s.id} className="flex items-center gap-3 bg-sport-light rounded-2xl px-3 py-2.5">
+              <div className="w-8 h-8 bg-sport/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <span className="text-sm">🏋️</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-sport-dark truncate">
+                  {(s.discipline as any)?.name ?? 'Séance'}
+                </p>
+                <p className="text-xs text-zinc-400">
+                  {s.duration_min} min · {s.calories_burned ?? 0} kcal
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <Waty mode="sport" message={WATY_MESSAGES.sport_start} size="sm" />
 

@@ -753,81 +753,71 @@ export default function JournalPage() {
           </div>
         </div>
 
-        {/* Calories 7 jours — version ergonomique */}
+        {/* Calories 7 jours — curseurs de progression */}
         <div className="card flex flex-col gap-3">
           <h3 className="text-sm font-semibold flex items-center gap-1.5">
-            <BarChart3 size={14} />7 derniers jours
+            <BarChart3 size={14} />Calories — 7 derniers jours
           </h3>
-
-          {/* Barres par jour avec label jour + valeur */}
-          <div className="flex items-end gap-1 h-28">
+          <div className="flex flex-col gap-2.5">
             {Array.from({ length: 7 }, (_, i) => {
-              const d   = addDays(todayISO(), -(6 - i))
-              const val = weekCal[d] ?? 0
-              const max = Math.max(...Object.values(weekCal), g.cal, 1)
-              const pct = val > 0 ? Math.max(8, Math.round((val / max) * 100)) : 4
-              const isT = d === currentDate
-              const atGoal = val >= g.cal
-              const dayLabel = format(new Date(d + 'T12:00'), 'EEE', { locale: fr }).slice(0, 2)
+              const d        = addDays(todayISO(), -(6 - i))
+              const val      = weekCal[d] ?? 0
+              const target   = g.cal || 2000
+              const pct      = Math.round((val / target) * 100)
+              const isT      = d === currentDate
+              const over     = val > target
+              const dayLabel = format(new Date(d + 'T12:00'), 'EEE d', { locale: fr })
+              // Couleur selon progression
+              const barColor = val === 0 ? '#e5e7eb'
+                : over        ? '#f97316'   // orange = dépasse
+                : pct >= 80   ? '#22c55e'   // vert = proche objectif
+                : pct >= 50   ? '#84cc16'   // vert clair = en cours
+                :               '#d1d5db'   // gris = peu mangé
               return (
-                <div key={d} className="flex-1 flex flex-col items-center gap-0.5">
-                  {/* Valeur au dessus */}
-                  {val > 0 && (
-                    <span className={`text-[9px] font-bold leading-none mb-0.5 ${isT ? 'text-zinc-700' : 'text-zinc-400'}`}>
-                      {val >= 1000 ? `${(val/1000).toFixed(1)}k` : val}
+                <div key={d} className={`flex flex-col gap-1 ${isT ? 'opacity-100' : 'opacity-80'}`}>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className={`font-semibold capitalize ${isT ? 'text-zinc-900' : 'text-zinc-500'}`}>
+                      {dayLabel}{isT ? ' · Aujourd'hui' : ''}
                     </span>
-                  )}
-                  {/* Barre */}
-                  <div className="w-full flex-1 flex items-end">
-                    <div
-                      className={`w-full rounded-t-lg transition-all duration-500 ${
-                        val === 0 ? 'bg-zinc-100' :
-                        atGoal ? 'bg-orange-400' : 'bg-nutri/70'
-                      } ${isT ? 'ring-2 ring-tta-mid ring-offset-1' : ''}`}
-                      style={{ height: val === 0 ? '4px' : `${pct}%` }}
-                    />
+                    <span className={`font-bold ${
+                      val === 0 ? 'text-zinc-300'
+                      : over    ? 'text-orange-500'
+                      : pct >= 80 ? 'text-green-500'
+                      : 'text-zinc-500'
+                    }`}>
+                      {val === 0 ? '—' : `${val} kcal`}
+                      {val > 0 && <span className="text-zinc-400 font-normal"> / {target}</span>}
+                    </span>
                   </div>
-                  {/* Jour */}
-                  <span className={`text-[10px] font-semibold mt-0.5 capitalize ${isT ? 'text-tta-mid font-extrabold' : 'text-zinc-400'}`}>
-                    {dayLabel}
-                  </span>
+                  {/* Barre de progression */}
+                  <div className="relative h-4 bg-zinc-100 rounded-full overflow-visible">
+                    {/* Barre remplie */}
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
+                      style={{
+                        width: val === 0 ? '0%' : over ? '100%' : `${pct}%`,
+                        backgroundColor: barColor,
+                      }}
+                    />
+                    {/* Indicateur dépassement */}
+                    {over && (
+                      <div className="absolute right-0 inset-y-0 flex items-center pr-2">
+                        <span className="text-[9px] font-extrabold text-orange-600">+{pct - 100}%</span>
+                      </div>
+                    )}
+                    {/* Marqueur objectif */}
+                    <div className="absolute inset-y-0 right-0 w-0.5 bg-zinc-300/60" />
+                  </div>
                 </div>
               )
             })}
           </div>
-
           {/* Légende */}
-          <div className="flex items-center justify-center gap-4 text-[10px] text-zinc-400">
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-nutri/70 inline-block" />En dessous objectif</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-orange-400 inline-block" />Objectif atteint</span>
+          <div className="flex items-center gap-3 flex-wrap text-[10px] text-zinc-400 pt-1 border-t border-zinc-50">
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block"/>Objectif atteint</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-400 inline-block"/>Dépassé</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-zinc-200 inline-block"/>Non noté</span>
           </div>
-
-          {/* Stats résumé */}
-          {(() => {
-            const vals = Object.values(weekCal).filter(v => v > 0)
-            const avg  = vals.length ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) : 0
-            const daysLogged = vals.length
-            const daysAtGoal = vals.filter(v => v >= g.cal).length
-            if (!vals.length) return (
-              <p className="text-xs text-zinc-400 text-center py-2">Aucune donnée cette semaine — commence à noter tes repas !</p>
-            )
-            return (
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-zinc-100">
-                <div className="text-center">
-                  <p className="text-base font-extrabold text-zinc-900">{avg}</p>
-                  <p className="text-[10px] text-zinc-400">Moy. kcal/j</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-base font-extrabold text-zinc-900">{daysLogged}/7</p>
-                  <p className="text-[10px] text-zinc-400">Jours notés</p>
-                </div>
-                <div className="text-center">
-                  <p className={`text-base font-extrabold ${daysAtGoal >= 4 ? 'text-nutri-mid' : 'text-zinc-900'}`}>{daysAtGoal}/7</p>
-                  <p className="text-[10px] text-zinc-400">Objectif atteint</p>
-                </div>
-              </div>
-            )
-          })()}
         </div>
       </div>
     </div>

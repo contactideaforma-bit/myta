@@ -4,7 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   Layers, LayoutDashboard,
-  BookOpen, Calculator, ChefHat, Lightbulb,
+  BookOpen, ChefHat, Lightbulb,
   Dumbbell, Timer, History, User,
   LogOut, AlertTriangle, Menu, X,
   ChevronRight, Sun, Moon, MessageSquareWarning, Send, CheckCircle,
@@ -16,7 +16,6 @@ import type { Module } from '@/types'
 
 const NAV_NUTRI = [
   { href: '/nutrition/journal',    label: 'Journal',     icon: BookOpen,   desc: 'Suivi alimentaire du jour',  color: 'text-green-600',  bg: 'bg-green-50'  },
-  { href: '/nutrition/calculator', label: 'Calculateur', icon: Calculator, desc: 'IMC, TDEE & macros',         color: 'text-orange-500', bg: 'bg-orange-50' },
   { href: '/nutrition/recipes',    label: 'Recettes',    icon: ChefHat,    desc: 'Recettes IA en français',    color: 'text-green-500',  bg: 'bg-green-50'  },
   { href: '/nutrition/advice',     label: 'Conseils',    icon: Lightbulb,  desc: 'Nutrition & bien-être',      color: 'text-yellow-500', bg: 'bg-yellow-50' },
 ]
@@ -73,6 +72,7 @@ export function Navbar() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showModal, setShowModal]     = useState(false)
   const [pendingHref, setPendingHref] = useState<string | null>(null)
+  const [sidebarModule, setSidebarModule] = useState<Module>('nutrition')
 
   // ── Modal signalement ──
   const [showReport, setShowReport]       = useState(false)
@@ -108,14 +108,17 @@ export function Navbar() {
   }
 
   useEffect(() => { setSidebarOpen(false) }, [pathname])
+  useEffect(() => { if (sidebarOpen) setSidebarModule(activeModule) }, [sidebarOpen])
   useEffect(() => {
     document.body.style.overflow = sidebarOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [sidebarOpen])
 
-  const activeModule: Module = pathname.startsWith('/nutrition') ? 'nutrition' : 'sport'
+  const activeModule: Module = pathname.startsWith('/sport') ? 'sport' : 'nutrition'
   const navItems = activeModule === 'nutrition' ? NAV_NUTRI : NAV_SPORT
   const isNutri  = activeModule === 'nutrition'
+  const sidebarNavItems = sidebarModule === 'nutrition' ? NAV_NUTRI : NAV_SPORT
+  const sidebarIsNutri  = sidebarModule === 'nutrition'
 
   function handleNavClick(href: string) {
     if (pathname === '/sport/session' && href !== '/sport/session') {
@@ -297,18 +300,18 @@ export function Navbar() {
         <div className="px-4 py-3 border-b border-zinc-100">
           <div className="flex bg-zinc-100 rounded-2xl p-1 gap-1">
             <button
-              onClick={() => { router.push('/nutrition/journal'); setSidebarOpen(false) }}
+              onClick={() => setSidebarModule('nutrition')}
               className={cn(
                 'flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5',
-                isNutri ? 'bg-gradient-to-r from-nutri to-nutri-mid text-white shadow-sm' : 'text-zinc-400'
+                sidebarIsNutri ? 'bg-gradient-to-r from-nutri to-nutri-mid text-white shadow-sm' : 'text-zinc-400'
               )}>
               🥗 Nutrition
             </button>
             <button
-              onClick={() => { router.push('/sport/session'); setSidebarOpen(false) }}
+              onClick={() => setSidebarModule('sport')}
               className={cn(
                 'flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5',
-                !isNutri ? 'bg-gradient-to-r from-tta-mid to-sport text-white shadow-sm' : 'text-zinc-400'
+                !sidebarIsNutri ? 'bg-gradient-to-r from-tta-mid to-sport text-white shadow-sm' : 'text-zinc-400'
               )}>
               🏋️ Sport
             </button>
@@ -340,32 +343,32 @@ export function Navbar() {
           {/* Label module */}
           <div className="px-3 pt-3 pb-1">
             <p className={cn('text-[10px] font-extrabold uppercase tracking-widest',
-              isNutri ? 'text-nutri-mid' : 'text-sport')}>
-              {isNutri ? '🥗 Nutrition' : '🏋️ Sport'}
+              sidebarIsNutri ? 'text-nutri-mid' : 'text-sport')}>
+              {sidebarIsNutri ? '🥗 Nutrition' : '🏋️ Sport'}
             </p>
           </div>
 
           {/* Items module */}
-          {navItems.map(({ href, label, icon: Icon, desc, color, bg }) => {
+          {sidebarNavItems.map(({ href, label, icon: Icon, desc, color, bg }) => {
             const active = pathname === href
             return (
               <button key={href} onClick={() => handleNavClick(href)}
                 className={cn(
                   'w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-all',
                   active
-                    ? isNutri ? 'bg-nutri-light' : 'bg-sport-light'
+                    ? sidebarIsNutri ? 'bg-nutri-light' : 'bg-sport-light'
                     : 'hover:bg-zinc-50 text-zinc-600'
                 )}>
                 <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0', active ? bg : 'bg-zinc-100')}>
                   <Icon size={16} className={active ? color : 'text-zinc-400'} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={cn('text-sm font-bold', active ? (isNutri ? 'text-nutri-dark' : 'text-sport-dark') : 'text-zinc-700')}>
+                  <p className={cn('text-sm font-bold', active ? (sidebarIsNutri ? 'text-nutri-dark' : 'text-sport-dark') : 'text-zinc-700')}>
                     {label}
                   </p>
                   <p className="text-[10px] text-zinc-400 truncate">{desc}</p>
                 </div>
-                {active && <ChevronRight size={14} className={isNutri ? 'text-nutri-mid' : 'text-sport'} />}
+                {active && <ChevronRight size={14} className={sidebarIsNutri ? 'text-nutri-mid' : 'text-sport'} />}
               </button>
             )
           })}
