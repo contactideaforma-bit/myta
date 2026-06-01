@@ -767,17 +767,16 @@ export default function JournalPage() {
               const isT      = d === currentDate
               const over     = val > target
               const dayLabel = format(new Date(d + 'T12:00'), 'EEE d', { locale: fr })
-              // Couleur selon progression
               const barColor = val === 0 ? '#e5e7eb'
-                : over        ? '#f97316'   // orange = dépasse
-                : pct >= 80   ? '#22c55e'   // vert = proche objectif
-                : pct >= 50   ? '#84cc16'   // vert clair = en cours
-                :               '#d1d5db'   // gris = peu mangé
+                : over        ? '#f97316'
+                : pct >= 80   ? '#22c55e'
+                : pct >= 50   ? '#84cc16'
+                :               '#d1d5db'
               return (
                 <div key={d} className={`flex flex-col gap-1 ${isT ? 'opacity-100' : 'opacity-80'}`}>
                   <div className="flex items-center justify-between text-[11px]">
                     <span className={`font-semibold capitalize ${isT ? 'text-zinc-900' : 'text-zinc-500'}`}>
-                      {dayLabel}{isT ? ' · Aujourd'hui' : ''}
+                      {dayLabel}{isT ? " · Aujourd'hui" : ''}
                     </span>
                     <span className={`font-bold ${
                       val === 0 ? 'text-zinc-300'
@@ -789,37 +788,27 @@ export default function JournalPage() {
                       {val > 0 && <span className="text-zinc-400 font-normal"> / {target}</span>}
                     </span>
                   </div>
-                  {/* Barre de progression */}
-                  <div className="relative h-4 bg-zinc-100 rounded-full overflow-visible">
-                    {/* Barre remplie */}
+                  <div className="relative h-4 bg-zinc-100 rounded-full overflow-hidden">
                     <div
                       className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
-                      style={{
-                        width: val === 0 ? '0%' : over ? '100%' : `${pct}%`,
-                        backgroundColor: barColor,
-                      }}
+                      style={{ width: val === 0 ? '0%' : over ? '100%' : `${pct}%`, backgroundColor: barColor }}
                     />
-                    {/* Indicateur dépassement */}
                     {over && (
                       <div className="absolute right-0 inset-y-0 flex items-center pr-2">
                         <span className="text-[9px] font-extrabold text-orange-600">+{pct - 100}%</span>
                       </div>
                     )}
-                    {/* Marqueur objectif */}
-                    <div className="absolute inset-y-0 right-0 w-0.5 bg-zinc-300/60" />
                   </div>
                 </div>
               )
             })}
           </div>
-          {/* Légende */}
           <div className="flex items-center gap-3 flex-wrap text-[10px] text-zinc-400 pt-1 border-t border-zinc-50">
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block"/>Objectif atteint</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-400 inline-block"/>Dépassé</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-zinc-200 inline-block"/>Non noté</span>
           </div>
         </div>
-      </div>
     </div>
   )
 }
