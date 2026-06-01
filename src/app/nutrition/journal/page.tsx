@@ -809,6 +809,7 @@ export default function JournalPage() {
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-zinc-200 inline-block"/>Non noté</span>
           </div>
         </div>
+      </div>
     </div>
   )
 }
