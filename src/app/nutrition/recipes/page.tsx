@@ -52,9 +52,11 @@ const DIFF_COLOR: Record<string, string> = {
   'Avancé': 'bg-red-100 text-red-700',
 }
 
-async function fetchPexelsPhoto(keyword: string): Promise<string | null> {
+async function fetchPexelsPhoto(keyword: string, token?: string): Promise<string | null> {
   try {
-    const res = await fetch(`/api/photos?keyword=${encodeURIComponent(keyword)}`)
+    const headers: Record<string, string> = {}
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    const res = await fetch(`/api/photos?keyword=${encodeURIComponent(keyword)}`, { headers })
     const data = await res.json()
     return data.url ?? null
   } catch { return null }
@@ -164,8 +166,10 @@ export default function RecipesPage() {
       const generated: Recipe[] = (data.recipes ?? []).map((r: Recipe) => ({ ...r, category: key }))
       setRecipes(generated)
       setLoading(false)
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
       const withPhotos = await Promise.all(
-        generated.map(async r => ({ ...r, photoUrl: (await fetchPexelsPhoto(r.photo_keyword)) ?? undefined }))
+        generated.map(async r => ({ ...r, photoUrl: (await fetchPexelsPhoto(r.photo_keyword, token)) ?? undefined }))
       )
       setRecipes(withPhotos)
     } catch { setLoading(false) }
@@ -189,8 +193,10 @@ export default function RecipesPage() {
       }))
       setRecipes(generated)
       setLoading(false)
+      const { data: { session: sess2 } } = await supabase.auth.getSession()
+      const token2 = sess2?.access_token
       const withPhotos = await Promise.all(
-        generated.map(async r => ({ ...r, photoUrl: (await fetchPexelsPhoto(r.photo_keyword)) ?? undefined }))
+        generated.map(async r => ({ ...r, photoUrl: (await fetchPexelsPhoto(r.photo_keyword, token2)) ?? undefined }))
       )
       setRecipes(withPhotos)
     } catch { setLoading(false) }
