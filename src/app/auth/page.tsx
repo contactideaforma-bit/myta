@@ -36,7 +36,7 @@ export default function AuthPage() {
         email, password,
         options: {
           data: { full_name: name },
-          emailRedirectTo: `${window.location.origin}/onboarding`,
+          emailRedirectTo: `${window.location.origin}/auth/confirm`,
         },
       })
       if (error) { setMessage(error.message) }
