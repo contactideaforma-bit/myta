@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, Loader2, Zap, Crown, Star, Shield, Smartphone } from 'lucide-react'
+import { Check, Loader2, Zap, Crown, Star, Shield, Smartphone, Tag, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const FEATURES = [
@@ -23,8 +23,12 @@ const TESTIMONIALS = [
 ]
 
 export default function PricingPage() {
-  const [billing, setBilling]   = useState<'monthly' | 'yearly'>('yearly')
-  const [loading, setLoading]   = useState<string | null>(null)
+  const [billing,    setBilling]    = useState<'monthly' | 'yearly'>('yearly')
+  const [loading,    setLoading]    = useState<string | null>(null)
+  const [promoCode,  setPromoCode]  = useState('')
+  const [promoError, setPromoError] = useState('')
+  const [showPromo,  setShowPromo]  = useState(false)
+
   const router   = useRouter()
   const supabase = createClient()
 
@@ -32,6 +36,7 @@ export default function PricingPage() {
 
   async function handleSubscribe(plan: 'monthly' | 'yearly') {
     setLoading(plan)
+    setPromoError('')
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { router.push('/auth'); setLoading(null); return }
@@ -42,9 +47,16 @@ export default function PricingPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, promoCode: promoCode.trim() || undefined }),
       })
       const data = await res.json()
+
+      if (res.status === 400 && data.error === 'Code promo invalide') {
+        setPromoError('Ce code promo est invalide ou expiré.')
+        setLoading(null)
+        return
+      }
+
       if (data.url) window.location.href = data.url
       else { alert('Erreur : ' + (data.error ?? 'Impossible de créer la session')); setLoading(null) }
     } catch (err) { console.error(err); setLoading(null) }
@@ -152,6 +164,52 @@ export default function PricingPage() {
                 </li>
               ))}
             </ul>
+
+            {/* Code promo */}
+            <div className="flex flex-col gap-1.5">
+              {!showPromo ? (
+                <button
+                  type="button"
+                  onClick={() => setShowPromo(true)}
+                  className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-[#4B47A0] transition-colors w-fit"
+                >
+                  <Tag size={12} />
+                  J'ai un code promo
+                </button>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Tag size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                      <input
+                        type="text"
+                        placeholder="Code promo"
+                        value={promoCode}
+                        onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoError('') }}
+                        className="w-full pl-9 pr-4 py-2.5 border-2 border-zinc-200 rounded-xl text-sm font-mono uppercase tracking-widest focus:outline-none focus:border-[#4B47A0] focus:ring-2 focus:ring-[#4B47A0]/15 transition-all bg-white"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setShowPromo(false); setPromoCode(''); setPromoError('') }}
+                      className="p-2 text-zinc-400 hover:text-zinc-600 transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                  {promoError && (
+                    <p className="text-xs text-red-500 flex items-center gap-1.5">
+                      <span>⚠️</span> {promoError}
+                    </p>
+                  )}
+                  {promoCode && !promoError && (
+                    <p className="text-xs text-[#4B47A0] flex items-center gap-1.5">
+                      <span>✅</span> Code appliqué au moment du paiement
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
 
             {/* CTA */}
             <button
