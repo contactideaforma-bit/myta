@@ -4,12 +4,12 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { format, subDays, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { Moon, Sun, Clock, ChevronLeft, ChevronRight, Check, Loader2, Trash2, Star } from 'lucide-react'
+import { Moon, Sun, ChevronLeft, ChevronRight, Check, Loader2, Trash2, Star, ArrowDown } from 'lucide-react'
 import { Waty } from '@/components/ui/Waty'
 
 interface SleepLog {
   id: string
-  date: string
+  date: string        // date du RÉVEIL — convention : "nuit lundi→mardi" stockée sous "mardi"
   bedtime: string
   wake_time: string
   duration_min: number
@@ -38,6 +38,14 @@ function addDaysStr(str: string, n: number): string {
   return d.toISOString().slice(0, 10)
 }
 
+/** "Nuit du lundi 14 au mardi 15 janvier" — wakeDate est la date du réveil */
+function nightLabel(wakeDate: string): string {
+  const bedDate = addDaysStr(wakeDate, -1)
+  const bedStr  = format(parseISO(bedDate),  'EEEE d', { locale: fr })
+  const wakeStr = format(parseISO(wakeDate), 'EEEE d MMMM', { locale: fr })
+  return `du ${bedStr} au ${wakeStr}`
+}
+
 export default function SleepPage() {
   const supabase = createClient()
   const [logs, setLogs]       = useState<SleepLog[]>([])
@@ -45,6 +53,7 @@ export default function SleepPage() {
   const [saving, setSaving]   = useState(false)
   const [toast, setToast]     = useState('')
 
+  // selectedDate = date du réveil (ex: "mardi 15" = nuit de lundi à mardi)
   const [selectedDate, setSelectedDate] = useState(todayStr())
   const [bedtime, setBedtime]           = useState('23:00')
   const [wakeTime, setWakeTime]         = useState('07:00')
@@ -116,12 +125,16 @@ export default function SleepPage() {
     return wakeMins > bedMins ? wakeMins - bedMins : (24 * 60 - bedMins) + wakeMins
   })()
 
-  const last7 = logs.filter(l => l.date >= format(subDays(new Date(), 7), 'yyyy-MM-dd'))
+  const last7    = logs.filter(l => l.date >= format(subDays(new Date(), 7), 'yyyy-MM-dd'))
   const avgSleep = last7.length
     ? Math.round(last7.reduce((s, l) => s + l.duration_min, 0) / last7.length)
     : null
 
   const existingForDate = logs.find(l => l.date === selectedDate)
+
+  // Date du coucher = veille de la date de réveil sélectionnée
+  const bedDate = addDaysStr(selectedDate, -1)
+
   const watyMsg = avgSleep
     ? avgSleep >= 420
       ? `Super ! Tu dors en moyenne ${formatDuration(avgSleep)} par nuit cette semaine. Continue comme ça 😴✨`
@@ -166,75 +179,104 @@ export default function SleepPage() {
         </div>
       )}
 
-      {/* Formulaire */}
-      <div className="card flex flex-col gap-4">
+      {/* ── Formulaire ─────────────────────────────────────────────────────── */}
+      <div className="card flex flex-col gap-5">
         <h2 className="font-extrabold text-zinc-900">
           {existingForDate ? '✏️ Modifier la nuit' : '➕ Ajouter une nuit'}
         </h2>
 
-        {/* Date */}
-        <div>
-          <label className="text-xs text-zinc-400 mb-1.5 block font-semibold">Date</label>
+        {/* ── Sélection de la nuit ─────────────────────────────────────────── */}
+        <div className="flex flex-col gap-2">
+          <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">
+            Quelle nuit ?
+          </label>
+
+          {/* Navigateur date */}
           <div className="flex items-center gap-2">
-            <button onClick={() => setSelectedDate(d => addDaysStr(d, -1))}
-              className="w-9 h-9 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-500 hover:bg-zinc-200">
+            <button
+              onClick={() => setSelectedDate(d => addDaysStr(d, -1))}
+              className="w-9 h-9 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-500 hover:bg-zinc-200 flex-shrink-0"
+            >
               <ChevronLeft size={16} />
             </button>
-            <input type="date" value={selectedDate} max={todayStr()}
+            <input
+              type="date"
+              value={selectedDate}
+              max={todayStr()}
               onChange={e => setSelectedDate(e.target.value)}
-              className="input flex-1 text-center font-semibold" />
-            <button onClick={() => setSelectedDate(d => addDaysStr(d, 1))}
+              className="input flex-1 text-center font-semibold text-sm"
+            />
+            <button
+              onClick={() => setSelectedDate(d => addDaysStr(d, 1))}
               disabled={selectedDate >= todayStr()}
-              className="w-9 h-9 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-500 hover:bg-zinc-200 disabled:opacity-30">
+              className="w-9 h-9 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-500 hover:bg-zinc-200 disabled:opacity-30 flex-shrink-0"
+            >
               <ChevronRight size={16} />
             </button>
           </div>
-          <p className="text-xs text-zinc-400 text-center mt-1 capitalize">
-            {format(parseISO(selectedDate), 'EEEE d MMMM', { locale: fr })}
-          </p>
-        </div>
 
-        {/* ── Heures : chaque bloc occupe toute la largeur ── */}
-        <div className="flex flex-col gap-3">
-
-          {/* Coucher + Réveil côte à côte */}
-          <div className="grid grid-cols-2 gap-3">
-
-            {/* Coucher */}
-            <div className="bg-tta-light rounded-2xl p-3 flex flex-col gap-2">
-              <div className="flex items-center gap-1.5">
-                <div className="w-7 h-7 bg-tta-mid rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Moon size={14} className="text-white" />
-                </div>
-                <label className="text-xs font-bold text-zinc-600">Coucher</label>
-              </div>
-              <input
-                type="time"
-                value={bedtime}
-                onChange={e => setBedtime(e.target.value)}
-                className="w-full bg-white border-2 border-tta-mid/30 rounded-xl px-2 py-2.5 font-mono text-lg font-bold text-zinc-900 focus:outline-none focus:border-tta-mid text-center"
-              />
-            </div>
-
-            {/* Réveil */}
-            <div className="bg-yellow-50 rounded-2xl p-3 flex flex-col gap-2">
-              <div className="flex items-center gap-1.5">
-                <div className="w-7 h-7 bg-yellow-400 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Sun size={14} className="text-white" />
-                </div>
-                <label className="text-xs font-bold text-zinc-600">Réveil</label>
-              </div>
-              <input
-                type="time"
-                value={wakeTime}
-                onChange={e => setWakeTime(e.target.value)}
-                className="w-full bg-white border-2 border-yellow-300 rounded-xl px-2 py-2.5 font-mono text-lg font-bold text-zinc-900 focus:outline-none focus:border-yellow-400 text-center"
-              />
-            </div>
+          {/* Étiquette claire de la nuit sélectionnée */}
+          <div className="flex items-center justify-center gap-2 bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-2.5">
+            <Moon size={13} className="text-tta-mid flex-shrink-0" />
+            <p className="text-sm font-bold text-zinc-700 text-center capitalize">
+              Nuit {nightLabel(selectedDate)}
+            </p>
           </div>
         </div>
 
-        {/* Preview durée */}
+        {/* ── Heures — layout vertical, aucun risque de débordement ────────── */}
+        <div className="flex flex-col gap-2">
+
+          {/* Coucher */}
+          <div className="flex items-center gap-4 bg-[#f0f0ff] rounded-2xl px-4 py-3.5">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #4B47A0, #2BA8B0)' }}
+            >
+              <Moon size={18} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wide">Coucher</p>
+              <p className="text-xs text-zinc-500 capitalize mt-0.5">
+                {format(parseISO(bedDate), 'EEEE d MMMM', { locale: fr })}
+              </p>
+            </div>
+            <input
+              type="time"
+              value={bedtime}
+              onChange={e => setBedtime(e.target.value)}
+              className="w-28 flex-shrink-0 bg-white border-2 border-[#4B47A0]/25 rounded-xl px-2 py-2.5 font-mono text-xl font-bold text-zinc-900 text-center focus:outline-none focus:border-[#4B47A0]"
+            />
+          </div>
+
+          {/* Flèche liaison */}
+          <div className="flex items-center gap-3 px-6">
+            <div className="flex-1 h-px bg-zinc-200" />
+            <ArrowDown size={14} className="text-zinc-300" />
+            <div className="flex-1 h-px bg-zinc-200" />
+          </div>
+
+          {/* Réveil */}
+          <div className="flex items-center gap-4 bg-yellow-50 rounded-2xl px-4 py-3.5">
+            <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Sun size={18} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wide">Réveil</p>
+              <p className="text-xs text-zinc-500 capitalize mt-0.5">
+                {format(parseISO(selectedDate), 'EEEE d MMMM', { locale: fr })}
+              </p>
+            </div>
+            <input
+              type="time"
+              value={wakeTime}
+              onChange={e => setWakeTime(e.target.value)}
+              className="w-28 flex-shrink-0 bg-white border-2 border-yellow-300 rounded-xl px-2 py-2.5 font-mono text-xl font-bold text-zinc-900 text-center focus:outline-none focus:border-yellow-400"
+            />
+          </div>
+        </div>
+
+        {/* ── Preview durée ───────────────────────────────────────────────── */}
         {previewMin !== null && (
           <div className={`rounded-2xl p-3 text-center bg-zinc-50 ${sleepQuality(previewMin).color}`}>
             <p className="text-2xl font-extrabold">{formatDuration(previewMin)}</p>
@@ -252,9 +294,13 @@ export default function SleepPage() {
         {/* Notes */}
         <div>
           <label className="text-xs text-zinc-400 mb-1 block">Notes (optionnel)</label>
-          <input type="text" value={notes} onChange={e => setNotes(e.target.value)}
-            placeholder="ex: nuit agitée, réveil à 3h..."
-            className="input" />
+          <input
+            type="text"
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            placeholder="ex : nuit agitée, réveil à 3h…"
+            className="input"
+          />
         </div>
 
         <button onClick={save} disabled={saving} className="btn-primary justify-center py-3">
@@ -265,19 +311,23 @@ export default function SleepPage() {
         </button>
       </div>
 
-      {/* Historique */}
+      {/* ── Historique ───────────────────────────────────────────────────── */}
       {logs.length > 0 && (
         <div className="flex flex-col gap-3">
           <h2 className="font-extrabold text-zinc-900">📅 Historique (30 jours)</h2>
           {logs.map(log => {
-            const q = sleepQuality(log.duration_min)
+            const q          = sleepQuality(log.duration_min)
+            const logBedDate = addDaysStr(log.date, -1)
             return (
               <div key={log.id} className="card flex items-center gap-3">
                 <div className="w-10 h-10 bg-tta-light rounded-2xl flex items-center justify-center flex-shrink-0">
                   <Moon size={18} className="text-tta-mid" />
                 </div>
                 <div className="flex-1 min-w-0">
+                  {/* "lun. → mar. 15 jan." */}
                   <p className="font-bold text-sm text-zinc-900 capitalize">
+                    {format(parseISO(logBedDate), 'EEE', { locale: fr })}
+                    {' → '}
                     {format(parseISO(log.date), 'EEE d MMM', { locale: fr })}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
