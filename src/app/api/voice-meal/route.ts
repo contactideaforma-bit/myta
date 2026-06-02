@@ -44,10 +44,14 @@ Règles importantes :
 - Sois précis sur les valeurs nutritionnelles — utilise les valeurs CIQUAL françaises
 - Si plusieurs aliments sont mentionnés, liste-les séparément
 - Exemples de portions standards : café = 200ml, jus = 150ml, fruit moyen = 150g, yaourt = 125g, fromage = 30g
+- TRÈS IMPORTANT : utilise TOUJOURS le mode de préparation réel dans le nom (ex: "œuf au plat", "œuf brouillé", "œuf poché", "poulet grillé", "saumon vapeur"). Ne jamais écrire "cru" si l'aliment est cuisiné ou préparé.
+- Adapte les valeurs nutritionnelles au mode de cuisson (ex: œuf au plat ≠ œuf cru, poulet grillé ≠ poulet cru)
 
 Exemples d'input → output attendu :
-"j'ai mangé deux œufs brouillés avec du pain grillé" → [{"name":"Œuf entier cru","quantity":120,...},{"name":"Pain de mie grillé","quantity":60,...}]
-"un bol de céréales avec du lait" → [{"name":"Céréales corn flakes","quantity":40,...},{"name":"Lait demi-écrémé","quantity":200,...}]`
+"j'ai mangé deux œufs au plat" → [{"name":"Œuf au plat","quantity":120,...}]
+"j'ai mangé deux œufs brouillés avec du pain grillé" → [{"name":"Œuf brouillé","quantity":120,...},{"name":"Pain de mie grillé","quantity":60,...}]
+"un bol de céréales avec du lait" → [{"name":"Céréales corn flakes","quantity":40,...},{"name":"Lait demi-écrémé","quantity":200,...}]
+"poulet grillé avec des haricots verts" → [{"name":"Poulet grillé","quantity":150,...},{"name":"Haricots verts cuits","quantity":150,...}]`
 
   const msg = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
