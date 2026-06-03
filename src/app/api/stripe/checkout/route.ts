@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       customer_email: user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: {
-        trial_period_days: 3,
+        trial_period_days: referredBy ? 30 : 3, // 1 mois offert si parrainé
         metadata: { supabase_user_id: user.id, referred_by: referredBy ?? '' },
       },
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
