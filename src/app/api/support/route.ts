@@ -8,27 +8,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Message vide' }, { status: 400 })
     }
 
-    await fetch('https://api.resend.com/emails', {
+    const resendRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
         'Content-Type':  'application/json',
       },
       body: JSON.stringify({
-        from:    'MYTA Signalement <contact@mytwinapp.fr>',
+        from:    'Waty de MYTA <contact@mytwinapp.fr>',
         to:      ['contact@mytwinapp.fr'],
         subject: `[Signalement] ${category ?? 'Inconnu'}`,
         html: `
-          <h2>Nouveau signalement</h2>
+          <h2 style="color:#18181b">Nouveau signalement</h2>
           <p><strong>Catégorie :</strong> ${category ?? '—'}</p>
           <p><strong>Email utilisateur :</strong> ${email ?? '—'}</p>
           <p><strong>Message :</strong></p>
-          <blockquote style="border-left:4px solid #e5e7eb;padding-left:12px;color:#374151">
-            ${message.trim().replace(/\n/g, '<br>')}
+          <blockquote style="border-left:4px solid #e5e7eb;padding-left:12px;color:#374151;margin:0">
+            ${(message ?? '').trim().replace(/\n/g, '<br>')}
           </blockquote>
         `,
       }),
     })
+
+    const resendData = await resendRes.json()
+
+    if (!resendRes.ok) {
+      console.error('[support] Resend error:', resendData)
+      return NextResponse.json({ error: 'Email non envoyé', detail: resendData }, { status: 500 })
+    }
 
     return NextResponse.json({ ok: true })
   } catch (err: any) {
