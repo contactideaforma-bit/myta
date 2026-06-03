@@ -265,6 +265,18 @@ export default function ProfilePage() {
   useEffect(() => { if (tab === 'bilan') loadBilan() }, [tab, period])
   useEffect(() => { loadBilan() }, [])
 
+  // Charger rapport IA du jour depuis localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('myta_rapport_ia')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        const today = new Date().toISOString().split('T')[0]
+        if (parsed.date === today && parsed.text) setAiReport(parsed.text)
+      }
+    } catch {}
+  }, [])
+
   useEffect(() => {
     if (!profile) return
     if (profile.birth_date) setCalcAge(String(new Date().getFullYear() - new Date(profile.birth_date).getFullYear()))
@@ -426,6 +438,13 @@ export default function ProfilePage() {
           full += decoder.decode(value, { stream: true })
           setAiReport(full)
         }
+      }
+      // Sauvegarder dans localStorage jusqu'au lendemain
+      if (full) {
+        try {
+          const today = new Date().toISOString().split('T')[0]
+          localStorage.setItem('myta_rapport_ia', JSON.stringify({ date: today, text: full }))
+        } catch {}
       }
     } catch (err) { console.error(err) }
     setLoadingReport(false)
@@ -662,7 +681,7 @@ export default function ProfilePage() {
               {/* Rapport IA */}
               <div className="card flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-zinc-700">🤖 Rapport IA — 7 jours</h3>
+                  <h3 className="text-sm font-semibold text-zinc-700">Rapport IA — 7 jours</h3>
                   <button onClick={generateAIReport} disabled={loadingReport}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-tta-mid text-white text-xs font-bold hover:bg-tta transition-all disabled:opacity-60">
                     {loadingReport ? <><Loader2 size={12} className="animate-spin" />Analyse…</> : '✨ Générer'}
