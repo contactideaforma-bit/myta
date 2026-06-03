@@ -55,11 +55,10 @@ const SPORT_GOALS = [
 ]
 
 const PERIODS = [
-  { key: '1m',  label: '1 mois', days: 30 },
-  { key: '3m',  label: '3 mois', days: 90 },
-  { key: '6m',  label: '6 mois', days: 180 },
-  { key: '1an', label: '1 an',   days: 365 },
-  { key: 'all', label: 'Tout',   days: 9999 },
+  { key: '7j', label: '7 j',    days: 7 },
+  { key: '1m', label: '1 mois', days: 30 },
+  { key: '3m', label: '3 mois', days: 90 },
+  { key: '6m', label: '6 mois', days: 180 },
 ]
 
 const MACRO_GOALS = [
@@ -223,7 +222,7 @@ export default function ProfilePage() {
   const [saved, setSaved]     = useState(false)
   const [email, setEmail]     = useState('')
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [period, setPeriod]   = useState('3m')
+  const [period, setPeriod]   = useState('7j')
 
   // ── États bilan ─────────────────────────────────────────────────────────────
   const [weights, setWeights]         = useState<WeightLog[]>([])
@@ -497,7 +496,7 @@ export default function ProfilePage() {
   })()
 
   const bilanStats = (() => {
-    if (!weights.length && !journalDays.length) return null
+    if (!weights.length && !journalDays.length && !sleepLogs.length) return null
     const calTarget = profile?.calorie_target ?? tdee ?? 2000
     const avgCal = journalDays.length ? Math.round(journalDays.reduce((s, d) => s + d.cal, 0) / journalDays.length) : 0
     const totalCalBurned = sessionDays.reduce((s, d) => s + d.calories_burned, 0)
@@ -507,7 +506,9 @@ export default function ProfilePage() {
     const lastWeight  = sortedW[sortedW.length - 1]?.weight_kg ?? null
     const weightDiff  = firstWeight && lastWeight ? Math.round((lastWeight - firstWeight) * 10) / 10 : null
     const weightData  = sortedW.map(w => ({ date: format(parseISO(w.date), 'd MMM', { locale: fr }), poids: w.weight_kg }))
-    return { avgCal, totalCalBurned, avgDeficit, weightDiff, firstWeight, lastWeight, weightData }
+    const avgSleepMin   = sleepLogs.length ? Math.round(sleepLogs.reduce((s, l) => s + l.duration_min, 0) / sleepLogs.length) : 0
+    const sleepDebtMin  = avgSleepMin > 0 && avgSleepMin < 420 ? 420 - avgSleepMin : 0
+    return { avgCal, totalCalBurned, avgDeficit, weightDiff, firstWeight, lastWeight, weightData, avgSleepMin, sleepDebtMin }
   })()
 
   if (loading) return (
@@ -602,10 +603,21 @@ export default function ProfilePage() {
                     color={bilanStats.weightDiff < 0 ? 'text-nutri-dark' : 'text-orange-500'}
                     sub={`${bilanStats.firstWeight} → ${bilanStats.lastWeight} kg`} />
                 )}
+                {bilanStats.avgSleepMin > 0 && (
+                  <KpiCard
+                    label="Sommeil moy."
+                    icon="🌙"
+                    value={`${Math.floor(bilanStats.avgSleepMin / 60)}h${bilanStats.avgSleepMin % 60 > 0 ? (bilanStats.avgSleepMin % 60) + 'm' : ''}`}
+                    color={bilanStats.avgSleepMin >= 420 ? 'text-nutri-dark' : bilanStats.avgSleepMin >= 360 ? 'text-yellow-500' : 'text-red-500'}
+                    sub={bilanStats.sleepDebtMin > 0
+                      ? `Dette : -${Math.floor(bilanStats.sleepDebtMin / 60)}h${bilanStats.sleepDebtMin % 60 > 0 ? (bilanStats.sleepDebtMin % 60) + 'm' : ''}/nuit`
+                      : '✨ Sommeil optimal'}
+                  />
+                )}
               </div>
 
               {/* Courbe poids */}
-              {bilanStats.weightData.length > 1 ? (
+              {bilanStats.weightData.length >= 1 ? (
                 <div className="card flex flex-col gap-3">
                   <h3 className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
                     <Scale size={14} />Courbe de poids
@@ -646,8 +658,8 @@ export default function ProfilePage() {
               ) : (
                 <div className="card text-center py-6 text-zinc-400">
                   <Scale size={28} className="mx-auto mb-2 text-zinc-300" />
-                  <p className="text-sm">Pas encore assez de mesures de poids</p>
-                  <p className="text-xs mt-1">Entre ton poids dans le journal chaque jour</p>
+                  <p className="text-sm">Aucune mesure de poids enregistrée</p>
+                  <p className="text-xs mt-1">Enregistre ton poids dans Profil pour démarrer le suivi</p>
                 </div>
               )}
 
@@ -852,31 +864,14 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Objectifs caloriques */}
-          {tdee && (
-            <div className="card bg-tta-light border-tta-mid/20 flex flex-col gap-3">
-              <p className="text-xs text-tta-mid font-semibold uppercase tracking-wide">TDEE calculé : {tdee} kcal/jour</p>
-              {form.condition === 'enceinte'           && <p className="text-[10px] text-pink-500">+300 kcal grossesse inclus</p>}
-              {form.condition === 'post-partum'        && <p className="text-[10px] text-purple-500">+500 kcal post-partum inclus</p>}
-              {form.condition === 'post-partum-allait' && <p className="text-[10px] text-rose-500">+600 kcal allaitement inclus</p>}
-              <div className="grid grid-cols-1 gap-2">
-                {[
-                  { label: 'Perte de poids', cal: tdee - 300, color: 'text-blue-600', bg: 'bg-blue-50' },
-                  { label: 'Maintien',        cal: tdee,       color: 'text-tta-mid',  bg: 'bg-white/60' },
-                  { label: 'Prise de masse',  cal: tdee + 300, color: 'text-orange-600', bg: 'bg-orange-50' },
-                ].map(g => (
-                  <button key={g.label} onClick={() => setForm(f => ({ ...f, calorie_target: String(g.cal) }))}
-                    className={`${g.bg} rounded-xl p-2.5 text-center hover:opacity-80 transition-all`}>
-                    <p className={`text-base font-black ${g.color}`}>{g.cal} kcal</p>
-                    <p className="text-[10px] text-zinc-500">{g.label}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           <div className="card flex flex-col gap-3">
             <h2 className="text-sm font-semibold text-zinc-700">🎯 Objectifs nutritionnels</h2>
+            {form.goal && (
+              <div className="flex items-center gap-2 bg-zinc-50 rounded-xl px-3 py-2.5">
+                <span className="text-sm">{SPORT_GOALS.find(g => g.value === form.goal)?.label ?? form.goal}</span>
+                <span className="text-[10px] text-zinc-400 ml-auto">Objectif actuel</span>
+              </div>
+            )}
 
             {/* Suggestions automatiques selon profil + conditions */}
             {tdee && (() => {
@@ -925,6 +920,10 @@ export default function ProfilePage() {
                 </div>
               )
             })()}
+
+            <p className="text-[11px] text-zinc-400 leading-relaxed bg-zinc-50 rounded-xl px-3 py-2.5">
+              💡 Ton objectif est calculé automatiquement selon ton profil. Tu peux modifier manuellement ci-dessous.
+            </p>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">

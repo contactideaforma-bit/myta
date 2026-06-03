@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
-  Layers, LayoutDashboard,
+  LayoutDashboard,
   BookOpen, ChefHat, Lightbulb,
   Dumbbell, Timer, History, User,
   LogOut, AlertTriangle, Menu, X,
@@ -252,11 +252,8 @@ export function Navbar() {
 
           {/* Logo centré */}
           <button onClick={() => router.push('/dashboard')}
-            className="flex items-center gap-2 absolute left-1/2 -translate-x-1/2">
-            <div className="w-8 h-8 bg-white/25 rounded-xl flex items-center justify-center">
-              <Layers size={16} className="text-white" />
-            </div>
-            <span className="font-extrabold text-base tracking-tight text-white">MYTA</span>
+            className="absolute left-1/2 -translate-x-1/2 bg-white/90 rounded-2xl px-3 py-1 shadow-sm">
+            <img src="/logo_my_twin_app.png" alt="MYTA" className="h-7 object-contain" />
           </button>
 
           {/* Switch module — pills colorées */}
@@ -300,13 +297,9 @@ export function Navbar() {
             ? 'bg-gradient-to-r from-nutri to-nutri-mid'
             : 'bg-gradient-to-r from-tta-mid to-sport'
         )}>
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-white/25 rounded-xl flex items-center justify-center">
-              <Layers size={18} className="text-white" />
-            </div>
-            <div>
-              <p className="font-extrabold text-white">MYTA</p>
-              <p className="text-[10px] text-white/70">My Twin App</p>
+          <div className="flex items-center">
+            <div className="bg-white/90 rounded-2xl px-3 py-1 shadow-sm">
+              <img src="/logo_my_twin_app.png" alt="MYTA" className="h-8 object-contain" />
             </div>
           </div>
           <button onClick={() => setSidebarOpen(false)}
