@@ -20,9 +20,10 @@ export async function POST(req: NextRequest) {
         'Content-Type':  'application/json',
       },
       body: JSON.stringify({
-        from:    'Waty de MYTA <contact@mytwinapp.fr>',
-        to:      ['contact@mytwinapp.fr'],
-        subject: `[Signalement] ${category ?? 'Inconnu'}`,
+        from:     'MYTA Signalement <onboarding@resend.dev>',
+        to:       ['contact@mytwinapp.fr'],
+        reply_to: email ?? 'contact@mytwinapp.fr',
+        subject:  `[Signalement] ${category ?? 'Inconnu'}`,
         html: `
           <h2 style="color:#18181b">Nouveau signalement</h2>
           <p><strong>Catégorie :</strong> ${category ?? '—'}</p>
