@@ -129,6 +129,13 @@ export default function AuthPage() {
           </form>
         </div>
 
+        {/* Lien démo */}
+        <button
+          onClick={() => window.location.href = '/demo'}
+          className="w-full py-3 rounded-2xl border-2 border-dashed border-zinc-200 text-zinc-500 text-sm font-semibold hover:border-[#4B47A0] hover:text-[#4B47A0] transition-all flex items-center justify-center gap-2">
+          👀 Voir la démo sans s'inscrire
+        </button>
+
         <div className="flex flex-col items-center gap-2">
           <p className="text-center text-zinc-400 text-xs">🔒 Données sécurisées · synchronisées avec Supabase</p>
           <div className="flex gap-3">
