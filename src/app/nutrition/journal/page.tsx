@@ -350,10 +350,8 @@ export default function JournalPage() {
     setSavingWeight(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setSavingWeight(false); return }
-    await supabase.from('weight_log').upsert(
-      { user_id: user.id, date: currentDate, weight_kg: val },
-      { onConflict: 'date,user_id' }
-    )
+    await supabase.from('weight_log').delete().eq('user_id', user.id).eq('date', currentDate)
+    await supabase.from('weight_log').insert({ user_id: user.id, date: currentDate, weight_kg: val })
     const { data } = await supabase.from('weight_log')
       .select('*').eq('user_id', user.id).order('date', { ascending: false }).limit(14)
     setWeights(data ?? [])

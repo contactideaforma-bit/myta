@@ -360,10 +360,9 @@ export default function ProfilePage() {
     const { error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' })
     if (!error) {
       if (payload.weight_kg) {
-        await supabase.from('weight_log').upsert(
-          { user_id: user.id, date: format(new Date(), 'yyyy-MM-dd'), weight_kg: payload.weight_kg },
-          { onConflict: 'date,user_id' }
-        )
+        const todayFmt = format(new Date(), 'yyyy-MM-dd')
+        await supabase.from('weight_log').delete().eq('user_id', user.id).eq('date', todayFmt)
+        await supabase.from('weight_log').insert({ user_id: user.id, date: todayFmt, weight_kg: payload.weight_kg })
       }
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
@@ -461,7 +460,9 @@ export default function ProfilePage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       await supabase.from('profiles').upsert({ id: user.id, height_cm: h, weight_kg: w, calorie_target: tdee }, { onConflict: 'id' })
-      await supabase.from('weight_log').upsert({ user_id: user.id, date: new Date().toISOString().split('T')[0], weight_kg: w }, { onConflict: 'date,user_id' })
+      const d = new Date().toISOString().split('T')[0]
+      await supabase.from('weight_log').delete().eq('user_id', user.id).eq('date', d)
+      await supabase.from('weight_log').insert({ user_id: user.id, date: d, weight_kg: w })
     }
     setSavingCalc(false)
   }

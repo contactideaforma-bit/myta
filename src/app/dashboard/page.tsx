@@ -250,10 +250,9 @@ export default function DashboardPage() {
     setSavingWeight(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
-      await supabase.from('weight_log').upsert(
-        { user_id: user.id, date: todayISO(), weight_kg: val },
-        { onConflict: 'date,user_id' }
-      )
+      const today = todayISO()
+      await supabase.from('weight_log').delete().eq('user_id', user.id).eq('date', today)
+      await supabase.from('weight_log').insert({ user_id: user.id, date: today, weight_kg: val })
       await supabase.from('profiles').upsert({ id: user.id, weight_kg: val }, { onConflict: 'id' })
       setWeightSaved(true)
       setTimeout(() => setWeightSaved(false), 2000)
