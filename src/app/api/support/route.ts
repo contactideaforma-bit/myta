@@ -8,6 +8,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Message vide' }, { status: 400 })
     }
 
+    if (!process.env.RESEND_API_KEY) {
+      console.error('[support] RESEND_API_KEY manquant')
+      return NextResponse.json({ error: 'RESEND_API_KEY non configuré' }, { status: 500 })
+    }
+
     const resendRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -33,13 +38,15 @@ export async function POST(req: NextRequest) {
     const resendData = await resendRes.json()
 
     if (!resendRes.ok) {
-      console.error('[support] Resend error:', resendData)
+      console.error('[support] Resend error:', JSON.stringify(resendData))
       return NextResponse.json({ error: 'Email non envoyé', detail: resendData }, { status: 500 })
     }
 
+    console.log('[support] Email envoyé:', resendData.id)
     return NextResponse.json({ ok: true })
+
   } catch (err: any) {
-    console.error('[support]', err)
+    console.error('[support] Exception:', err.message)
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
