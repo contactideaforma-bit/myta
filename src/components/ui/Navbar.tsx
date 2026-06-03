@@ -75,35 +75,46 @@ export function Navbar() {
   const [sidebarModule, setSidebarModule] = useState<Module>('nutrition')
 
   // ── Modal signalement ──
-  const [showReport, setShowReport]       = useState(false)
+  const [showReport, setShowReport]         = useState(false)
   const [reportCategory, setReportCategory] = useState('Bug technique')
-  const [reportMessage, setReportMessage] = useState('')
-  const [reportSending, setReportSending] = useState(false)
-  const [reportSent, setReportSent]       = useState(false)
+  const [reportMessage, setReportMessage]   = useState('')
+  const [reportSending, setReportSending]   = useState(false)
+  const [reportSent, setReportSent]         = useState(false)
+  const [reportError, setReportError]       = useState(false)
 
   async function sendReport() {
     if (!reportMessage.trim()) return
     setReportSending(true)
+    setReportError(false)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      await fetch('/api/support', {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/support', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${session?.access_token ?? ''}`,
+        },
         body: JSON.stringify({
-          userId:   user?.id,
-          email:    user?.email,
+          email:    session?.user?.email,
           category: reportCategory,
           message:  reportMessage.trim(),
         }),
       })
-      setReportSent(true)
-      setTimeout(() => {
-        setShowReport(false)
-        setReportSent(false)
-        setReportMessage('')
-        setReportCategory('Bug technique')
-      }, 2500)
-    } catch (err) { console.error(err) }
+      if (!res.ok) {
+        setReportError(true)
+      } else {
+        setReportSent(true)
+        setTimeout(() => {
+          setShowReport(false)
+          setReportSent(false)
+          setReportMessage('')
+          setReportCategory('Bug technique')
+        }, 2500)
+      }
+    } catch (err) {
+      console.error(err)
+      setReportError(true)
+    }
     setReportSending(false)
   }
 
@@ -170,6 +181,14 @@ export function Navbar() {
               </div>
             ) : (
               <div className="flex flex-col gap-4 px-5 pb-5">
+                {/* Message d'erreur */}
+                {reportError && (
+                  <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
+                    <AlertTriangle size={15} className="text-red-400 flex-shrink-0" />
+                    <p className="text-xs text-red-600 font-medium">Une erreur s'est produite. Réessaie ou contacte-nous à contact@mytwinapp.fr</p>
+                  </div>
+                )}
+
                 {/* Catégorie */}
                 <div>
                   <p className="text-xs font-bold text-zinc-500 mb-2">Catégorie</p>
