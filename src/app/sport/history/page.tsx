@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { Clock, Flame, Pencil, Trash2, X, Check, Loader2, Mic } from 'lucide-react'
+import { Clock, Flame, Pencil, Trash2, X, Check, Loader2, Mic, ChevronLeft, ChevronRight } from 'lucide-react'
 import { minutesToHuman } from '@/lib/utils'
 import { Waty, WATY_MESSAGES } from '@/components/ui/Waty'
 import { VoiceSession } from '@/components/sport/VoiceSession'
@@ -33,7 +33,8 @@ export default function HistoryPage() {
   const [saving, setSaving]         = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [showVoice, setShowVoice]   = useState(false)
-  const [savedToast, setSavedToast] = useState(false)
+  const [savedToast, setSavedToast]     = useState(false)
+  const [calendarMonth, setCalendarMonth] = useState(new Date())
 
   const supabase = createClient()
 
@@ -101,11 +102,21 @@ export default function HistoryPage() {
     } catch (err) { console.error(err) }
   }
 
-  // ── Calendrier du mois en cours ──────────────────────────────────────────
+  // ── Calendrier navigable ─────────────────────────────────────────────────
   const now        = new Date()
-  const monthStart = startOfMonth(now)
-  const monthEnd   = endOfMonth(now)
+  const monthStart = startOfMonth(calendarMonth)
+  const monthEnd   = endOfMonth(calendarMonth)
   const monthDays  = eachDayOfInterval({ start: monthStart, end: monthEnd })
+
+  function prevMonth() {
+    setCalendarMonth(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))
+  }
+  function nextMonth() {
+    const next = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1)
+    if (next <= now) setCalendarMonth(next)
+  }
+  const isCurrentMonth = calendarMonth.getFullYear() === now.getFullYear() &&
+                         calendarMonth.getMonth() === now.getMonth()
 
   // Jours avec séance ce mois
   const sportDaysThisMonth = new Set(
@@ -163,11 +174,21 @@ export default function HistoryPage() {
       {/* ── Calendrier du mois ── */}
       <div className="card flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-extrabold text-zinc-900 capitalize">
-            🗓️ {format(now, 'MMMM yyyy', { locale: fr })}
-          </h2>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-sport">{totalSportDays} jour{totalSportDays > 1 ? 's' : ''} de sport</span>
+            <button onClick={prevMonth}
+              className="w-7 h-7 rounded-xl bg-zinc-100 flex items-center justify-center hover:bg-zinc-200 transition-all">
+              <ChevronLeft size={14} className="text-zinc-600" />
+            </button>
+            <h2 className="text-sm font-extrabold text-zinc-900 capitalize w-28 text-center">
+              {format(calendarMonth, 'MMM yyyy', { locale: fr })}
+            </h2>
+            <button onClick={nextMonth} disabled={isCurrentMonth}
+              className="w-7 h-7 rounded-xl bg-zinc-100 flex items-center justify-center hover:bg-zinc-200 transition-all disabled:opacity-30">
+              <ChevronRight size={14} className="text-zinc-600" />
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-sport">{totalSportDays} jour{totalSportDays > 1 ? 's' : ''}</span>
             <div className="w-8 h-8 rounded-full bg-sport/10 flex items-center justify-center">
               <span className="text-sm font-black text-sport">{totalSportDays}</span>
             </div>
