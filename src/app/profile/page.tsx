@@ -369,8 +369,9 @@ export default function ProfilePage() {
   async function generateAIReport() {
     setLoadingReport(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { setLoadingReport(false); return }
+      const user = session.user
       const from7 = format(subDays(new Date(), 7), 'yyyy-MM-dd')
       const [{ data: jnl }, { data: ses }, { data: slp }, { data: wts }] = await Promise.all([
         supabase.from('journal_entries').select('date,cal,prot,carb,fat').eq('user_id', user.id).gte('date', from7),
@@ -401,7 +402,7 @@ export default function ProfilePage() {
       ].filter(Boolean).join(' ')
       const res = await fetch('/api/health-report', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
         body: JSON.stringify({
           calTarget:    profile?.calorie_target ?? 2000,
           nutrition:    Object.entries(jMap).map(([d, m]) => `${d}: ${Math.round(m.cal)} kcal — P:${Math.round(m.prot)}g G:${Math.round(m.carb)}g L:${Math.round(m.fat)}g`).join('\n') || 'Aucune donnée',
@@ -414,8 +415,18 @@ export default function ProfilePage() {
           condition:    conditionNote,
         }),
       })
-      const data = await res.json()
-      setAiReport(data.report ?? '')
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const reader = res.body?.getReader()
+      const decoder = new TextDecoder()
+      let full = ''
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          full += decoder.decode(value, { stream: true })
+          setAiReport(full)
+        }
+      }
     } catch (err) { console.error(err) }
     setLoadingReport(false)
   }
@@ -658,10 +669,16 @@ export default function ProfilePage() {
                   </button>
                 </div>
                 {aiReport ? (
-                  <div className="text-sm text-zinc-700 leading-relaxed whitespace-pre-line bg-tta-light rounded-2xl p-4">{aiReport}</div>
+                  <div className="flex gap-3 items-start bg-tta-light rounded-2xl p-4">
+                    <img src="/waty-rapport.png" alt="Waty" className="w-14 h-14 object-contain flex-shrink-0 drop-shadow-sm" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-tta-mid mb-1">Waty dit :</p>
+                      <p className="text-sm text-zinc-700 leading-relaxed whitespace-pre-line">{aiReport}</p>
+                    </div>
+                  </div>
                 ) : (
-                  <div className="text-center py-6 text-zinc-400">
-                    <p className="text-3xl mb-2">🤖</p>
+                  <div className="flex flex-col items-center py-6 gap-2 text-zinc-400">
+                    <img src="/waty-rapport.png" alt="Waty" className="w-12 h-12 object-contain opacity-50" />
                     <p className="text-sm">Clique sur "Générer" pour un rapport personnalisé.</p>
                   </div>
                 )}
