@@ -155,6 +155,46 @@ export async function POST(req: NextRequest) {
           stripe_customer_id:  session.customer,
         }).eq('id', uid)
 
+        // ── Parrainage : créditer le parrain d'1 mois gratuit ──
+        try {
+          const stripeSubscription = session.subscription
+            ? await stripe.subscriptions.retrieve(session.subscription as string)
+            : null
+          const referredBy = stripeSubscription?.metadata?.referred_by
+
+          if (referredBy) {
+            await supabaseAdmin.from('profiles').update({ referred_by: referredBy }).eq('id', uid)
+            const { data: referrer } = await supabaseAdmin
+              .from('profiles')
+              .select('id, stripe_customer_id, referral_count, referral_months_earned')
+              .eq('referral_code', referredBy).single()
+
+            if (referrer?.stripe_customer_id) {
+              const subItems = stripeSubscription?.items?.data ?? []
+              const priceId  = subItems[0]?.price?.id
+              if (priceId) {
+                const price  = await stripe.prices.retrieve(priceId)
+                const amount = price.recurring?.interval === 'year'
+                  ? Math.round((price.unit_amount ?? 0) / 12)
+                  : (price.unit_amount ?? 0)
+                if (amount > 0) {
+                  await stripe.customers.createBalanceTransaction(referrer.stripe_customer_id, {
+                    amount:      -amount,
+                    currency:    price.currency,
+                    description: '🎁 Parrainage — 1 mois offert',
+                  })
+                }
+              }
+              await supabaseAdmin.from('profiles').update({
+                referral_count:         (referrer.referral_count ?? 0) + 1,
+                referral_months_earned: (referrer.referral_months_earned ?? 0) + 1,
+              }).eq('id', referrer.id)
+            }
+          }
+        } catch (refErr) {
+          console.error('[webhook] Erreur parrainage:', refErr)
+        }
+
         // Récupérer email + prénom pour l'email de bienvenue
         try {
           const [{ data: profile }, { data: authData }] = await Promise.all([

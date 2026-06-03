@@ -224,6 +224,12 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [period, setPeriod]   = useState('7j')
 
+  // ── États parrainage ────────────────────────────────────────────────────────
+  const [referralCode, setReferralCode]     = useState<string | null>(null)
+  const [referralCount, setReferralCount]   = useState(0)
+  const [referralMonths, setReferralMonths] = useState(0)
+  const [referralCopied, setReferralCopied] = useState(false)
+
   // ── États bilan ─────────────────────────────────────────────────────────────
   const [weights, setWeights]         = useState<WeightLog[]>([])
   const [journalDays, setJournalDays] = useState<JournalDay[]>([])
@@ -260,7 +266,7 @@ export default function ProfilePage() {
   const [macroResult, setMacroResult] = useState<{ prot: number; carb: number; fat: number } | null>(null)
 
   // ── Effects ─────────────────────────────────────────────────────────────────
-  useEffect(() => { loadProfile() }, [])
+  useEffect(() => { loadProfile(); loadReferral() }, [])
   useEffect(() => { if (tab === 'bilan') loadBilan() }, [tab, period])
   useEffect(() => { loadBilan() }, [])
 
@@ -311,6 +317,27 @@ export default function ProfilePage() {
       })
     }
     setLoading(false)
+  }
+
+  async function loadReferral() {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+    const res = await fetch('/api/referral', {
+      headers: { Authorization: `Bearer ${session.access_token}` }
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setReferralCode(data.code)
+      setReferralCount(data.referral_count)
+      setReferralMonths(data.months_earned)
+    }
+  }
+
+  async function copyReferralLink() {
+    if (!referralCode) return
+    await navigator.clipboard.writeText(`${window.location.origin}/auth?ref=${referralCode}`)
+    setReferralCopied(true)
+    setTimeout(() => setReferralCopied(false), 2500)
   }
 
   async function loadBilan() {
@@ -949,6 +976,52 @@ export default function ProfilePage() {
                   value={form.fat_target} onChange={e => setForm(f => ({ ...f, fat_target: e.target.value }))} />
               </div>
             </div>
+          </div>
+
+          {/* ── Parrainage ── */}
+          <div className="card flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🎁</span>
+              <div>
+                <h2 className="text-sm font-semibold text-zinc-700">Parrainage</h2>
+                <p className="text-[11px] text-zinc-400">Partage ton code — gagne 1 mois gratuit par ami inscrit</p>
+              </div>
+            </div>
+
+            {referralCode ? (
+              <>
+                {/* Code */}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 bg-zinc-50 border-2 border-dashed border-zinc-200 rounded-2xl px-4 py-3 text-center">
+                    <p className="text-xl font-black tracking-widest text-tta-mid font-mono">{referralCode}</p>
+                  </div>
+                  <button onClick={copyReferralLink}
+                    className={`px-4 py-3 rounded-2xl text-sm font-bold transition-all flex-shrink-0 ${referralCopied ? 'bg-green-500 text-white' : 'bg-tta-mid text-white hover:bg-tta'}`}>
+                    {referralCopied ? '✓ Copié !' : '🔗 Partager'}
+                  </button>
+                </div>
+
+                <p className="text-[11px] text-zinc-400 text-center -mt-1">
+                  Lien copié : mytwinapp.fr/auth?ref={referralCode}
+                </p>
+
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="kpi-card items-center text-center !p-3">
+                    <p className="text-2xl font-black text-tta-mid">{referralCount}</p>
+                    <p className="text-xs text-zinc-400">Ami{referralCount > 1 ? 's' : ''} parrainé{referralCount > 1 ? 's' : ''}</p>
+                  </div>
+                  <div className="kpi-card items-center text-center !p-3">
+                    <p className="text-2xl font-black text-nutri-mid">{referralMonths}</p>
+                    <p className="text-xs text-zinc-400">Mois offert{referralMonths > 1 ? 's' : ''} 🎉</p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex justify-center py-3">
+                <Loader2 size={18} className="animate-spin text-zinc-400" />
+              </div>
+            )}
           </div>
 
           <button onClick={save} disabled={saving}

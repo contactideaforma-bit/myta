@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check, Loader2, Zap, Crown, Star, Shield, Smartphone, Tag, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -28,9 +28,16 @@ export default function PricingPage() {
   const [promoCode,  setPromoCode]  = useState('')
   const [promoError, setPromoError] = useState('')
   const [showPromo,  setShowPromo]  = useState(false)
+  const [referredBy, setReferredBy] = useState<string | null>(null)
 
   const router   = useRouter()
   const supabase = createClient()
+
+  // Lire le code parrain depuis localStorage
+  useEffect(() => {
+    const code = localStorage.getItem('myta_referral')
+    if (code) setReferredBy(code)
+  }, [])
 
   const savings = Math.round((1 - 39.99 / (3.99 * 12)) * 100)
 
@@ -47,7 +54,7 @@ export default function PricingPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ plan, promoCode: promoCode.trim() || undefined }),
+        body: JSON.stringify({ plan, promoCode: promoCode.trim() || undefined, referredBy: referredBy || undefined }),
       })
       const data = await res.json()
 

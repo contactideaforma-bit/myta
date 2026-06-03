@@ -1,14 +1,22 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Mail, Lock, User, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, User, ArrowRight, Loader2, Eye, EyeOff, Gift } from 'lucide-react'
 
 export default function AuthPage() {
-  const [email, setEmail]       = useState('')
-  const [password, setPassword] = useState('')
-  const [name, setName]         = useState('')
-  const [mode, setMode]         = useState<'login' | 'register'>('login')
+  const [email, setEmail]           = useState('')
+  const [password, setPassword]     = useState('')
+  const [name, setName]             = useState('')
+  const [referralInput, setReferralInput] = useState('')
+  const [mode, setMode]             = useState<'login' | 'register'>('login')
+
+  // Auto-fill referral code from URL ?ref=CODE
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const ref = params.get('ref')
+    if (ref) { setReferralInput(ref.toUpperCase()); setMode('register') }
+  }, [])
   const [loading, setLoading]   = useState(false)
   const [message, setMessage]   = useState('')
   const [showPass, setShowPass] = useState(false)
@@ -35,12 +43,16 @@ export default function AuthPage() {
       const { error } = await supabase.auth.signUp({
         email, password,
         options: {
-          data: { full_name: name },
+          data: { full_name: name, referred_by: referralInput.trim().toUpperCase() || null },
           emailRedirectTo: `${window.location.origin}/auth/confirm`,
         },
       })
       if (error) { setMessage(error.message) }
-      else { setMessage('Vérifiez votre email pour confirmer votre compte.') }
+      else {
+        // Sauvegarder le code parrain en localStorage pour le checkout
+        if (referralInput.trim()) localStorage.setItem('myta_referral', referralInput.trim().toUpperCase())
+        setMessage('Vérifiez votre email pour confirmer votre compte.')
+      }
       setLoading(false)
     }
   }
@@ -89,11 +101,19 @@ export default function AuthPage() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             {mode === 'register' && (
-              <div className="relative">
-                <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
-                <input type="text" placeholder="Ton prénom" value={name} onChange={e => setName(e.target.value)} required
-                  className="w-full pl-10 pr-4 py-3 border-2 border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-[#4B47A0] focus:ring-2 focus:ring-[#4B47A0]/15 transition-all bg-white" />
-              </div>
+              <>
+                <div className="relative">
+                  <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <input type="text" placeholder="Ton prénom" value={name} onChange={e => setName(e.target.value)} required
+                    className="w-full pl-10 pr-4 py-3 border-2 border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-[#4B47A0] focus:ring-2 focus:ring-[#4B47A0]/15 transition-all bg-white" />
+                </div>
+                <div className="relative">
+                  <Gift size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <input type="text" placeholder="Code de parrainage (optionnel)" value={referralInput}
+                    onChange={e => setReferralInput(e.target.value.toUpperCase())}
+                    className="w-full pl-10 pr-4 py-3 border-2 border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-[#4B47A0] focus:ring-2 focus:ring-[#4B47A0]/15 transition-all bg-white uppercase tracking-widest font-mono" />
+                </div>
+              </>
             )}
             <div className="relative">
               <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />

@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Token invalide' }, { status: 401 })
     }
 
-    const { plan, promoCode } = await req.json()
+    const { plan, promoCode, referredBy } = await req.json()
 
     const priceId = plan === 'monthly'
       ? process.env.STRIPE_PRICE_MONTHLY
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: {
         trial_period_days: 3,
-        metadata: { supabase_user_id: user.id },
+        metadata: { supabase_user_id: user.id, referred_by: referredBy ?? '' },
       },
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
       cancel_url:  `${process.env.NEXT_PUBLIC_APP_URL}/pricing?cancelled=true`,
