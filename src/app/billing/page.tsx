@@ -58,6 +58,7 @@ export default function BillingPage() {
   const [canceling, setCanceling]     = useState(false)
   const [cancelDone, setCancelDone]   = useState<{ refunded: boolean; amount?: string; period_end?: boolean } | null>(null)
   const [token, setToken]             = useState('')
+  const [portalLoading, setPortalLoading] = useState(false)
   const [referralCode, setReferralCode]   = useState<string | null>(null)
   const [referralCount, setReferralCount] = useState(0)
   const [referralMonths, setReferralMonths] = useState(0)
@@ -98,6 +99,19 @@ export default function BillingPage() {
     }
     load()
   }, [])
+
+  async function openPortal() {
+    setPortalLoading(true)
+    try {
+      const res  = await fetch('/api/stripe/portal', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      })
+      const data = await res.json()
+      if (data.url) window.location.href = data.url
+    } catch (err) { console.error(err) }
+    setPortalLoading(false)
+  }
 
   async function cancelSubscription() {
     setCanceling(true)
@@ -266,17 +280,32 @@ export default function BillingPage() {
         </div>
       )}
 
-      {/* Politique + résiliation */}
-      {canCancel && (
+      {/* Politique + résiliation — toujours visible pour les abonnés */}
+      {['active', 'trialing', 'past_due'].includes(status) && (
         <div className="flex flex-col gap-3">
           <div className="bg-white rounded-2xl p-4 border border-zinc-100 flex gap-3">
             <Shield size={14} className="text-zinc-300 flex-shrink-0 mt-0.5" />
             <p className="text-[11px] text-zinc-400 leading-relaxed">{policyText}</p>
           </div>
-          <button onClick={() => setShowCancel(true)}
-            className="w-full py-3 rounded-2xl border-2 border-dashed border-red-200 text-red-500 text-sm font-semibold hover:bg-red-50 transition-all">
-            Résilier mon abonnement
-          </button>
+
+          {sub?.cancel_at_period_end ? (
+            <div className="w-full py-3 rounded-2xl bg-zinc-50 text-zinc-400 text-sm text-center font-medium">
+              Résiliation déjà programmée ✓
+            </div>
+          ) : canCancel ? (
+            <button onClick={() => setShowCancel(true)}
+              className="w-full py-3 rounded-2xl border-2 border-dashed border-red-200 text-red-500 text-sm font-semibold hover:bg-red-50 transition-all">
+              Résilier mon abonnement
+            </button>
+          ) : (
+            // Fallback si données Stripe non chargées
+            <button onClick={openPortal} disabled={portalLoading}
+              className="w-full py-3 rounded-2xl border-2 border-dashed border-red-200 text-red-500 text-sm font-semibold hover:bg-red-50 transition-all flex items-center justify-center gap-2">
+              {portalLoading
+                ? <Loader2 size={14} className="animate-spin" />
+                : 'Gérer / Résilier mon abonnement'}
+            </button>
+          )}
         </div>
       )}
 
