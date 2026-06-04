@@ -6,8 +6,10 @@ import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } fro
 import { fr } from 'date-fns/locale'
 import { ArrowRight, ChevronRight, Scale, Loader2, TrendingDown, TrendingUp, Minus } from 'lucide-react'
 import { todayISO, minutesToHuman } from '@/lib/utils'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Waty } from '@/components/ui/Waty'
+import { WelcomeModal } from '@/components/ui/WelcomeModal'
+import { TourGuide } from '@/components/ui/TourGuide'
 import type { Profile, Session } from '@/types'
 
 type Period = 'semaine' | 'mois'
@@ -134,7 +136,6 @@ function MonthProgress({ calConsumed, calTarget, sessions, sessionTarget, calBur
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
   const monthPct   = Math.round((dayOfMonth / daysInMonth) * 100)
 
-  // Objectif proratisé au jour actuel
   const prorata    = dayOfMonth / daysInMonth
   const calExpected = Math.round(calTarget * 30 * prorata)
   const sesExpected = Math.round(sessionTarget * prorata)
@@ -155,14 +156,12 @@ function MonthProgress({ calConsumed, calTarget, sessions, sessionTarget, calBur
         <span>Progression du mois</span>
         <span className="font-bold text-zinc-600">Jour {dayOfMonth}/{daysInMonth}</span>
       </div>
-      {/* Barre temps écoulé */}
       <div className="flex flex-col gap-1">
         <div className="h-1.5 bg-zinc-100 rounded-full overflow-hidden">
           <div className="h-full bg-zinc-300 rounded-full" style={{ width: `${monthPct}%` }} />
         </div>
         <p className="text-[10px] text-zinc-400 text-right">{monthPct}% du mois écoulé</p>
       </div>
-      {/* Objectifs proratisés */}
       {items.map(({ label, pct, icon, color }) => (
         <div key={label}>
           <div className="flex items-center justify-between mb-1">
@@ -182,14 +181,48 @@ function MonthProgress({ calConsumed, calTarget, sessions, sessionTarget, calBur
 }
 
 export default function DashboardPage() {
-  const [stats, setStats]           = useState<Stats | null>(null)
-  const [loading, setLoading]       = useState(true)
-  const [period, setPeriod]         = useState<Period>('semaine')
+  const [stats, setStats]               = useState<Stats | null>(null)
+  const [loading, setLoading]           = useState(true)
+  const [period, setPeriod]             = useState<Period>('semaine')
   const [weightInput, setWeightInput]   = useState('')
   const [savingWeight, setSavingWeight] = useState(false)
   const [weightSaved, setWeightSaved]   = useState(false)
-  const router   = useRouter()
-  const supabase = createClient()
+  // ── Guide ──────────────────────────────────────────────────────────────────
+  const [showModal, setShowModal] = useState(false)
+  const [showTour,  setShowTour]  = useState(false)
+
+  const router       = useRouter()
+  const searchParams = useSearchParams()
+  const supabase     = createClient()
+
+  // ── Déclenchement guide au 1er accès ou via ?tour=1 ───────────────────────
+  useEffect(() => {
+    // Lancer le tour directement si ?tour=1 (depuis la page /guide)
+    if (searchParams.get('tour') === '1') {
+      setShowTour(true)
+      // Nettoyer l'URL sans recharger
+      window.history.replaceState({}, '', '/dashboard')
+      return
+    }
+    // Sinon, afficher le modal de bienvenue si jamais vu
+    const seen = localStorage.getItem('myta_guide_seen')
+    if (!seen) setShowModal(true)
+  }, [searchParams])
+
+  function handleStartTour() {
+    localStorage.setItem('myta_guide_seen', '1')
+    setShowModal(false)
+    setShowTour(true)
+  }
+
+  function handleCloseModal() {
+    localStorage.setItem('myta_guide_seen', '1')
+    setShowModal(false)
+  }
+
+  function handleDoneTour() {
+    setShowTour(false)
+  }
 
   useEffect(() => { loadData() }, [period])
 
@@ -269,18 +302,26 @@ export default function DashboardPage() {
     </div>
   )
 
-  const s         = stats!
-  const calPct    = Math.min(100, s.calTarget > 0 ? Math.round((s.calToday / s.calTarget) * 100) : 0)
-  const firstName = s.profile?.full_name?.split(' ')[0] ?? ''
-  const bilanMsg  = getWatyBilanMessage(s.calConsumed, s.calBurned, s.calTarget, period)
-  const lastWeight = s.weights[0] ?? null
+  const s           = stats!
+  const calPct      = Math.min(100, s.calTarget > 0 ? Math.round((s.calToday / s.calTarget) * 100) : 0)
+  const firstName   = s.profile?.full_name?.split(' ')[0] ?? ''
+  const bilanMsg    = getWatyBilanMessage(s.calConsumed, s.calBurned, s.calTarget, period)
+  const lastWeight  = s.weights[0] ?? null
   const targetWeight = (s.profile as any)?.weight_goal ?? null
 
   return (
     <div className="page">
 
+      {/* ── Guide : modal + tour ── */}
+      {showModal && (
+        <WelcomeModal onStartTour={handleStartTour} onClose={handleCloseModal} />
+      )}
+      {showTour && (
+        <TourGuide onDone={handleDoneTour} />
+      )}
+
       {/* ── Salutation ── */}
-      <div>
+      <div id="tour-greeting">
         <p className="text-zinc-400 text-sm capitalize">
           {format(new Date(), 'EEEE d MMMM yyyy', { locale: fr })}
         </p>
@@ -290,7 +331,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Objectifs semaine/mois ── */}
-      <div className="card flex flex-col gap-4">
+      <div id="tour-objectives" className="card flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="font-extrabold text-zinc-900">🎯 Mes objectifs</h2>
           <div className="flex bg-zinc-100 rounded-2xl p-0.5 gap-0.5">
@@ -323,10 +364,10 @@ export default function DashboardPage() {
               const burnPct  = Math.min(150, Math.round((s.calBurned / 1500) * 100))
 
               return [
-                { label: 'Calories consommées', current: Math.round(s.calConsumed), target: calObj,          pct: calPct2, unit: 'kcal', color: '#f97316', icon: '🔥' },
-                { label: 'Protéines',            current: Math.round(s.totalProt),  target: protObj,         pct: protPct, unit: 'g',    color: '#3b82f6', icon: '💪' },
-                { label: 'Séances sport',         current: s.weekSessions,          target: 3,               pct: sportPct,unit: 'séances', color: '#7b7fd4', icon: '🏋️' },
-                { label: 'Calories brûlées',      current: Math.round(s.calBurned), target: 1500,            pct: burnPct, unit: 'kcal', color: '#22c55e', icon: '⚡' },
+                { label: 'Calories consommées', current: Math.round(s.calConsumed), target: calObj,   pct: calPct2,  unit: 'kcal',    color: '#f97316', icon: '🔥' },
+                { label: 'Protéines',            current: Math.round(s.totalProt),  target: protObj,  pct: protPct,  unit: 'g',       color: '#3b82f6', icon: '💪' },
+                { label: 'Séances sport',         current: s.weekSessions,          target: 3,        pct: sportPct, unit: 'séances', color: '#7b7fd4', icon: '🏋️' },
+                { label: 'Calories brûlées',      current: Math.round(s.calBurned), target: 1500,     pct: burnPct,  unit: 'kcal',    color: '#22c55e', icon: '⚡' },
               ].map(obj => (
                 <div key={obj.label}>
                   <div className="flex items-center justify-between mb-1.5">
@@ -364,7 +405,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Poids du jour + courbe ── */}
-      <div className="card flex flex-col gap-4">
+      <div id="tour-weight" className="card flex flex-col gap-4">
         <h2 className="font-extrabold text-zinc-900 flex items-center gap-2">
           <Scale size={16} className="text-tta-mid" />Poids
           {lastWeight && (
@@ -399,7 +440,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Nutrition aujourd'hui ── */}
-      <button onClick={() => router.push('/nutrition/journal')}
+      <button id="tour-nutrition" onClick={() => router.push('/nutrition/journal')}
         className="w-full text-left bg-gradient-to-br from-nutri to-nutri-mid rounded-3xl p-5 shadow-sm hover:shadow-md transition-all active:scale-[0.98] group">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
@@ -424,7 +465,7 @@ export default function DashboardPage() {
       </button>
 
       {/* ── Sport ── */}
-      <button onClick={() => router.push('/sport/session')}
+      <button id="tour-sport" onClick={() => router.push('/sport/session')}
         className="w-full text-left bg-gradient-to-br from-sport to-tta-mid rounded-3xl p-5 shadow-sm hover:shadow-md transition-all active:scale-[0.98] group">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">

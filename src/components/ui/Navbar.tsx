@@ -8,6 +8,7 @@ import {
   Dumbbell, Timer, History, User,
   LogOut, AlertTriangle, Menu, X,
   ChevronRight, Sun, Moon, MessageSquareWarning, Send, CheckCircle,
+  HelpCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
@@ -273,7 +274,7 @@ export function Navbar() {
           onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* ── Sidebar fun ── */}
+      {/* ── Sidebar ── */}
       <aside className={cn(
         'fixed top-0 left-0 z-[56] h-full w-72 bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-in-out',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -411,6 +412,27 @@ export function Navbar() {
 
         {/* Footer */}
         <div className="px-4 py-4 border-t border-zinc-100 flex flex-col gap-2">
+
+          {/* ── Guide d'utilisation ── */}
+          <button onClick={() => { router.push('/guide'); setSidebarOpen(false) }}
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-left transition-all',
+              pathname === '/guide' ? 'bg-tta-light' : 'hover:bg-zinc-50'
+            )}>
+            <div className={cn(
+              'w-9 h-9 rounded-xl flex items-center justify-center',
+              pathname === '/guide' ? 'bg-tta-mid/20' : 'bg-tta-light'
+            )}>
+              <HelpCircle size={15} className="text-tta-mid" />
+            </div>
+            <div className="flex-1">
+              <p className={cn('text-sm font-bold', pathname === '/guide' ? 'text-tta-mid' : 'text-zinc-700')}>
+                Guide d'utilisation
+              </p>
+              <p className="text-[10px] text-zinc-400">Toutes les fonctionnalités</p>
+            </div>
+          </button>
+
           {/* Dark mode toggle */}
           <button onClick={toggle}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-left hover:bg-zinc-50 transition-all">
