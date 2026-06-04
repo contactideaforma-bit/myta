@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2, CreditCard, Calendar, CheckCircle, XCircle, AlertTriangle, X, Shield } from 'lucide-react'
+import { Loader2, CreditCard, Calendar, CheckCircle, XCircle, AlertTriangle, X, Shield, Gift } from 'lucide-react'
 import { format, differenceInMonths, differenceInDays } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -58,6 +58,10 @@ export default function BillingPage() {
   const [canceling, setCanceling]     = useState(false)
   const [cancelDone, setCancelDone]   = useState<{ refunded: boolean; amount?: string; period_end?: boolean } | null>(null)
   const [token, setToken]             = useState('')
+  const [referralCode, setReferralCode]   = useState<string | null>(null)
+  const [referralCount, setReferralCount] = useState(0)
+  const [referralMonths, setReferralMonths] = useState(0)
+  const [referralCopied, setReferralCopied] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -78,6 +82,18 @@ export default function BillingPage() {
         const json = await res.json()
         if (json.subscription) setSub(json.subscription)
       }
+
+      // Charger le code parrainage
+      const refRes = await fetch('/api/referral', {
+        headers: { Authorization: `Bearer ${session?.access_token}` }
+      })
+      if (refRes.ok) {
+        const refData = await refRes.json()
+        setReferralCode(refData.code)
+        setReferralCount(refData.referral_count)
+        setReferralMonths(refData.months_earned)
+      }
+
       setLoading(false)
     }
     load()
@@ -263,6 +279,48 @@ export default function BillingPage() {
           </button>
         </div>
       )}
+
+          {/* ── Parrainage ── */}
+      <div className="bg-white rounded-3xl p-5 shadow-sm border border-zinc-100 flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+          <Gift size={16} className="text-tta-mid" />
+          <div>
+            <p className="text-sm font-semibold text-zinc-900">Parrainage</p>
+            <p className="text-[11px] text-zinc-400">1 mois offert pour toi et ton ami parrainé</p>
+          </div>
+        </div>
+
+        {referralCode ? (
+          <>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 bg-zinc-50 border-2 border-dashed border-zinc-200 rounded-2xl px-4 py-3 text-center">
+                <p className="text-xl font-black tracking-widest text-tta-mid font-mono">{referralCode}</p>
+              </div>
+              <button
+                onClick={async () => {
+                  await navigator.clipboard.writeText(`${window.location.origin}/auth?ref=${referralCode}`)
+                  setReferralCopied(true)
+                  setTimeout(() => setReferralCopied(false), 2500)
+                }}
+                className={`px-4 py-3 rounded-2xl text-sm font-bold transition-all flex-shrink-0 ${referralCopied ? 'bg-green-500 text-white' : 'bg-tta-mid text-white hover:bg-tta'}`}>
+                {referralCopied ? '✓ Copié !' : '🔗 Partager'}
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-zinc-50 rounded-2xl p-3 text-center">
+                <p className="text-2xl font-black text-tta-mid">{referralCount}</p>
+                <p className="text-xs text-zinc-400">Ami{referralCount > 1 ? 's' : ''} parrainé{referralCount > 1 ? 's' : ''}</p>
+              </div>
+              <div className="bg-zinc-50 rounded-2xl p-3 text-center">
+                <p className="text-2xl font-black text-nutri-mid">{referralMonths}</p>
+                <p className="text-xs text-zinc-400">Mois offert{referralMonths > 1 ? 's' : ''} 🎉</p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex justify-center py-2"><Loader2 size={16} className="animate-spin text-zinc-400" /></div>
+        )}
+      </div>
 
       <p className="text-center text-xs text-zinc-400 pb-4">
         Un problème ?{' '}
