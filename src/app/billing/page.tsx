@@ -128,7 +128,7 @@ export default function BillingPage() {
 
   const status    = profile?.subscription_status ?? 'free'
   const sc        = STATUS_CONFIG[status] ?? STATUS_CONFIG['free']
-  const canCancel = ['active', 'trialing', 'past_due'].includes(status) && sub && !sub.cancel_at_period_end
+  const canCancel = ['active', 'trialing', 'past_due'].includes(status) && !(sub?.cancel_at_period_end)
 
   const isYearly  = sub?.interval === 'year'
   const policyText = isYearly
