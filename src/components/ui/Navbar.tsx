@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
-  LayoutDashboard,
+  LayoutDashboard, CreditCard,
   BookOpen, ChefHat, Lightbulb,
   Dumbbell, Timer, History, User,
   LogOut, AlertTriangle, Menu, X,
@@ -250,31 +250,20 @@ export function Navbar() {
             <Menu size={20} />
           </button>
 
-          {/* Logo centré */}
+          {/* Logo légèrement à gauche */}
           <button onClick={() => router.push('/dashboard')}
-            className="absolute left-1/2 -translate-x-1/2 bg-white/90 rounded-2xl px-3 py-1 shadow-sm">
-            <img src="/logo_my_twin_app.png" alt="MYTA" className="h-7 object-contain" />
+            className="ml-1 bg-white/90 rounded-xl px-2.5 py-1 shadow-sm">
+            <img src="/logo_my_twin_app.png" alt="MYTA" className="h-6 object-contain" />
           </button>
 
-          {/* Switch module — pills colorées */}
-          <div className="flex items-center bg-white/20 rounded-2xl p-0.5 gap-0.5">
-            <button
-              onClick={() => router.push('/nutrition/journal')}
-              className={cn(
-                'w-9 h-8 rounded-xl flex items-center justify-center text-base transition-all',
-                isNutri ? 'bg-white shadow-sm' : 'hover:bg-white/20'
-              )}>
-              🥗
-            </button>
-            <button
-              onClick={() => router.push('/sport/session')}
-              className={cn(
-                'w-9 h-8 rounded-xl flex items-center justify-center text-base transition-all',
-                !isNutri ? 'bg-white shadow-sm' : 'hover:bg-white/20'
-              )}>
-              🏋️
-            </button>
-          </div>
+          <div className="flex-1" />
+
+          {/* Abonnement */}
+          <button onClick={() => router.push('/billing')}
+            className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-1.5 rounded-2xl transition-all">
+            <CreditCard size={13} />
+            <span>Abonnement</span>
+          </button>
         </div>
       </header>
 
