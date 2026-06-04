@@ -6,7 +6,7 @@ import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } fro
 import { fr } from 'date-fns/locale'
 import { ArrowRight, ChevronRight, Scale, Loader2, TrendingDown, TrendingUp, Minus } from 'lucide-react'
 import { todayISO, minutesToHuman } from '@/lib/utils'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Waty } from '@/components/ui/Waty'
 import { WelcomeModal } from '@/components/ui/WelcomeModal'
 import { TourGuide } from '@/components/ui/TourGuide'
@@ -192,13 +192,12 @@ export default function DashboardPage() {
   const [showTour,  setShowTour]  = useState(false)
 
   const router       = useRouter()
-  const searchParams = useSearchParams()
   const supabase     = createClient()
 
   // ── Déclenchement guide au 1er accès ou via ?tour=1 ───────────────────────
   useEffect(() => {
     // Lancer le tour directement si ?tour=1 (depuis la page /guide)
-    if (searchParams.get('tour') === '1') {
+    if (new URLSearchParams(window.location.search).get('tour') === '1') {
       setShowTour(true)
       // Nettoyer l'URL sans recharger
       window.history.replaceState({}, '', '/dashboard')
@@ -207,7 +206,7 @@ export default function DashboardPage() {
     // Sinon, afficher le modal de bienvenue si jamais vu
     const seen = localStorage.getItem('myta_guide_seen')
     if (!seen) setShowModal(true)
-  }, [searchParams])
+  }, [])
 
   function handleStartTour() {
     localStorage.setItem('myta_guide_seen', '1')
