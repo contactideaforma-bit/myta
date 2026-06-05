@@ -17,96 +17,21 @@ import {
   calcStreak, getBadgeFromStreak,
   getChallengesForToday, getWatyProactifMessage,
 } from '@/lib/gamification'
-import type { Profile, Session } from '@/types'
+import type { Profile } from '@/types'
 
 type Period = 'semaine' | 'mois'
 
-interface WeightPoint { date: string; weight_kg: number }
-
 interface Stats {
-  profile:      Profile | null
-  calToday:     number
-  calTarget:    number
-  calConsumed:  number
-  calBurned:    number
-  totalProt:    number
-  weekSessions: number
-  weekMinutes:  number
-  lastSession:  Session | null
-  weights:      WeightPoint[]
-  streak:       number
+  profile:             Profile | null
+  calToday:            number
+  calTarget:           number
+  calConsumed:         number
+  calBurned:           number
+  totalProt:           number
+  weekSessions:        number
+  weekMinutes:         number
+  streak:              number
   completedChallenges: string[]
-}
-
-// ── Courbe de poids SVG légère ─────────────────────────────────────────────
-function WeightChart({ weights, targetWeight }: { weights: WeightPoint[]; targetWeight?: number | null }) {
-  if (weights.length < 2) return null
-
-  const sorted  = [...weights].sort((a, b) => a.date.localeCompare(b.date))
-  const vals    = sorted.map(w => w.weight_kg)
-  const allVals = targetWeight ? [...vals, targetWeight] : vals
-  const minV    = Math.min(...allVals) - 0.5
-  const maxV    = Math.max(...allVals) + 0.5
-  const range   = maxV - minV || 1
-
-  const W = 300; const H = 90
-  const pad = { l: 28, r: 10, t: 8, b: 18 }
-  const innerW = W - pad.l - pad.r
-  const innerH = H - pad.t - pad.b
-
-  function x(i: number) { return pad.l + (i / (sorted.length - 1)) * innerW }
-  function y(v: number)  { return pad.t + (1 - (v - minV) / range) * innerH }
-
-  const linePath = sorted.map((w, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(w.weight_kg).toFixed(1)}`).join(' ')
-  const areaPath = linePath + ` L${x(sorted.length - 1).toFixed(1)},${(pad.t + innerH).toFixed(1)} L${pad.l},${(pad.t + innerH).toFixed(1)} Z`
-
-  const first = sorted[0].weight_kg
-  const last  = sorted[sorted.length - 1].weight_kg
-  const diff  = parseFloat((last - first).toFixed(1))
-
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-zinc-400">Évolution du poids</span>
-        <span className={`font-bold flex items-center gap-0.5 ${diff < 0 ? 'text-nutri-mid' : diff > 0 ? 'text-orange-500' : 'text-zinc-400'}`}>
-          {diff < 0 ? <TrendingDown size={12} /> : diff > 0 ? <TrendingUp size={12} /> : <Minus size={12} />}
-          {diff > 0 ? '+' : ''}{diff} kg
-        </span>
-      </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 90 }}>
-        <defs>
-          <linearGradient id="wgrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#4B47A0" stopOpacity="0.2" />
-            <stop offset="100%" stopColor="#4B47A0" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        {[minV + range * 0.25, minV + range * 0.5, minV + range * 0.75].map((v, i) => (
-          <line key={i} x1={pad.l} y1={y(v)} x2={W - pad.r} y2={y(v)} stroke="#f0f0f0" strokeWidth="1" />
-        ))}
-        <text x={pad.l - 3} y={y(maxV - 0.3) + 4} textAnchor="end" fontSize="8" fill="#a1a1aa">{(maxV - 0.5).toFixed(0)}</text>
-        <text x={pad.l - 3} y={y(minV + 0.3) + 4} textAnchor="end" fontSize="8" fill="#a1a1aa">{(minV + 0.5).toFixed(0)}</text>
-        {targetWeight && targetWeight >= minV && targetWeight <= maxV && (
-          <>
-            <line x1={pad.l} y1={y(targetWeight)} x2={W - pad.r} y2={y(targetWeight)}
-              stroke="#22c55e" strokeWidth="1" strokeDasharray="4,3" />
-            <text x={W - pad.r + 2} y={y(targetWeight) + 3} fontSize="7" fill="#22c55e">cible</text>
-          </>
-        )}
-        <path d={areaPath} fill="url(#wgrad)" />
-        <path d={linePath} fill="none" stroke="#4B47A0" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-        {sorted.map((w, i) => (
-          <circle key={i} cx={x(i)} cy={y(w.weight_kg)} r="3"
-            fill={i === sorted.length - 1 ? '#4B47A0' : '#fff'}
-            stroke="#4B47A0" strokeWidth="1.5" />
-        ))}
-        {[0, sorted.length - 1].map(i => (
-          <text key={i} x={x(i)} y={H - 2} textAnchor="middle" fontSize="8" fill="#a1a1aa">
-            {format(new Date(sorted[i].date + 'T12:00'), 'd MMM', { locale: fr })}
-          </text>
-        ))}
-      </svg>
-    </div>
-  )
 }
 
 // ── Indicateur de progression mensuel ────────────────────────────────────────
@@ -198,7 +123,6 @@ export default function DashboardPage() {
     const dateTo = period === 'semaine'
       ? format(endOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd')
       : format(endOfMonth(now), 'yyyy-MM-dd')
-    const from30  = format(subDays(now, 30), 'yyyy-MM-dd')
     const from90  = format(subDays(now, 90), 'yyyy-MM-dd')
 
     const [
@@ -206,8 +130,6 @@ export default function DashboardPage() {
       { data: journalToday },
       { data: journalPeriod },
       { data: sessions },
-      { data: lastSess },
-      { data: weightData },
       { data: journalDates },
       { data: completions },
     ] = await Promise.all([
@@ -215,8 +137,6 @@ export default function DashboardPage() {
       supabase.from('journal_entries').select('cal').eq('user_id', user.id).eq('date', today),
       supabase.from('journal_entries').select('cal,prot').eq('user_id', user.id).gte('date', dateFrom).lte('date', dateTo),
       supabase.from('sessions').select('*').eq('user_id', user.id).gte('session_date', dateFrom).lte('session_date', dateTo),
-      supabase.from('sessions').select('*, discipline:disciplines(*)').eq('user_id', user.id).order('session_date', { ascending: false }).limit(1),
-      supabase.from('weight_log').select('date,weight_kg').eq('user_id', user.id).gte('date', from30).order('date', { ascending: false }).limit(15),
       supabase.from('journal_entries').select('date').eq('user_id', user.id).gte('date', from90),
       supabase.from('challenge_completions').select('challenge_key').eq('user_id', user.id).eq('completed_date', today),
     ])
@@ -239,8 +159,6 @@ export default function DashboardPage() {
       totalProt,
       weekSessions:        sessList.length,
       weekMinutes:         sessList.reduce((s, e) => s + Number(e.duration_min ?? 0), 0),
-      lastSession:         lastSess?.[0] ?? null,
-      weights:             (weightData ?? []) as WeightPoint[],
       streak,
       completedChallenges: completed,
     })
