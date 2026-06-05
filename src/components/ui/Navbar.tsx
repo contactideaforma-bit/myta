@@ -8,7 +8,7 @@ import {
   Dumbbell, Timer, History, User,
   LogOut, AlertTriangle, Menu, X,
   ChevronRight, Sun, Moon, MessageSquareWarning, Send, CheckCircle,
-  HelpCircle,
+  HelpCircle, Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
@@ -374,6 +374,23 @@ export function Navbar() {
               </button>
             )
           })}
+
+          {/* Amis & Challenges */}
+          <button onClick={() => handleNavClick('/friends')}
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-all',
+              pathname === '/friends' ? 'bg-tta-light' : 'hover:bg-zinc-50 text-zinc-600'
+            )}>
+            <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center',
+              pathname === '/friends' ? 'bg-tta-mid/20' : 'bg-purple-50')}>
+              <Users size={16} className={pathname === '/friends' ? 'text-tta-mid' : 'text-purple-400'} />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-zinc-700">Amis & Challenges</p>
+              <p className="text-[10px] text-zinc-400">Défis & Sauver Waty</p>
+            </div>
+            {pathname === '/friends' && <ChevronRight size={14} className="text-tta-mid" />}
+          </button>
 
           {/* Profil */}
           <div className="px-3 pt-3 pb-1">
