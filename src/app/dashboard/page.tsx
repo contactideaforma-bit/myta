@@ -10,6 +10,12 @@ import { useRouter } from 'next/navigation'
 import { Waty } from '@/components/ui/Waty'
 import { WelcomeModal } from '@/components/ui/WelcomeModal'
 import { TourGuide } from '@/components/ui/TourGuide'
+import { BadgeDisplay } from '@/components/ui/BadgeDisplay'
+import { ChallengeCard } from '@/components/ui/ChallengeCard'
+import {
+  calcStreak, getBadgeFromStreak,
+  getChallengesForToday, getWatyProactifMessage,
+} from '@/lib/gamification'
 import type { Profile, Session } from '@/types'
 
 type Period = 'semaine' | 'mois'
@@ -27,19 +33,8 @@ interface Stats {
   weekMinutes:  number
   lastSession:  Session | null
   weights:      WeightPoint[]
-}
-
-function getWatyBilanMessage(calConsumed: number, calBurned: number, calTarget: number, period: Period): string {
-  const net    = calConsumed - calBurned
-  const days   = period === 'semaine' ? 7 : 30
-  const target = calTarget * days
-  const deficit = net - target
-  if (calConsumed === 0) return "Commence à noter tes repas pour que je puisse analyser ton bilan calorique ! 📝"
-  if (calBurned === 0 && calConsumed > 0) return `Tu as consommé ${Math.round(calConsumed)} kcal cette ${period}. Ajoute des séances sport pour brûler des calories ! 🏋️`
-  if (deficit < -500 * days / 7) return `Excellent déficit de ${Math.abs(Math.round(deficit))} kcal ! Tu es sur la voie de la perte de poids 🎯`
-  if (deficit < 0) return `Beau travail ! Déficit de ${Math.abs(Math.round(deficit))} kcal. Continue comme ça 💪`
-  if (deficit < 200 * days / 7) return `Tu es presque à l'équilibre — parfait pour le maintien ⚖️`
-  return `Tu es en surplus de ${Math.round(deficit)} kcal cette ${period}. Allège un peu les repas 😊`
+  streak:       number
+  completedChallenges: string[]
 }
 
 // ── Courbe de poids SVG légère ─────────────────────────────────────────────
@@ -84,17 +79,11 @@ function WeightChart({ weights, targetWeight }: { weights: WeightPoint[]; target
             <stop offset="100%" stopColor="#4B47A0" stopOpacity="0" />
           </linearGradient>
         </defs>
-
-        {/* Grille légère */}
         {[minV + range * 0.25, minV + range * 0.5, minV + range * 0.75].map((v, i) => (
           <line key={i} x1={pad.l} y1={y(v)} x2={W - pad.r} y2={y(v)} stroke="#f0f0f0" strokeWidth="1" />
         ))}
-
-        {/* Labels Y */}
         <text x={pad.l - 3} y={y(maxV - 0.3) + 4} textAnchor="end" fontSize="8" fill="#a1a1aa">{(maxV - 0.5).toFixed(0)}</text>
         <text x={pad.l - 3} y={y(minV + 0.3) + 4} textAnchor="end" fontSize="8" fill="#a1a1aa">{(minV + 0.5).toFixed(0)}</text>
-
-        {/* Ligne cible */}
         {targetWeight && targetWeight >= minV && targetWeight <= maxV && (
           <>
             <line x1={pad.l} y1={y(targetWeight)} x2={W - pad.r} y2={y(targetWeight)}
@@ -102,21 +91,13 @@ function WeightChart({ weights, targetWeight }: { weights: WeightPoint[]; target
             <text x={W - pad.r + 2} y={y(targetWeight) + 3} fontSize="7" fill="#22c55e">cible</text>
           </>
         )}
-
-        {/* Aire */}
         <path d={areaPath} fill="url(#wgrad)" />
-
-        {/* Ligne */}
         <path d={linePath} fill="none" stroke="#4B47A0" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-
-        {/* Points */}
         {sorted.map((w, i) => (
           <circle key={i} cx={x(i)} cy={y(w.weight_kg)} r="3"
             fill={i === sorted.length - 1 ? '#4B47A0' : '#fff'}
             stroke="#4B47A0" strokeWidth="1.5" />
         ))}
-
-        {/* Labels dates */}
         {[0, sorted.length - 1].map(i => (
           <text key={i} x={x(i)} y={H - 2} textAnchor="middle" fontSize="8" fill="#a1a1aa">
             {format(new Date(sorted[i].date + 'T12:00'), 'd MMM', { locale: fr })}
@@ -131,18 +112,16 @@ function WeightChart({ weights, targetWeight }: { weights: WeightPoint[]; target
 function MonthProgress({ calConsumed, calTarget, sessions, sessionTarget, calBurned }: {
   calConsumed: number; calTarget: number; sessions: number; sessionTarget: number; calBurned: number
 }) {
-  const now       = new Date()
-  const dayOfMonth = now.getDate()
+  const now         = new Date()
+  const dayOfMonth  = now.getDate()
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-  const monthPct   = Math.round((dayOfMonth / daysInMonth) * 100)
-
-  const prorata    = dayOfMonth / daysInMonth
+  const monthPct    = Math.round((dayOfMonth / daysInMonth) * 100)
+  const prorata     = dayOfMonth / daysInMonth
   const calExpected = Math.round(calTarget * 30 * prorata)
   const sesExpected = Math.round(sessionTarget * prorata)
-
-  const calPct  = calExpected > 0 ? Math.min(150, Math.round((calConsumed / calExpected) * 100)) : 0
-  const sesPct  = sesExpected > 0 ? Math.min(150, Math.round((sessions / Math.max(1, sesExpected)) * 100)) : 0
-  const burnPct = Math.min(150, Math.round((calBurned / Math.max(1, 6000 * prorata)) * 100))
+  const calPct      = calExpected > 0 ? Math.min(150, Math.round((calConsumed / calExpected) * 100)) : 0
+  const sesPct      = sesExpected > 0 ? Math.min(150, Math.round((sessions / Math.max(1, sesExpected)) * 100)) : 0
+  const burnPct     = Math.min(150, Math.round((calBurned / Math.max(1, 6000 * prorata)) * 100))
 
   const items = [
     { label: 'Nutrition',    pct: calPct,  icon: '🥗', color: '#f97316' },
@@ -187,41 +166,25 @@ export default function DashboardPage() {
   const [weightInput, setWeightInput]   = useState('')
   const [savingWeight, setSavingWeight] = useState(false)
   const [weightSaved, setWeightSaved]   = useState(false)
-  // ── Guide ──────────────────────────────────────────────────────────────────
-  const [showModal, setShowModal] = useState(false)
-  const [showTour,  setShowTour]  = useState(false)
+  const [showModal, setShowModal]       = useState(false)
+  const [showTour,  setShowTour]        = useState(false)
 
-  const router       = useRouter()
-  const supabase     = createClient()
+  const router   = useRouter()
+  const supabase = createClient()
 
-  // ── Déclenchement guide au 1er accès ou via ?tour=1 ───────────────────────
   useEffect(() => {
-    // Lancer le tour directement si ?tour=1 (depuis la page /guide)
     if (new URLSearchParams(window.location.search).get('tour') === '1') {
       setShowTour(true)
-      // Nettoyer l'URL sans recharger
       window.history.replaceState({}, '', '/dashboard')
       return
     }
-    // Sinon, afficher le modal de bienvenue si jamais vu
     const seen = localStorage.getItem('myta_guide_seen')
     if (!seen) setShowModal(true)
   }, [])
 
-  function handleStartTour() {
-    localStorage.setItem('myta_guide_seen', '1')
-    setShowModal(false)
-    setShowTour(true)
-  }
-
-  function handleCloseModal() {
-    localStorage.setItem('myta_guide_seen', '1')
-    setShowModal(false)
-  }
-
-  function handleDoneTour() {
-    setShowTour(false)
-  }
+  function handleStartTour()  { localStorage.setItem('myta_guide_seen', '1'); setShowModal(false); setShowTour(true) }
+  function handleCloseModal() { localStorage.setItem('myta_guide_seen', '1'); setShowModal(false) }
+  function handleDoneTour()   { setShowTour(false) }
 
   useEffect(() => { loadData() }, [period])
 
@@ -229,15 +192,16 @@ export default function DashboardPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/auth'); return }
 
-    const today = todayISO()
-    const now   = new Date()
+    const today   = todayISO()
+    const now     = new Date()
     const dateFrom = period === 'semaine'
       ? format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd')
       : format(startOfMonth(now), 'yyyy-MM-dd')
     const dateTo = period === 'semaine'
       ? format(endOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd')
       : format(endOfMonth(now), 'yyyy-MM-dd')
-    const from30 = format(subDays(now, 30), 'yyyy-MM-dd')
+    const from30  = format(subDays(now, 30), 'yyyy-MM-dd')
+    const from90  = format(subDays(now, 90), 'yyyy-MM-dd')
 
     const [
       { data: prof },
@@ -246,6 +210,8 @@ export default function DashboardPage() {
       { data: sessions },
       { data: lastSess },
       { data: weightData },
+      { data: journalDates },
+      { data: completions },
     ] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
       supabase.from('journal_entries').select('cal').eq('user_id', user.id).eq('date', today),
@@ -253,6 +219,8 @@ export default function DashboardPage() {
       supabase.from('sessions').select('*').eq('user_id', user.id).gte('session_date', dateFrom).lte('session_date', dateTo),
       supabase.from('sessions').select('*, discipline:disciplines(*)').eq('user_id', user.id).order('session_date', { ascending: false }).limit(1),
       supabase.from('weight_log').select('date,weight_kg').eq('user_id', user.id).gte('date', from30).order('date', { ascending: false }).limit(15),
+      supabase.from('journal_entries').select('date').eq('user_id', user.id).gte('date', from90),
+      supabase.from('challenge_completions').select('challenge_key').eq('user_id', user.id).eq('completed_date', today),
     ])
 
     const calToday    = (journalToday ?? []).reduce((s, e) => s + Number(e.cal), 0)
@@ -260,18 +228,23 @@ export default function DashboardPage() {
     const totalProt   = (journalPeriod ?? []).reduce((s, e) => s + Number(e.prot ?? 0), 0)
     const sessList    = sessions ?? []
     const calBurned   = sessList.reduce((s, e) => s + Number(e.calories_burned ?? 0), 0)
+    const dates       = (journalDates ?? []).map(r => r.date)
+    const streak      = calcStreak(dates)
+    const completed   = (completions ?? []).map(c => c.challenge_key)
 
     setStats({
-      profile:      prof ?? null,
+      profile:             prof ?? null,
       calToday,
-      calTarget:    prof?.calorie_target ?? 2000,
+      calTarget:           prof?.calorie_target ?? 2000,
       calConsumed,
       calBurned,
       totalProt,
-      weekSessions: sessList.length,
-      weekMinutes:  sessList.reduce((s, e) => s + Number(e.duration_min ?? 0), 0),
-      lastSession:  lastSess?.[0] ?? null,
-      weights:      (weightData ?? []) as WeightPoint[],
+      weekSessions:        sessList.length,
+      weekMinutes:         sessList.reduce((s, e) => s + Number(e.duration_min ?? 0), 0),
+      lastSession:         lastSess?.[0] ?? null,
+      weights:             (weightData ?? []) as WeightPoint[],
+      streak,
+      completedChallenges: completed,
     })
     setLoading(false)
   }
@@ -295,29 +268,41 @@ export default function DashboardPage() {
     setSavingWeight(false)
   }
 
+  function handleChallengeComplete(key: string) {
+    setStats(prev => prev
+      ? { ...prev, completedChallenges: [...prev.completedChallenges, key] }
+      : prev
+    )
+  }
+
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-10 h-10 border-4 border-nutri/30 border-t-nutri rounded-full animate-spin" />
     </div>
   )
 
-  const s           = stats!
-  const calPct      = Math.min(100, s.calTarget > 0 ? Math.round((s.calToday / s.calTarget) * 100) : 0)
-  const firstName   = s.profile?.full_name?.split(' ')[0] ?? ''
-  const bilanMsg    = getWatyBilanMessage(s.calConsumed, s.calBurned, s.calTarget, period)
-  const lastWeight  = s.weights[0] ?? null
+  const s            = stats!
+  const calPct       = Math.min(100, s.calTarget > 0 ? Math.round((s.calToday / s.calTarget) * 100) : 0)
+  const firstName    = s.profile?.full_name?.split(' ')[0] ?? ''
+  const badge        = getBadgeFromStreak(s.streak)
+  const challenges   = getChallengesForToday()
   const targetWeight = (s.profile as any)?.weight_goal ?? null
+  const lastWeight   = s.weights[0] ?? null
+
+  const watyMsg = getWatyProactifMessage({
+    firstName,
+    goal:         s.profile?.goal ?? null,
+    calToday:     s.calToday,
+    calTarget:    s.calTarget,
+    streak:       s.streak,
+    weekSessions: s.weekSessions,
+  })
 
   return (
     <div className="page">
 
-      {/* ── Guide : modal + tour ── */}
-      {showModal && (
-        <WelcomeModal onStartTour={handleStartTour} onClose={handleCloseModal} />
-      )}
-      {showTour && (
-        <TourGuide onDone={handleDoneTour} />
-      )}
+      {showModal && <WelcomeModal onStartTour={handleStartTour} onClose={handleCloseModal} />}
+      {showTour  && <TourGuide onDone={handleDoneTour} />}
 
       {/* ── Salutation ── */}
       <div id="tour-greeting">
@@ -328,6 +313,45 @@ export default function DashboardPage() {
           Bonjour{firstName ? `, ${firstName}` : ''} 👋
         </h1>
       </div>
+
+      {/* ── Waty proactif ── */}
+      <div className="card bg-tta-light border border-tta-mid/20 flex items-start gap-3">
+        <img src="/waty-nutrition.png" alt="Waty" className="w-12 h-12 object-contain flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold text-tta-mid mb-1">Waty te parle :</p>
+          <p className="text-sm text-zinc-700 leading-relaxed">{watyMsg}</p>
+        </div>
+      </div>
+
+      {/* ── Série + Badge ── */}
+      <div className="card flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-extrabold text-zinc-900 text-sm">🔥 Ma série</h2>
+          <span className={`text-xl font-black ${s.streak > 0 ? 'text-orange-500' : 'text-zinc-300'}`}>
+            {s.streak} jour{s.streak > 1 ? 's' : ''}
+          </span>
+        </div>
+
+        {badge ? (
+          <BadgeDisplay badge={badge} streak={s.streak} size="sm" />
+        ) : (
+          <div className="bg-zinc-50 rounded-2xl px-4 py-3 text-center">
+            <p className="text-sm text-zinc-500">
+              📝 Note ton premier repas aujourd'hui pour démarrer ta série !
+            </p>
+            <p className="text-xs text-zinc-400 mt-1 italic">
+              💬 Waty dit : Tout commence par un premier pas. Je t'attends !
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Challenge du jour ── */}
+      <ChallengeCard
+        challenges={challenges}
+        completedKeys={s.completedChallenges}
+        onComplete={handleChallengeComplete}
+      />
 
       {/* ── Objectifs semaine/mois ── */}
       <div id="tour-objectives" className="card flex flex-col gap-4">
@@ -351,14 +375,13 @@ export default function DashboardPage() {
             </button>
           </div>
         ) : period === 'semaine' ? (
-          // ── Vue semaine : barres de progression ────────────────────────────
           <div className="flex flex-col gap-4">
             {(() => {
-              const days     = 7
-              const calObj   = (s.profile?.calorie_target ?? 2000) * days
-              const protObj  = (s.profile?.prot_target ?? 120) * days
-              const calPct2  = calObj  > 0 ? Math.min(150, Math.round((s.calConsumed / calObj)  * 100)) : 0
-              const protPct  = protObj > 0 ? Math.min(150, Math.round((s.totalProt   / protObj)  * 100)) : 0
+              const days    = 7
+              const calObj  = (s.profile?.calorie_target ?? 2000) * days
+              const protObj = (s.profile?.prot_target ?? 120) * days
+              const calPct2 = calObj  > 0 ? Math.min(150, Math.round((s.calConsumed / calObj)  * 100)) : 0
+              const protPct = protObj > 0 ? Math.min(150, Math.round((s.totalProt   / protObj)  * 100)) : 0
               const sportPct = Math.min(150, Math.round((s.weekSessions / 3) * 100))
               const burnPct  = Math.min(150, Math.round((s.calBurned / 1500) * 100))
 
@@ -389,7 +412,6 @@ export default function DashboardPage() {
             })()}
           </div>
         ) : (
-          // ── Vue mois : progression proratisée ──────────────────────────────
           <MonthProgress
             calConsumed={s.calConsumed}
             calTarget={s.profile?.calorie_target ?? 2000}
@@ -398,9 +420,6 @@ export default function DashboardPage() {
             calBurned={s.calBurned}
           />
         )}
-
-        {/* Waty bilan */}
-        <Waty mode="nutrition" message={bilanMsg} size="sm" dismissible={true} />
       </div>
 
       {/* ── Poids du jour + courbe ── */}
@@ -411,8 +430,6 @@ export default function DashboardPage() {
             <span className="ml-auto text-sm font-bold text-tta-mid">{lastWeight.weight_kg} kg</span>
           )}
         </h2>
-
-        {/* Saisie */}
         <div className="flex gap-2">
           <input
             type="number" step="0.1" min="30" max="300"
@@ -427,8 +444,6 @@ export default function DashboardPage() {
             {savingWeight ? <Loader2 size={14} className="animate-spin" /> : weightSaved ? '✓ Enregistré' : 'Enregistrer'}
           </button>
         </div>
-
-        {/* Courbe */}
         {s.weights.length >= 2 ? (
           <WeightChart weights={s.weights} targetWeight={targetWeight} />
         ) : (

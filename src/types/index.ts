@@ -99,5 +99,30 @@ export interface Profile {
   created_at: string
 }
 
+// ─── Gamification ─────────────────────────────────────────────────────────────
+export interface UserBadge {
+  id:        string
+  user_id:   string
+  badge_key: string
+  earned_at: string
+}
+
+export interface ChallengeCompletion {
+  id:             string
+  user_id:        string
+  challenge_key:  string
+  completed_date: string
+  created_at:     string
+}
+
+export interface SmokingLog {
+  id:         string
+  user_id:    string
+  log_date:   string
+  count:      number
+  created_at: string
+  updated_at: string
+}
+
 // ─── UI helpers ───────────────────────────────────────────────────────────────
 export type Module = 'nutrition' | 'sport'

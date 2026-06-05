@@ -9,6 +9,7 @@ import {
   Search, X, Trash2, Loader2,
   Scale, BarChart3, Mic,
 } from 'lucide-react'
+import { getSmokingWatyMessage } from '@/lib/gamification'
 import { todayISO, round1 } from '@/lib/utils'
 import { searchFoods, type FoodItem } from '@/lib/foods-db'
 import { Waty, getWatyMessage } from '@/components/ui/Waty'
@@ -178,6 +179,12 @@ export default function JournalPage() {
   const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null)
   const [nutriModal, setNutriModal] = useState<{ title: string; color: string; entries: NutrientEntry[] } | null>(null)
 
+  // ── Tabac ──────────────────────────────────────────────────
+  const [smokingCount, setSmokingCount]       = useState(0)
+  const [smokingYesterday, setSmokingYesterday] = useState<number | null>(null)
+  const [smokingStreak, setSmokingStreak]     = useState(0)
+  const [savingSmoke, setSavingSmoke]         = useState(false)
+
   // Objectifs calculés depuis profil
   const goals = useCallback((): DayMacros => {
     if (!profile?.weight_kg || !profile?.height_cm || !profile?.birth_date) {
@@ -213,6 +220,29 @@ export default function JournalPage() {
     ])
     setProfile(prof ?? null)
     setWeights(wts ?? [])
+
+    // ── Tabac : charger si objectif activé ─────────────────
+    if ((prof as any)?.smoking_goal) {
+      const today = todayISO()
+      const d = new Date(today + 'T12:00:00'); d.setDate(d.getDate() - 1)
+      const yesterday = d.toISOString().split('T')[0]
+
+      const [{ data: todayLog }, { data: yesterdayLog }, { data: smokeLogs }] = await Promise.all([
+        supabase.from('smoking_log').select('count').eq('user_id', user.id).eq('log_date', today).single(),
+        supabase.from('smoking_log').select('count').eq('user_id', user.id).eq('log_date', yesterday).single(),
+        supabase.from('smoking_log').select('count,log_date').eq('user_id', user.id).order('log_date', { ascending: false }).limit(30),
+      ])
+      setSmokingCount((todayLog as any)?.count ?? 0)
+      setSmokingYesterday((yesterdayLog as any)?.count ?? null)
+
+      // Calculer série de jours à 0 cigarettes
+      let streak = 0
+      for (const log of smokeLogs ?? []) {
+        if ((log as any).count === 0) streak++
+        else break
+      }
+      setSmokingStreak(streak)
+    }
 
     // Préparer weekCal (7 jours)
     const days = Array.from({ length: 7 }, (_, i) => addDays(todayISO(), -i))
@@ -503,45 +533,7 @@ export default function JournalPage() {
         </div>
       )}
 
-      {/* Recherche */}
-      <div>
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-          <input
-            type="text" value={query} onChange={e => handleSearch(e.target.value)}
-            placeholder="Rechercher un aliment (poulet, riz, pomme…)"
-            className="input pl-9 pr-10"
-          />
-          {query && (
-            <button onClick={() => { setQuery(''); setResults([]) }} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-300 hover:text-zinc-500">
-              <X size={14} />
-            </button>
-          )}
-        </div>
-
-        {/* Dropdown résultats */}
-        {(results.length > 0 || searching) && query.length >= 2 && (
-          <div className="mt-1 bg-white border border-zinc-200 rounded-xl shadow-lg overflow-hidden z-10 relative">
-            {searching && (
-              <div className="flex items-center gap-2 px-4 py-3 text-sm text-zinc-400">
-                <Loader2 size={13} className="animate-spin" />Recherche…
-              </div>
-            )}
-            {results.map((food, i) => (
-              <button key={i} onClick={() => setSelectedFood(food)}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-nutri-light/50 text-left border-b border-zinc-100 last:border-0 transition-colors">
-                <div className="w-8 h-8 rounded-lg bg-nutri-light flex items-center justify-center flex-shrink-0 text-sm">
-                  {food.image_url
-                    ? <img src={food.image_url} alt="" className="w-full h-full object-cover rounded-lg" />
-                    : '🍴'}
-                </div>
-                <span className="flex-1 text-sm font-medium truncate">{food.name}</span>
-                <span className="text-sm font-bold text-orange-500 flex-shrink-0">{food.cal} kcal</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Recherche inline via aliments récents ou voix */}
 
       {/* Journal du jour */}
       <div>
@@ -715,6 +707,103 @@ export default function JournalPage() {
           </div>
         )
       })()}
+
+      {/* ── Tracker tabac ── */}
+      {(profile as any)?.smoking_goal && (
+        <div className="card flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-extrabold text-zinc-900 text-sm flex items-center gap-1.5">
+              🚭 Suivi tabac
+            </h2>
+            {smokingStreak > 0 && (
+              <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                🏆 {smokingStreak}j à 0 cig.
+              </span>
+            )}
+          </div>
+
+          {/* Compteur */}
+          <div className="flex items-center justify-between bg-zinc-50 rounded-2xl px-5 py-4">
+            <div className="text-center">
+              <p className="text-4xl font-black text-zinc-900">{smokingCount}</p>
+              <p className="text-xs text-zinc-400 mt-1">
+                cigarette{smokingCount > 1 ? 's' : ''} aujourd'hui
+              </p>
+              {smokingYesterday !== null && (
+                <p className={`text-[10px] mt-1 font-semibold ${
+                  smokingCount < smokingYesterday ? 'text-green-600'
+                  : smokingCount > smokingYesterday ? 'text-orange-500'
+                  : 'text-zinc-400'
+                }`}>
+                  {smokingCount < smokingYesterday ? `↓ ${smokingYesterday - smokingCount} de moins qu'hier`
+                  : smokingCount > smokingYesterday ? `↑ ${smokingCount - smokingYesterday} de plus qu'hier`
+                  : `= pareil qu'hier (${smokingYesterday})`}
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {/* Bouton rouge principal */}
+              <button
+                onClick={async () => {
+                  if (savingSmoke) return
+                  setSavingSmoke(true)
+                  const newCount = smokingCount + 1
+                  const { data: { user } } = await supabase.auth.getUser()
+                  if (user) {
+                    await supabase.from('smoking_log').upsert(
+                      { user_id: user.id, log_date: todayISO(), count: newCount, updated_at: new Date().toISOString() },
+                      { onConflict: 'user_id,log_date' }
+                    )
+                  }
+                  setSmokingCount(newCount)
+                  setSavingSmoke(false)
+                }}
+                disabled={savingSmoke}
+                className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 active:scale-95 text-white text-2xl font-black shadow-lg transition-all flex items-center justify-center"
+              >
+                {savingSmoke ? <Loader2 size={20} className="animate-spin" /> : '+1'}
+              </button>
+
+              {/* Retour arrière si erreur */}
+              {smokingCount > 0 && (
+                <button
+                  onClick={async () => {
+                    if (savingSmoke) return
+                    setSavingSmoke(true)
+                    const newCount = Math.max(0, smokingCount - 1)
+                    const { data: { user } } = await supabase.auth.getUser()
+                    if (user) {
+                      await supabase.from('smoking_log').upsert(
+                        { user_id: user.id, log_date: todayISO(), count: newCount, updated_at: new Date().toISOString() },
+                        { onConflict: 'user_id,log_date' }
+                      )
+                    }
+                    setSmokingCount(newCount)
+                    setSavingSmoke(false)
+                  }}
+                  className="text-[10px] text-zinc-400 hover:text-zinc-600 text-center"
+                >
+                  ↩ Annuler
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Message Waty */}
+          <div className="bg-blue-50 rounded-2xl px-4 py-3 flex items-start gap-2">
+            <span className="flex-shrink-0">💙</span>
+            <p className="text-xs text-blue-700 leading-relaxed">
+              {getSmokingWatyMessage(smokingCount, smokingYesterday, smokingStreak)}
+            </p>
+          </div>
+
+          <p className="text-[10px] text-zinc-400 text-center italic">
+            Appuie sur le bouton rouge à chaque cigarette fumée.
+            Waty ne te juge jamais — il t'encourage toujours.
+          </p>
+        </div>
+      )}
 
       {/* Deux colonnes : poids + graphique semaine */}
       <div className="grid grid-cols-1 gap-4">

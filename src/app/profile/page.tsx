@@ -246,6 +246,7 @@ export default function ProfilePage() {
     goal: '', calorie_target: '', prot_target: '', carb_target: '', fat_target: '',
     condition: '',
     health_conditions: [] as string[],
+    smoking_goal: false,
   })
 
   // ── États calculateur ───────────────────────────────────────────────────────
@@ -314,6 +315,7 @@ export default function ProfilePage() {
         fat_target:      data.fat_target      ? String(data.fat_target)      : '',
         condition:       data.condition       ?? '',
         health_conditions: data.health_conditions ?? [],
+        smoking_goal:    (data as any).smoking_goal ?? false,
       })
     }
     setLoading(false)
@@ -381,8 +383,9 @@ export default function ProfilePage() {
       carb_target:     parseInt(form.carb_target)       || null,
       fat_target:      parseInt(form.fat_target)        || null,
       condition:       form.condition                   || null,
-      weight_goal:     parseFloat(form.weight_goal)    || null,
+      weight_goal:      parseFloat(form.weight_goal)    || null,
       health_conditions: (form as any).health_conditions?.length ? (form as any).health_conditions : null,
+      smoking_goal:     (form as any).smoking_goal ?? false,
     }
     const { error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' })
     if (!error) {
@@ -978,48 +981,34 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* ── Parrainage ── */}
-          <div className="card flex flex-col gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🎁</span>
-              <div>
-                <h2 className="text-sm font-semibold text-zinc-700">Parrainage</h2>
-                <p className="text-[11px] text-zinc-400">Partage ton code — gagne 1 mois gratuit par ami inscrit</p>
+          {/* ── Objectif arrêter de fumer ── */}
+          <div className="card flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🚭</span>
+                <div>
+                  <h2 className="text-sm font-semibold text-zinc-700">Objectif : Arrêter de fumer</h2>
+                  <p className="text-[11px] text-zinc-400">Active le suivi tabac dans le journal alimentaire</p>
+                </div>
               </div>
+              <button
+                onClick={() => setForm(f => ({ ...f, smoking_goal: !(f as any).smoking_goal }))}
+                className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${(form as any).smoking_goal ? 'bg-tta-mid' : 'bg-zinc-200'}`}
+              >
+                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${(form as any).smoking_goal ? 'translate-x-6' : 'translate-x-0.5'}`} />
+              </button>
             </div>
 
-            {referralCode ? (
-              <>
-                {/* Code */}
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-zinc-50 border-2 border-dashed border-zinc-200 rounded-2xl px-4 py-3 text-center">
-                    <p className="text-xl font-black tracking-widest text-tta-mid font-mono">{referralCode}</p>
-                  </div>
-                  <button onClick={copyReferralLink}
-                    className={`px-4 py-3 rounded-2xl text-sm font-bold transition-all flex-shrink-0 ${referralCopied ? 'bg-green-500 text-white' : 'bg-tta-mid text-white hover:bg-tta'}`}>
-                    {referralCopied ? '✓ Copié !' : '🔗 Partager'}
-                  </button>
+            {(form as any).smoking_goal && (
+              <div className="bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 flex items-start gap-2">
+                <span className="text-base flex-shrink-0">💙</span>
+                <div>
+                  <p className="text-xs font-bold text-orange-700">Suivi tabac activé</p>
+                  <p className="text-[10px] text-orange-600 mt-0.5 leading-relaxed">
+                    Une section apparaîtra dans ton journal pour compter tes cigarettes.
+                    Chaque progrès est récompensé — jamais de jugement, que de l'encouragement.
+                  </p>
                 </div>
-
-                <p className="text-[11px] text-zinc-400 text-center -mt-1">
-                  Lien copié : mytwinapp.fr/auth?ref={referralCode}
-                </p>
-
-                {/* Stats */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="kpi-card items-center text-center !p-3">
-                    <p className="text-2xl font-black text-tta-mid">{referralCount}</p>
-                    <p className="text-xs text-zinc-400">Ami{referralCount > 1 ? 's' : ''} parrainé{referralCount > 1 ? 's' : ''}</p>
-                  </div>
-                  <div className="kpi-card items-center text-center !p-3">
-                    <p className="text-2xl font-black text-nutri-mid">{referralMonths}</p>
-                    <p className="text-xs text-zinc-400">Mois offert{referralMonths > 1 ? 's' : ''} 🎉</p>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="flex justify-center py-3">
-                <Loader2 size={18} className="animate-spin text-zinc-400" />
               </div>
             )}
           </div>

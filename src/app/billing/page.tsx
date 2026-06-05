@@ -351,6 +351,27 @@ export default function BillingPage() {
         )}
       </div>
 
+      {/* ── Amis & Challenge (bientôt) ── */}
+      <div className="bg-white rounded-3xl p-5 shadow-sm border border-zinc-100 flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">🤝</span>
+          <div>
+            <p className="text-sm font-semibold text-zinc-900">Amis & Challenge</p>
+            <p className="text-[11px] text-zinc-400">Défiez-vous entre amis et sauvez Waty ensemble !</p>
+          </div>
+          <span className="ml-auto text-[10px] font-bold bg-purple-100 text-purple-600 px-2 py-1 rounded-full flex-shrink-0">
+            Bientôt
+          </span>
+        </div>
+        <div className="bg-zinc-50 rounded-2xl px-4 py-3">
+          <p className="text-xs text-zinc-500 leading-relaxed">
+            🚀 Le système d'amis arrive bientôt !<br />
+            Tu pourras inviter tes proches, te défier chaque semaine,
+            et unir vos forces pour <span className="font-bold text-tta-mid">sauver Waty</span> ensemble.
+          </p>
+        </div>
+      </div>
+
       <p className="text-center text-xs text-zinc-400 pb-4">
         Un problème ?{' '}
         <a href="mailto:contact@mytwinapp.fr" className="text-tta-mid hover:underline">contact@mytwinapp.fr</a>
