@@ -238,7 +238,7 @@ export default function ProfilePage() {
   const [aiReport, setAiReport]       = useState('')
   const [loadingReport, setLoadingReport] = useState(false)
   const [loadingBilan, setLoadingBilan]   = useState(false)
-  const [smokingWeek, setSmokingWeek] = useState<{ total: number; days: { date: string; count: number }[] } | null>(null)
+  const [smokingWeek, setSmokingWeek] = useState<{ total: number; days: { log_date: string; count: number }[] } | null>(null)
 
   // ── États formulaire profil ─────────────────────────────────────────────────
   const [form, setForm] = useState({
@@ -684,7 +684,7 @@ export default function ProfilePage() {
                         {smokingWeek.days.map((d, i) => {
                           const max  = Math.max(...smokingWeek.days.map(x => x.count), 1)
                           const pct  = d.count === 0 ? 0 : Math.max(15, Math.round((d.count / max) * 100))
-                          const dayL = format(new Date(d.log_date + 'T12:00'), 'EEE', { locale: fr }).slice(0, 2)
+                          const dayL = format(new Date(d.log_date + 'T12:00:00'), 'EEE', { locale: fr }).slice(0, 2)
                           return (
                             <div key={i} className="flex-1 flex flex-col items-center gap-1">
                               <div className="w-full rounded-t-lg transition-all"
