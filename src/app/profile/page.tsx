@@ -238,6 +238,7 @@ export default function ProfilePage() {
   const [aiReport, setAiReport]       = useState('')
   const [loadingReport, setLoadingReport] = useState(false)
   const [loadingBilan, setLoadingBilan]   = useState(false)
+  const [smokingWeek, setSmokingWeek] = useState<{ total: number; days: { date: string; count: number }[] } | null>(null)
 
   // ── États formulaire profil ─────────────────────────────────────────────────
   const [form, setForm] = useState({
@@ -356,6 +357,19 @@ export default function ProfilePage() {
     ])
     setWeights(wts ?? [])
     setSleepLogs(slp ?? [])
+
+    // ── Tabac : 7 derniers jours ─────────────────────────────
+    const { data: prof2 } = await supabase.from('profiles').select('smoking_goal').eq('id', user.id).single()
+    if ((prof2 as any)?.smoking_goal) {
+      const from7 = format(subDays(new Date(), 6), 'yyyy-MM-dd')
+      const { data: smokeLogs } = await supabase
+        .from('smoking_log').select('log_date,count')
+        .eq('user_id', user.id).gte('log_date', from7).order('log_date')
+      const days = (smokeLogs ?? []) as { log_date: string; count: number }[]
+      setSmokingWeek({ total: days.reduce((s, d) => s + d.count, 0), days })
+    } else {
+      setSmokingWeek(null)
+    }
     const jMap: Record<string, number> = {}
     for (const r of jnl ?? []) jMap[r.date] = (jMap[r.date] ?? 0) + Number(r.cal)
     setJournalDays(Object.entries(jMap).map(([date, cal]) => ({ date, cal })).sort((a, b) => a.date.localeCompare(b.date)))
@@ -628,12 +642,6 @@ export default function ProfilePage() {
                     color={bilanStats.avgDeficit < 0 ? 'text-nutri-dark' : 'text-orange-500'}
                     sub={bilanStats.avgDeficit < 0 ? 'Déficit — perte de poids' : 'Surplus calorique'} />
                 )}
-                {bilanStats.weightDiff !== null && (
-                  <KpiCard label="Évolution poids" icon={bilanStats.weightDiff < 0 ? '📉' : '📈'}
-                    value={`${bilanStats.weightDiff > 0 ? '+' : ''}${bilanStats.weightDiff} kg`}
-                    color={bilanStats.weightDiff < 0 ? 'text-nutri-dark' : 'text-orange-500'}
-                    sub={`${bilanStats.firstWeight} → ${bilanStats.lastWeight} kg`} />
-                )}
                 {bilanStats.avgSleepMin > 0 && (
                   <KpiCard
                     label="Sommeil moy."
@@ -646,6 +654,60 @@ export default function ProfilePage() {
                   />
                 )}
               </div>
+
+              {/* ── Bloc tabac semaine ── */}
+              {smokingWeek && (
+                <div className="col-span-2">
+                  <div className="relative overflow-hidden rounded-3xl p-5"
+                    style={{ background: 'linear-gradient(135deg, #4B47A0 0%, #2BA8B0 100%)' }}>
+                    {/* Déco */}
+                    <div className="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-white/10 pointer-events-none" />
+
+                    <div className="flex items-start gap-4 relative z-10">
+                      <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                        <span className="text-3xl">🚭</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-extrabold text-base leading-tight">Suivi tabac — 7 jours</p>
+                        <p className="text-white/70 text-sm mt-0.5">
+                          {smokingWeek.total === 0
+                            ? '🏆 Aucune cigarette cette semaine !'
+                            : `${smokingWeek.total} cigarette${smokingWeek.total > 1 ? 's' : ''} cette semaine`}
+                        </p>
+                      </div>
+                      <img src="/waty-nutrition.png" alt="Waty" className="w-10 h-10 object-contain opacity-80 flex-shrink-0" />
+                    </div>
+
+                    {/* Barres par jour */}
+                    {smokingWeek.days.length > 0 && (
+                      <div className="relative z-10 mt-4 flex items-end gap-1.5 h-10">
+                        {smokingWeek.days.map((d, i) => {
+                          const max  = Math.max(...smokingWeek.days.map(x => x.count), 1)
+                          const pct  = d.count === 0 ? 0 : Math.max(15, Math.round((d.count / max) * 100))
+                          const dayL = format(new Date(d.log_date + 'T12:00'), 'EEE', { locale: fr }).slice(0, 2)
+                          return (
+                            <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                              <div className="w-full rounded-t-lg transition-all"
+                                style={{ height: `${pct}%`, minHeight: d.count > 0 ? '6px' : '2px',
+                                  background: d.count === 0 ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.7)' }} />
+                              <span className="text-[9px] text-white/50">{dayL}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {/* Message Waty */}
+                    <p className="relative z-10 text-white/80 text-xs italic leading-relaxed mt-3 border-t border-white/20 pt-3">
+                      💬 {smokingWeek.total === 0
+                        ? "Aucune cigarette cette semaine — tu es une inspiration ! Continue comme ça, je suis tellement fier de toi."
+                        : smokingWeek.total <= 5
+                          ? `${smokingWeek.total} cigarettes en 7 jours, c'est déjà un bel effort. Chaque cigarette en moins est une victoire.`
+                          : "Chaque semaine est une nouvelle chance. Waty est là, pas de jugement — juste de l'encouragement pour toi."}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Courbe poids */}
               {bilanStats.weightData.length >= 1 ? (

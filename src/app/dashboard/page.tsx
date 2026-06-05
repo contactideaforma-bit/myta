@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } from 'date-fns'
+// WeightChart et MonthProgress déplacés vers journal/profil
 import { fr } from 'date-fns/locale'
-import { ArrowRight, ChevronRight, Scale, Loader2, TrendingDown, TrendingUp, Minus } from 'lucide-react'
+import { ArrowRight, Loader2 } from 'lucide-react'
 import { todayISO, minutesToHuman } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { Waty } from '@/components/ui/Waty'
@@ -160,14 +161,11 @@ function MonthProgress({ calConsumed, calTarget, sessions, sessionTarget, calBur
 }
 
 export default function DashboardPage() {
-  const [stats, setStats]               = useState<Stats | null>(null)
-  const [loading, setLoading]           = useState(true)
-  const [period, setPeriod]             = useState<Period>('semaine')
-  const [weightInput, setWeightInput]   = useState('')
-  const [savingWeight, setSavingWeight] = useState(false)
-  const [weightSaved, setWeightSaved]   = useState(false)
-  const [showModal, setShowModal]       = useState(false)
-  const [showTour,  setShowTour]        = useState(false)
+  const [stats, setStats]     = useState<Stats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [period, setPeriod]   = useState<Period>('semaine')
+  const [showModal, setShowModal] = useState(false)
+  const [showTour,  setShowTour]  = useState(false)
 
   const router   = useRouter()
   const supabase = createClient()
@@ -249,25 +247,6 @@ export default function DashboardPage() {
     setLoading(false)
   }
 
-  async function logWeight() {
-    const val = parseFloat(weightInput)
-    if (!val || val < 20 || val > 300) return
-    setSavingWeight(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const today = todayISO()
-      await supabase.from('weight_log').delete().eq('user_id', user.id).eq('date', today)
-      const { error: insErr } = await supabase.from('weight_log').insert({ user_id: user.id, date: today, weight_kg: val })
-      if (insErr) { console.error('[weight_log]', insErr); setSavingWeight(false); return }
-      await supabase.from('profiles').upsert({ id: user.id, weight_kg: val }, { onConflict: 'id' })
-      setWeightSaved(true)
-      setTimeout(() => setWeightSaved(false), 2000)
-      await loadData()
-      setWeightInput('')
-    }
-    setSavingWeight(false)
-  }
-
   function handleChallengeComplete(key: string) {
     setStats(prev => prev
       ? { ...prev, completedChallenges: [...prev.completedChallenges, key] }
@@ -282,12 +261,10 @@ export default function DashboardPage() {
   )
 
   const s            = stats!
-  const calPct       = Math.min(100, s.calTarget > 0 ? Math.round((s.calToday / s.calTarget) * 100) : 0)
-  const firstName    = s.profile?.full_name?.split(' ')[0] ?? ''
-  const badge        = getBadgeFromStreak(s.streak)
-  const challenges   = getChallengesForToday()
-  const targetWeight = (s.profile as any)?.weight_goal ?? null
-  const lastWeight   = s.weights[0] ?? null
+  const calPct    = Math.min(100, s.calTarget > 0 ? Math.round((s.calToday / s.calTarget) * 100) : 0)
+  const firstName = s.profile?.full_name?.split(' ')[0] ?? ''
+  const badge     = getBadgeFromStreak(s.streak)
+  const challenges = getChallengesForToday()
 
   const watyMsg = getWatyProactifMessage({
     firstName,
@@ -422,37 +399,6 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* ── Poids du jour + courbe ── */}
-      <div id="tour-weight" className="card flex flex-col gap-4">
-        <h2 className="font-extrabold text-zinc-900 flex items-center gap-2">
-          <Scale size={16} className="text-tta-mid" />Poids
-          {lastWeight && (
-            <span className="ml-auto text-sm font-bold text-tta-mid">{lastWeight.weight_kg} kg</span>
-          )}
-        </h2>
-        <div className="flex gap-2">
-          <input
-            type="number" step="0.1" min="30" max="300"
-            value={weightInput}
-            onChange={e => setWeightInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && logWeight()}
-            placeholder={lastWeight ? `Dernier : ${lastWeight.weight_kg} kg` : 'ex: 72.5 kg'}
-            className="input flex-1"
-          />
-          <button onClick={logWeight} disabled={savingWeight}
-            className={`px-4 py-2 rounded-2xl text-sm font-bold text-white transition-all whitespace-nowrap ${weightSaved ? 'bg-green-500' : 'bg-tta-mid hover:bg-tta'}`}>
-            {savingWeight ? <Loader2 size={14} className="animate-spin" /> : weightSaved ? '✓ Enregistré' : 'Enregistrer'}
-          </button>
-        </div>
-        {s.weights.length >= 2 ? (
-          <WeightChart weights={s.weights} targetWeight={targetWeight} />
-        ) : (
-          <p className="text-xs text-zinc-400 text-center py-2">
-            Pèse-toi régulièrement pour voir ta courbe de progression 📈
-          </p>
-        )}
-      </div>
-
       {/* ── Nutrition aujourd'hui ── */}
       <button id="tour-nutrition" onClick={() => router.push('/nutrition/journal')}
         className="w-full text-left bg-gradient-to-br from-nutri to-nutri-mid rounded-3xl p-5 shadow-sm hover:shadow-md transition-all active:scale-[0.98] group">
@@ -505,24 +451,6 @@ export default function DashboardPage() {
         </div>
       </button>
 
-      {/* ── Dernière séance ── */}
-      {s.lastSession && (
-        <button onClick={() => router.push('/sport/history')}
-          className="card flex items-center justify-between hover:shadow-md transition-all active:scale-[0.98]">
-          <div>
-            <p className="text-xs text-zinc-400 mb-0.5">Dernière séance</p>
-            <p className="font-extrabold text-zinc-900">
-              {(s.lastSession as any).discipline?.name ?? 'Séance'}
-            </p>
-            <p className="text-sm text-zinc-400">
-              {s.lastSession.session_date} · {minutesToHuman(s.lastSession.duration_min)}
-            </p>
-          </div>
-          <div className="w-10 h-10 bg-sport-light rounded-2xl flex items-center justify-center">
-            <ChevronRight size={18} className="text-sport" />
-          </div>
-        </button>
-      )}
     </div>
   )
 }
