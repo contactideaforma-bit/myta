@@ -21,10 +21,13 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
 
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
-      await supabase.from('challenge_completions').upsert(
-        { user_id: user.id, challenge_key: challenge.key, completed_date: todayISO() },
-        { onConflict: 'user_id,challenge_key,completed_date' }
-      )
+      // Tente l'insert, ignore le conflit si déjà existant
+      // Conflit unique = déjà complété, pas d'erreur à remonter
+      try {
+        await supabase.from('challenge_completions').insert(
+          { user_id: user.id, challenge_key: challenge.key, completed_date: todayISO() }
+        )
+      } catch { /* ignore */ }
     }
     onComplete(challenge.key)
     setSaving(null)
