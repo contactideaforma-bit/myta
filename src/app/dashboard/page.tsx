@@ -17,6 +17,7 @@ import {
   calcStreak, getBadgeFromStreak,
   getChallengesForToday, getWatyProactifMessage,
 } from '@/lib/gamification'
+import { getDailyTip } from '@/lib/daily-tips'
 import type { Profile } from '@/types'
 
 type Period = 'semaine' | 'mois'
@@ -183,6 +184,11 @@ export default function DashboardPage() {
   const firstName = s.profile?.full_name?.split(' ')[0] ?? ''
   const badge     = getBadgeFromStreak(s.streak)
   const challenges = getChallengesForToday()
+  const dailyTip  = getDailyTip({
+    goal:             s.profile?.goal ?? null,
+    healthConditions: (s.profile as any)?.health_conditions ?? [],
+    smokingGoal:      (s.profile as any)?.smoking_goal ?? false,
+  })
 
   const watyMsg = getWatyProactifMessage({
     firstName,
@@ -247,6 +253,28 @@ export default function DashboardPage() {
         completedKeys={s.completedChallenges}
         onComplete={handleChallengeComplete}
       />
+
+      {/* ── Actu du jour ── */}
+      <div className="card flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-extrabold text-zinc-900 text-sm flex items-center gap-1.5">
+            📰 Actu du jour
+          </h2>
+          <span className="text-[10px] text-zinc-400 bg-zinc-50 px-2 py-1 rounded-full">
+            {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+          </span>
+        </div>
+        <div className="flex items-start gap-3 bg-zinc-50 rounded-2xl px-4 py-3">
+          <span className="text-2xl flex-shrink-0 mt-0.5">{dailyTip.emoji}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-zinc-900 leading-tight">{dailyTip.title}</p>
+            <p className="text-xs text-zinc-500 mt-1 leading-relaxed">{dailyTip.body}</p>
+            {dailyTip.source && (
+              <p className="text-[10px] text-zinc-400 mt-1.5 italic">Source : {dailyTip.source}</p>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* ── Objectifs semaine/mois ── */}
       <div id="tour-objectives" className="card flex flex-col gap-4">

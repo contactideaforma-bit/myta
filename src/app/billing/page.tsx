@@ -351,26 +351,29 @@ export default function BillingPage() {
         )}
       </div>
 
-      {/* ── Amis & Challenge (bientôt) ── */}
-      <div className="bg-white rounded-3xl p-5 shadow-sm border border-zinc-100 flex flex-col gap-3">
+      {/* ── Amis & Challenge ── */}
+      <button
+        onClick={() => router.push('/friends')}
+        className="bg-white rounded-3xl p-5 shadow-sm border border-zinc-100 flex flex-col gap-3 text-left w-full hover:shadow-md transition-all active:scale-[0.99]">
         <div className="flex items-center gap-2">
-          <span className="text-lg">🤝</span>
-          <div>
-            <p className="text-sm font-semibold text-zinc-900">Amis & Challenge</p>
-            <p className="text-[11px] text-zinc-400">Défiez-vous entre amis et sauvez Waty ensemble !</p>
+          <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg, #4B47A0, #2BA8B0)' }}>
+            🤝
           </div>
-          <span className="ml-auto text-[10px] font-bold bg-purple-100 text-purple-600 px-2 py-1 rounded-full flex-shrink-0">
-            Bientôt
-          </span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-zinc-900">Amis & Challenges</p>
+            <p className="text-[11px] text-zinc-400">Défis, compétition & Sauver Waty</p>
+          </div>
+          <span className="text-tta-mid text-lg">→</span>
         </div>
-        <div className="bg-zinc-50 rounded-2xl px-4 py-3">
-          <p className="text-xs text-zinc-500 leading-relaxed">
-            🚀 Le système d'amis arrive bientôt !<br />
-            Tu pourras inviter tes proches, te défier chaque semaine,
-            et unir vos forces pour <span className="font-bold text-tta-mid">sauver Waty</span> ensemble.
+        <div className="bg-tta-light rounded-2xl px-4 py-3 flex items-start gap-3">
+          <img src="/waty-nutrition.png" alt="Waty" className="w-8 h-8 object-contain flex-shrink-0" />
+          <p className="text-xs text-tta-mid leading-relaxed">
+            Crée un groupe, partage un code <span className="font-bold">WATY-XXXX</span> à tes amis,
+            et progressez ensemble pour sauver Waty chaque semaine !
           </p>
         </div>
-      </div>
+      </button>
 
       <p className="text-center text-xs text-zinc-400 pb-4">
         Un problème ?{' '}

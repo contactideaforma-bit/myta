@@ -32,6 +32,55 @@ export async function POST(req: NextRequest) {
     const type = req.nextUrl.searchParams.get('type') ?? 'journal'
     const { data: subs } = await supabaseAdmin.from('push_subscriptions').select('user_id, subscription')
     if (!subs?.length) return NextResponse.json({ sent: 0 })
+    const today   = new Date().toISOString().split('T')[0]
+    let sent = 0
+
+    // ── Notification "série en danger" ────────────────────
+    // Envoie uniquement aux users qui ont une série active mais rien noté aujourd'hui
+    if (type === 'serie') {
+      for (const sub of subs) {
+        try {
+          // Vérifier si l'utilisateur a noté quelque chose aujourd'hui
+          const { data: todayEntry } = await supabaseAdmin
+            .from('journal_entries')
+            .select('id')
+            .eq('user_id', sub.user_id)
+            .eq('date', today)
+            .limit(1)
+            .single()
+
+          if (todayEntry) continue // Déjà noté — pas de notif
+
+          // Vérifier s'il a une série active (entrée hier)
+          const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+          const { data: yesterdayEntry } = await supabaseAdmin
+            .from('journal_entries')
+            .select('id')
+            .eq('user_id', sub.user_id)
+            .eq('date', yesterday)
+            .limit(1)
+            .single()
+
+          if (!yesterdayEntry) continue // Pas de série à protéger
+
+          await webpush.sendNotification(
+            sub.subscription,
+            JSON.stringify({
+              title: '🔥 Ta série est en danger !',
+              body:  'Waty s'inquiète... Note au moins un repas pour protéger ta série aujourd'hui !',
+            })
+          )
+          sent++
+        } catch (err: any) {
+          if (err.statusCode === 410) {
+            await supabaseAdmin.from('push_subscriptions').delete().eq('user_id', sub.user_id)
+          }
+        }
+      }
+      return NextResponse.json({ sent })
+    }
+
+    // ── Autres notifications cron ─────────────────────────
     const messages: Record<string, { title: string; body: string }> = {
       journal:  { title: '🥗 MYTA — Journal alimentaire', body: "N'oublie pas de noter ton repas !" },
       sport:    { title: '🏋️ MYTA — Séance du jour',    body: 'Lance le timer Tabata ! 💪' },
@@ -39,7 +88,6 @@ export async function POST(req: NextRequest) {
       poids:    { title: '⚖️ MYTA — Pesée du matin',    body: 'Note ton poids pour suivre ta progression !' },
     }
     const msg = messages[type] ?? messages.journal
-    let sent = 0
     for (const sub of subs) {
       try {
         await webpush.sendNotification(sub.subscription, JSON.stringify(msg))
