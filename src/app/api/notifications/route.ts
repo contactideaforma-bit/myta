@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
             sub.subscription,
             JSON.stringify({
               title: '🔥 Ta série est en danger !',
-              body:  'Waty s'inquiète... Note au moins un repas pour protéger ta série aujourd'hui !',
+              body:  "Waty s'inquiète... Note au moins un repas pour protéger ta série aujourd'hui !",
             })
           )
           sent++
