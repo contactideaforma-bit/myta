@@ -12,13 +12,25 @@ export async function POST(req: NextRequest) {
   if (!checkRateLimit(auth.userId, 5)) {
     return NextResponse.json({ error: 'Trop de requêtes — réessaie dans 1h' }, { status: 429 })
   }
-  const { calTarget, nutrition, sport, sleep, weight, goal, condition, weightGoal, age } = await req.json()
+  const raw = await req.json()
+
+  // Troncature de tous les champs pour prévenir l'injection de prompt
+  const s = (v: unknown, max: number) => String(v ?? '').slice(0, max)
+  const calTarget  = Number(raw.calTarget)  || 2000
+  const nutrition  = s(raw.nutrition,  500)
+  const sport      = s(raw.sport,      500)
+  const sleep      = s(raw.sleep,      200)
+  const weight     = s(raw.weight,     200)
+  const goal       = s(raw.goal,       100)
+  const condition  = s(raw.condition,  200)
+  const weightGoal = s(raw.weightGoal, 50)
+  const age        = Number(raw.age) || null
 
   const contextLines = [
-    age          ? `Âge : ${age}` : null,
-    goal         ? `Objectif déclaré : ${goal}` : null,
-    weightGoal   ? `Poids cible : ${weightGoal}` : null,
-    condition    ? `Conditions : ${condition}` : null,
+    age        ? `Âge : ${age}` : null,
+    goal       ? `Objectif déclaré : ${goal}` : null,
+    weightGoal ? `Poids cible : ${weightGoal}` : null,
+    condition  ? `Conditions : ${condition}` : null,
   ].filter(Boolean).join(' | ')
 
   const prompt = `Tu es Waty, la mascotte coach de MYTA. Tu dois rédiger un bilan de santé personnalisé, bienveillant et ultra-pertinent.
@@ -27,10 +39,12 @@ PROFIL UTILISATEUR : ${contextLines || 'Non renseigné'}
 OBJECTIF CALORIQUE : ${calTarget} kcal/jour
 
 DONNÉES DES 7 DERNIERS JOURS :
+<user_data>
 📊 Nutrition : ${nutrition}
 🏋️ Sport : ${sport}
 😴 Sommeil : ${sleep}
 ⚖️ Poids : ${weight}
+</user_data>
 
 CONSIGNES DE RÉDACTION :
 - Tutoie l'utilisateur

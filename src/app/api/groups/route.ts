@@ -10,8 +10,10 @@ const supabaseAdmin = createClient(
 
 function generateInviteCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const bytes = new Uint8Array(4)
+  crypto.getRandomValues(bytes)
   let code = 'WATY-'
-  for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)]
+  for (let i = 0; i < 4; i++) code += chars[bytes[i] % chars.length]
   return code
 }
 
@@ -55,7 +57,7 @@ async function getAuthUser(req: NextRequest): Promise<string | null> {
   const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
   if (bearerToken && bearerToken !== 'undefined' && bearerToken !== 'null') {
     const { data: { user } } = await supabaseAdmin.auth.getUser(bearerToken)
-    if (user) { console.log('[groups] auth via Bearer OK'); return user.id }
+    if (user) return user.id
   }
 
   // 2. Essai via cookies (SSR)
@@ -64,9 +66,7 @@ async function getAuthUser(req: NextRequest): Promise<string | null> {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     { cookies: { getAll: () => req.cookies.getAll(), setAll: () => {} } }
   )
-  const { data: { user }, error } = await supabase.auth.getUser()
-  console.log('[groups] auth via cookies:', user?.id ?? null, 'error:', error?.message ?? null)
-  console.log('[groups] cookies reçus:', req.cookies.getAll().map(c => c.name))
+  const { data: { user } } = await supabase.auth.getUser()
   if (user) return user.id
 
   return null
@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
       .insert({ name: name.trim(), created_by: userId, mode, invite_code: inviteCode })
       .select().single()
 
-    if (gErr) return NextResponse.json({ error: gErr.message }, { status: 500 })
+    if (gErr) return NextResponse.json({ error: 'Erreur lors de la création du groupe' }, { status: 500 })
 
     await supabaseAdmin.from('group_members')
       .insert({ group_id: (group as any).id, user_id: userId, privacy_level: privacyLevel })
@@ -212,6 +212,12 @@ export async function POST(req: NextRequest) {
     const { groupId } = body
     if (!groupId) return NextResponse.json({ error: 'groupId requis' }, { status: 400 })
 
+    // Vérifier que l'utilisateur est bien membre de ce groupe avant de procéder
+    const { data: membership } = await supabaseAdmin
+      .from('group_members').select('id').eq('group_id', groupId).eq('user_id', userId).single()
+
+    if (!membership) return NextResponse.json({ error: 'Tu n\'es pas membre de ce groupe' }, { status: 403 })
+
     await supabaseAdmin.from('group_members')
       .delete().eq('group_id', groupId).eq('user_id', userId)
 
@@ -219,6 +225,7 @@ export async function POST(req: NextRequest) {
       .from('group_members').select('id', { count: 'exact', head: true })
       .eq('group_id', groupId)
 
+    // Supprimer le groupe seulement s'il est vide
     if ((count ?? 0) === 0) {
       await supabaseAdmin.from('friend_groups').delete().eq('id', groupId)
     }

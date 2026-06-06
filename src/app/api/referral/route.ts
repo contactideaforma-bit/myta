@@ -13,7 +13,9 @@ function generateCode(name: string | null): string {
     .normalize('NFD').replace(/[̀-ͯ]/g, '') // remove accents
     .slice(0, 3).toUpperCase().padEnd(3, 'X')
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  const suffix = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+  const bytes = new Uint8Array(4)
+  crypto.getRandomValues(bytes)
+  const suffix = Array.from(bytes, b => chars[b % chars.length]).join('')
   return `${prefix}${suffix}`
 }
 

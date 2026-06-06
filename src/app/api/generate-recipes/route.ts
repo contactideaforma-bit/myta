@@ -33,16 +33,18 @@ export async function GET(req: NextRequest) {
   if (!checkRateLimit(auth.userId, 15)) {
     return NextResponse.json({ error: 'Trop de requêtes — réessaie dans 1h' }, { status: 429 })
   }
-  const category = req.nextUrl.searchParams.get('category') ?? ''
-  const keywords = req.nextUrl.searchParams.get('keywords') ?? ''
+  // Validation catégorie + troncature keywords
+  const rawCategory = req.nextUrl.searchParams.get('category') ?? ''
+  const category    = Object.keys(CATEGORY_PROMPTS).includes(rawCategory) ? rawCategory : ''
+  const keywords    = (req.nextUrl.searchParams.get('keywords') ?? '').slice(0, 200)
 
   let context = ''
   if (keywords && category) {
-    context = `${CATEGORY_PROMPTS[category] ?? category} avec ces ingredients: ${keywords}`
+    context = `${CATEGORY_PROMPTS[category]} avec ces ingredients: ${keywords}`
   } else if (keywords) {
     context = `utilisant ces ingredients: ${keywords}`
   } else if (category) {
-    context = CATEGORY_PROMPTS[category] ?? 'rapides et savoureuses'
+    context = CATEGORY_PROMPTS[category]
   } else {
     context = 'rapides et savoureuses'
   }
@@ -83,6 +85,6 @@ Regles strictes:
 
   } catch (err: any) {
     console.error('[generate-recipes] error:', err.message)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    return NextResponse.json({ error: 'Erreur lors de la génération des recettes' }, { status: 500 })
   }
 }

@@ -26,12 +26,38 @@ export async function POST(req: NextRequest) {
 
     const { plan, promoCode, referredBy } = await req.json()
 
+    // Validation stricte du plan
+    if (!['monthly', 'yearly'].includes(plan)) {
+      return NextResponse.json({ error: 'Plan invalide' }, { status: 400 })
+    }
+
     const priceId = plan === 'monthly'
       ? process.env.STRIPE_PRICE_MONTHLY
       : process.env.STRIPE_PRICE_YEARLY
 
     if (!priceId) {
-      return NextResponse.json({ error: `Price ID manquant pour le plan: ${plan}` }, { status: 500 })
+      return NextResponse.json({ error: 'Configuration tarifaire manquante' }, { status: 500 })
+    }
+
+    // Validation du code parrainage : doit exister, ne pas être le sien, et l'user ne doit pas déjà avoir été parrainé
+    let validReferredBy = ''
+    if (referredBy?.trim()) {
+      const code = String(referredBy).trim().toUpperCase().slice(0, 20)
+
+      // Vérifier que le code existe et appartient à un autre utilisateur
+      const { data: referrer } = await supabaseAdmin
+        .from('profiles').select('id').eq('referral_code', code).single()
+
+      // Vérifier que l'utilisateur n'a pas déjà été parrainé
+      const { data: selfProfile } = await supabaseAdmin
+        .from('profiles').select('referred_by').eq('id', user.id).single()
+
+      const isValidReferrer  = !!referrer && referrer.id !== user.id
+      const alreadyReferred  = !!(selfProfile as any)?.referred_by
+
+      if (isValidReferrer && !alreadyReferred) {
+        validReferredBy = code
+      }
     }
 
     // Paramètres de base de la session Stripe
@@ -41,8 +67,8 @@ export async function POST(req: NextRequest) {
       customer_email: user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: {
-        trial_period_days: referredBy ? 30 : 3, // 1 mois offert si parrainé
-        metadata: { supabase_user_id: user.id, referred_by: referredBy ?? '' },
+        trial_period_days: validReferredBy ? 30 : 3,
+        metadata: { supabase_user_id: user.id, referred_by: validReferredBy },
       },
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
       cancel_url:  `${process.env.NEXT_PUBLIC_APP_URL}/pricing?cancelled=true`,
@@ -75,6 +101,6 @@ export async function POST(req: NextRequest) {
 
   } catch (err: any) {
     console.error('Stripe error:', err)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    return NextResponse.json({ error: 'Erreur lors de la création du paiement' }, { status: 500 })
   }
 }

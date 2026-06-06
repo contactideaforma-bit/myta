@@ -81,8 +81,20 @@ export async function POST(req: NextRequest) {
       transcript = text.trim()
     } else {
       const formData = await req.formData()
-      const audio = formData.get('audio') as Blob | null
+      const audio = formData.get('audio') as File | null
       if (!audio) return NextResponse.json({ error: 'Aucun fichier audio' }, { status: 400 })
+
+      // Limite taille : 10 MB
+      if (audio.size > 10 * 1024 * 1024) {
+        return NextResponse.json({ error: 'Fichier trop volumineux (max 10 MB)' }, { status: 413 })
+      }
+
+      // Validation type MIME
+      const allowedTypes = ['audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/x-m4a']
+      if (!allowedTypes.includes(audio.type)) {
+        return NextResponse.json({ error: 'Format audio non supporté' }, { status: 415 })
+      }
+
       transcript = await transcribeAudio(audio)
       if (!transcript.trim()) return NextResponse.json({ error: 'Audio non reconnu, réessayez' }, { status: 400 })
     }
@@ -91,6 +103,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ transcript, foods })
   } catch (err: any) {
     console.error('[voice-meal]', err)
-    return NextResponse.json({ error: err.message ?? 'Erreur serveur' }, { status: 500 })
+    return NextResponse.json({ error: 'Erreur lors du traitement audio' }, { status: 500 })
   }
 }

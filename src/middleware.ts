@@ -65,7 +65,8 @@ export async function middleware(req: NextRequest) {
 
     return NextResponse.next()
   } catch {
-    return NextResponse.next()
+    // En cas d'erreur Supabase, on redirige vers /auth plutôt que de laisser passer
+    return NextResponse.redirect(new URL('/auth', req.url))
   }
 }
 
