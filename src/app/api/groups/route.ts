@@ -15,24 +15,37 @@ function generateInviteCode(): string {
   return code
 }
 
-async function calcWeekScore(userId: string): Promise<number> {
-  const now      = new Date()
-  const weekFrom = format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd')
-  const weekTo   = format(endOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd')
+async function calcWeekScore(userId: string, joinedAt: string): Promise<number> {
+  const now       = new Date()
+  const weekStart = startOfWeek(now, { weekStartsOn: 1 })
+  const joinDate  = new Date(joinedAt)
 
-  const [{ data: prof }, { data: journal }, { data: sessions }] = await Promise.all([
-    supabaseAdmin.from('profiles').select('calorie_target').eq('id', userId).single(),
-    supabaseAdmin.from('journal_entries').select('cal').eq('user_id', userId)
-      .gte('date', weekFrom).lte('date', weekTo),
+  // La progression démarre au join ou au début de semaine, selon ce qui est le plus récent
+  const periodStart = joinDate > weekStart ? joinDate : weekStart
+  const fromStr     = format(periodStart, 'yyyy-MM-dd')
+  const toStr       = format(now, 'yyyy-MM-dd')
+
+  // Nombre de jours écoulés depuis le début du challenge (min 1)
+  const daysElapsed = Math.max(1,
+    Math.round((now.getTime() - periodStart.getTime()) / 86400000) + 1
+  )
+
+  const [{ data: journal }, { data: sessions }] = await Promise.all([
+    supabaseAdmin.from('journal_entries').select('date').eq('user_id', userId)
+      .gte('date', fromStr).lte('date', toStr),
     supabaseAdmin.from('sessions').select('id').eq('user_id', userId)
-      .gte('session_date', weekFrom).lte('session_date', weekTo),
+      .gte('session_date', fromStr).lte('session_date', toStr),
   ])
 
-  const calTarget   = ((prof as any)?.calorie_target ?? 2000) * 7
-  const calConsumed = (journal ?? []).reduce((s: number, e: any) => s + Number(e.cal), 0)
+  // Nutrition : % de jours où l'utilisateur a loggé au moins un repas
+  const uniqueNutriDays = new Set((journal ?? []).map((e: any) => e.date)).size
+  const nutritionScore  = Math.min(100, Math.round((uniqueNutriDays / daysElapsed) * 100))
+
+  // Sport : sessions vs cible proratée (3 séances / 7 jours)
   const sessionCnt  = (sessions ?? []).length
-  const nutritionScore = calTarget > 0 ? Math.min(100, Math.round((calConsumed / calTarget) * 100)) : 0
-  const sportScore     = Math.min(100, Math.round((sessionCnt / 3) * 100))
+  const sportTarget = Math.max(1, (daysElapsed / 7) * 3)
+  const sportScore  = Math.min(100, Math.round((sessionCnt / sportTarget) * 100))
+
   return Math.round(nutritionScore * 0.6 + sportScore * 0.4)
 }
 
@@ -81,7 +94,7 @@ export async function GET(req: NextRequest) {
       const { data: prof } = await supabaseAdmin
         .from('profiles').select('full_name').eq('id', m.user_id).single()
 
-      const score = await calcWeekScore(m.user_id)
+      const score = await calcWeekScore(m.user_id, m.joined_at)
       const isMe  = m.user_id === userId
 
       let streak = null
