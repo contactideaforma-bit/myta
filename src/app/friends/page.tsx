@@ -5,21 +5,6 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Loader2, Copy, Check, X, UserPlus, Users, Trophy, Shield } from 'lucide-react'
 
-// ── Scénarios "Sauver Waty" — change chaque semaine ──────────
-const WATY_SCENARIOS = [
-  { danger: "Waty est tombé dans un volcan de pizza 🍕🌋",        saved: "SAUVÉ ! Waty s'est échappé du volcan grâce à vous ! 🎉" },
-  { danger: "Waty a été kidnappé par une armée de donuts 🍩",     saved: "SAUVÉ ! Les donuts ont libéré Waty face à votre détermination ! 🎊" },
-  { danger: "Waty est coincé dans un frigo géant 🧊",             saved: "SAUVÉ ! Waty a retrouvé la chaleur grâce à vos efforts ! ☀️" },
-  { danger: "Waty a glissé dans une piscine de soda 🥤",          saved: "SAUVÉ ! Waty nage enfin dans de l'eau pure grâce à vous ! 💧" },
-  { danger: "Waty a été capturé par des sédentaires pro 🛋️",     saved: "SAUVÉ ! Votre activité a convaincu les sédentaires de le libérer ! 💪" },
-  { danger: "Waty s'est perdu dans une forêt de fast-food 🍔🌲", saved: "SAUVÉ ! Waty a retrouvé le chemin grâce à vos bons choix ! 🥗" },
-  { danger: "Waty a été figé dans du caramel 🍯",                 saved: "SAUVÉ ! La chaleur de vos efforts a fondu le caramel ! 🔥" },
-]
-
-function getWeeklyScenario() {
-  const weekNum = Math.floor(Date.now() / (7 * 24 * 3600 * 1000))
-  return WATY_SCENARIOS[weekNum % WATY_SCENARIOS.length]
-}
 
 // ── Types ─────────────────────────────────────────────────────
 interface GroupMember {
@@ -71,6 +56,27 @@ function MemberRow({ member, rank }: { member: GroupMember; rank: number }) {
   )
 }
 
+// ── Floor is Lava — progression Sauver Waty ──────────────────
+const LAVA_STAGES = [
+  { img: '/lava-0.png',   label: 'Prêt à jouer ! Go Go Go !' },
+  { img: '/lava-1.png',   label: 'Connecte-toi tous les jours pour progresser !' },
+  { img: '/lava-2.png',   label: 'Super ! Continue comme ça !' },
+  { img: '/lava-3.png',   label: "Vous êtes une équipe qui déchire !" },
+  { img: '/lava-4.png',   label: 'Encore un petit effort !' },
+  { img: '/lava-5.png',   label: 'Waw ! Vous y êtes presque !' },
+  { img: '/lava-win.png', label: "Bravo l'équipe des Champions ! 🏆" },
+]
+
+function getLavaStage(score: number): number {
+  if (score >= 70) return 6
+  if (score >= 60) return 5
+  if (score >= 45) return 4
+  if (score >= 30) return 3
+  if (score >= 15) return 2
+  if (score >= 1)  return 1
+  return 0
+}
+
 // ── Composant carte groupe ────────────────────────────────────
 function GroupCard({ group, onLeave, onCopyCode }: {
   group: Group
@@ -78,8 +84,8 @@ function GroupCard({ group, onLeave, onCopyCode }: {
   onCopyCode: (code: string) => void
 }) {
   const [copied, setCopied] = useState(false)
-  const scenario = getWeeklyScenario()
-  const isSaved  = group.teamScore >= 70
+  const isSaved = group.teamScore >= 70
+  const lava    = LAVA_STAGES[getLavaStage(group.teamScore)]
 
   function handleCopy() {
     onCopyCode(group.invite_code)
@@ -122,31 +128,41 @@ function GroupCard({ group, onLeave, onCopyCode }: {
           </button>
         </div>
 
-        {/* Scénario Waty (mode équipe) */}
+        {/* Floor is Lava — Sauver Waty (mode équipe) */}
         {group.mode === 'equipe' && (
-          <div className={`relative overflow-hidden rounded-2xl px-4 py-3 ${isSaved ? 'bg-green-50 border border-green-200' : 'bg-tta-light border border-tta-mid/20'}`}>
-            <div className="flex items-start gap-3">
-              <img src="/waty-nutrition.png" alt="Waty" className="w-10 h-10 object-contain flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className={`text-xs font-bold ${isSaved ? 'text-green-700' : 'text-tta-mid'}`}>
-                  {isSaved ? '🎉 Cette semaine' : '⚠️ Cette semaine'}
-                </p>
-                <p className={`text-xs leading-relaxed mt-0.5 ${isSaved ? 'text-green-700' : 'text-zinc-700'}`}>
-                  {isSaved ? scenario.saved : scenario.danger}
-                </p>
-              </div>
+          <div className="flex flex-col gap-2">
+            {/* Image de progression */}
+            <div className="relative rounded-2xl overflow-hidden">
+              <img
+                src={lava.img}
+                alt={lava.label}
+                className="w-full object-cover rounded-2xl"
+              />
             </div>
 
-            {/* Jauge équipe */}
-            <div className="mt-3">
+            {/* Jauge + score */}
+            <div className="bg-zinc-50 rounded-2xl px-4 py-2.5">
               <div className="flex justify-between text-[10px] text-zinc-500 mb-1.5">
-                <span>Score équipe</span>
-                <span className="font-bold">{group.teamScore}% {group.teamScore >= 70 ? '✓ Waty sauvé !' : '— objectif 70%'}</span>
+                <span>Score équipe cette semaine</span>
+                <span className="font-bold text-tta-mid">
+                  {group.teamScore}% {isSaved ? '✓ Waty sauvé !' : '— objectif 70%'}
+                </span>
               </div>
-              <div className="h-3 bg-white/60 rounded-full overflow-hidden">
+              <div className="h-2.5 bg-zinc-200 rounded-full overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${group.teamScore}%`, background: isSaved ? '#22c55e' : 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }} />
+                  style={{
+                    width: `${group.teamScore}%`,
+                    background: isSaved
+                      ? '#22c55e'
+                      : 'linear-gradient(90deg, #4B47A0, #2BA8B0)',
+                  }} />
               </div>
+              {/* Marqueur objectif 70% */}
+              <div className="relative h-0">
+                <div className="absolute top-0 w-0.5 h-3 bg-zinc-400 rounded-full -translate-y-4"
+                  style={{ left: '70%' }} />
+              </div>
+              <p className="text-[10px] text-zinc-400 text-right mt-2.5">🎯 70% pour sauver Waty</p>
             </div>
           </div>
         )}
