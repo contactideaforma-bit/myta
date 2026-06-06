@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { createClient as createServerClient } from '@/lib/supabase/server'
+import { createServerClient } from '@supabase/ssr'
 import { format, startOfWeek, endOfWeek } from 'date-fns'
 
 const supabaseAdmin = createClient(
@@ -36,10 +36,17 @@ async function calcWeekScore(userId: string): Promise<number> {
   return Math.round(nutritionScore * 0.6 + sportScore * 0.4)
 }
 
+function makeSupabase(req: NextRequest) {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => req.cookies.getAll(), setAll: () => {} } }
+  )
+}
+
 // ── GET — liste mes groupes ──────────────────────────────────
 export async function GET(req: NextRequest) {
-  const supabase = createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user } } = await makeSupabase(req).auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
   const userId = user.id
 
@@ -109,8 +116,7 @@ export async function GET(req: NextRequest) {
 
 // ── POST — créer / rejoindre / quitter ───────────────────────
 export async function POST(req: NextRequest) {
-  const supabase = createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user } } = await makeSupabase(req).auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
   const userId = user.id
 
