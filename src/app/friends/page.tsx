@@ -199,11 +199,23 @@ export default function FriendsPage() {
 
   useEffect(() => { loadGroups() }, [])
 
+  async function getToken(): Promise<string> {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) return session.access_token
+    // Tente un refresh si la session est expirée
+    const { data: { session: refreshed } } = await supabase.auth.refreshSession()
+    return refreshed?.access_token ?? ''
+  }
+
   async function loadGroups() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/auth'); return }
 
-    const res = await fetch('/api/groups', { credentials: 'include' })
+    const token = await getToken()
+    const res = await fetch('/api/groups', {
+      credentials: 'include',
+      headers: { Authorization: `Bearer ${token}` },
+    })
     if (res.ok) {
       const data = await res.json()
       setGroups(data.groups ?? [])
@@ -214,9 +226,10 @@ export default function FriendsPage() {
   async function handleCreate() {
     if (!createName.trim()) { setCreateError('Donne un nom à ton groupe'); return }
     setCreating(true); setCreateError('')
+    const token = await getToken()
     const res = await fetch('/api/groups', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       credentials: 'include',
       body: JSON.stringify({ action: 'create', name: createName, mode: createMode, privacyLevel: createPrivacy }),
     })
@@ -231,9 +244,10 @@ export default function FriendsPage() {
   async function handleJoin() {
     if (!joinCode.trim()) { setJoinError('Entre un code d\'invitation'); return }
     setJoining(true); setJoinError('')
+    const token = await getToken()
     const res = await fetch('/api/groups', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       credentials: 'include',
       body: JSON.stringify({ action: 'join', inviteCode: joinCode, privacyLevel: joinPrivacy }),
     })
@@ -247,9 +261,10 @@ export default function FriendsPage() {
 
   async function handleLeave(groupId: string) {
     if (!confirm('Quitter ce groupe ?')) return
+    const token = await getToken()
     await fetch('/api/groups', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       credentials: 'include',
       body: JSON.stringify({ action: 'leave', groupId }),
     })

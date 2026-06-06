@@ -36,19 +36,33 @@ async function calcWeekScore(userId: string): Promise<number> {
   return Math.round(nutritionScore * 0.6 + sportScore * 0.4)
 }
 
-function makeSupabase(req: NextRequest) {
-  return createServerClient(
+async function getAuthUser(req: NextRequest): Promise<string | null> {
+  // 1. Essai via Bearer token (header Authorization)
+  const authHeader = req.headers.get('authorization') ?? ''
+  const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
+  if (bearerToken && bearerToken !== 'undefined' && bearerToken !== 'null') {
+    const { data: { user } } = await supabaseAdmin.auth.getUser(bearerToken)
+    if (user) { console.log('[groups] auth via Bearer OK'); return user.id }
+  }
+
+  // 2. Essai via cookies (SSR)
+  const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     { cookies: { getAll: () => req.cookies.getAll(), setAll: () => {} } }
   )
+  const { data: { user }, error } = await supabase.auth.getUser()
+  console.log('[groups] auth via cookies:', user?.id ?? null, 'error:', error?.message ?? null)
+  console.log('[groups] cookies reçus:', req.cookies.getAll().map(c => c.name))
+  if (user) return user.id
+
+  return null
 }
 
 // ── GET — liste mes groupes ──────────────────────────────────
 export async function GET(req: NextRequest) {
-  const { data: { user } } = await makeSupabase(req).auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
-  const userId = user.id
+  const userId = await getAuthUser(req)
+  if (!userId) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
 
   const { data: memberships } = await supabaseAdmin
     .from('group_members').select('group_id, privacy_level').eq('user_id', userId)
@@ -116,9 +130,8 @@ export async function GET(req: NextRequest) {
 
 // ── POST — créer / rejoindre / quitter ───────────────────────
 export async function POST(req: NextRequest) {
-  const { data: { user } } = await makeSupabase(req).auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
-  const userId = user.id
+  const userId = await getAuthUser(req)
+  if (!userId) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
 
   const body   = await req.json()
   const { action } = body
