@@ -203,10 +203,7 @@ export default function FriendsPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/auth'); return }
 
-    const { data: { session } } = await supabase.auth.getSession()
-    const res = await fetch('/api/groups', {
-      headers: { Authorization: `Bearer ${session?.access_token}` }
-    })
+    const res = await fetch('/api/groups', { credentials: 'include' })
     if (res.ok) {
       const data = await res.json()
       setGroups(data.groups ?? [])
@@ -217,10 +214,10 @@ export default function FriendsPage() {
   async function handleCreate() {
     if (!createName.trim()) { setCreateError('Donne un nom à ton groupe'); return }
     setCreating(true); setCreateError('')
-    const { data: { session } } = await supabase.auth.getSession()
     const res = await fetch('/api/groups', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ action: 'create', name: createName, mode: createMode, privacyLevel: createPrivacy }),
     })
     const data = await res.json()
@@ -234,10 +231,10 @@ export default function FriendsPage() {
   async function handleJoin() {
     if (!joinCode.trim()) { setJoinError('Entre un code d\'invitation'); return }
     setJoining(true); setJoinError('')
-    const { data: { session } } = await supabase.auth.getSession()
     const res = await fetch('/api/groups', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ action: 'join', inviteCode: joinCode, privacyLevel: joinPrivacy }),
     })
     const data = await res.json()
@@ -250,10 +247,10 @@ export default function FriendsPage() {
 
   async function handleLeave(groupId: string) {
     if (!confirm('Quitter ce groupe ?')) return
-    const { data: { session } } = await supabase.auth.getSession()
     await fetch('/api/groups', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ action: 'leave', groupId }),
     })
     showToast('Tu as quitté le groupe')
