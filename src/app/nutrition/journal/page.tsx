@@ -7,7 +7,7 @@ import { fr } from 'date-fns/locale'
 import {
   ChevronLeft, ChevronRight, Flame,
   Search, X, Trash2, Loader2,
-  Scale, BarChart3, Mic,
+  Scale, BarChart3, Mic, Camera,
 } from 'lucide-react'
 import { getSmokingWatyMessage } from '@/lib/gamification'
 import { todayISO, round1 } from '@/lib/utils'
@@ -25,6 +25,18 @@ import {
 import type { JournalEntry, WeightLog, Profile } from '@/types'
 
 interface DayMacros { cal: number; prot: number; carb: number; fat: number }
+
+// Mapping nom micro CIQUAL → clé supplément pour fusion des barres
+const MICRO_NAME_TO_SUPP_KEY: Record<string, MicroKey> = {
+  'Vit. D':    'vitD',
+  'Vit. C':    'vitC',
+  'Vit. B12':  'vitB12',
+  'Fer':       'fer',
+  'Calcium':   'calcium',
+  'Magnésium': 'magnesium',
+  'Zinc':      'zinc',
+  'Oméga-3':   'omega3',
+}
 
 // ─── Helpers date ──────────────────────────────────────────────────────────
 function addDays(str: string, n: number): string {
@@ -182,6 +194,13 @@ export default function JournalPage() {
 
   const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null)
   const [nutriModal, setNutriModal] = useState<{ title: string; color: string; entries: NutrientEntry[] } | null>(null)
+
+  // ── Photo analyse ──────────────────────────────────────────
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const [photoAnalyzing, setPhotoAnalyzing]   = useState(false)
+  const [photoFoods, setPhotoFoods]           = useState<DetectedFood[] | null>(null)
+  const [photoPreview, setPhotoPreview]       = useState<string | null>(null)
+  const [photoError, setPhotoError]           = useState('')
 
   // ── Compléments ────────────────────────────────────────────
   const [showSupplPanel, setShowSupplPanel]   = useState(false)
@@ -415,6 +434,41 @@ export default function JournalPage() {
     showToast(`✓ ${foods.length} aliment${foods.length > 1 ? 's' : ''} ajouté${foods.length > 1 ? 's' : ''}`, 'ok')
   }
 
+  async function handlePhotoCapture(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    // Reset pour permettre re-sélection du même fichier
+    e.target.value = ''
+    setPhotoAnalyzing(true)
+    setPhotoError('')
+    const preview = URL.createObjectURL(file)
+    setPhotoPreview(preview)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      const fd = new FormData()
+      fd.append('image', file)
+      const res = await fetch('/api/analyze-meal-photo', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      })
+      const data = await res.json()
+      if (data.foods && data.foods.length > 0) {
+        setPhotoFoods(data.foods)
+      } else {
+        setPhotoError(data.error ?? 'Aucun aliment détecté dans la photo')
+        URL.revokeObjectURL(preview)
+        setPhotoPreview(null)
+      }
+    } catch {
+      setPhotoError("Erreur lors de l'analyse de la photo")
+      URL.revokeObjectURL(preview)
+      setPhotoPreview(null)
+    }
+    setPhotoAnalyzing(false)
+  }
+
   async function deleteEntry(id: string) {
     await supabase.from('journal_entries').delete().eq('id', id)
     await loadDay(currentDate)
@@ -533,18 +587,121 @@ export default function JournalPage() {
         />
       )}
 
+      {/* Input photo caché */}
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handlePhotoCapture}
+      />
+
+      {/* Modal confirmation photo */}
+      {(photoFoods || photoAnalyzing) && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4">
+          <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-white px-5 py-4 border-b border-zinc-100 flex items-center justify-between rounded-t-3xl sm:rounded-t-3xl">
+              <h3 className="font-extrabold text-zinc-900">📸 Analyse de la photo</h3>
+              <button onClick={() => { setPhotoFoods(null); setPhotoPreview(null); setPhotoAnalyzing(false) }}
+                className="w-8 h-8 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-400">
+                <X size={14} />
+              </button>
+            </div>
+            <div className="p-5 flex flex-col gap-4">
+              {/* Preview photo */}
+              {photoPreview && (
+                <div className="rounded-2xl overflow-hidden border border-zinc-100 max-h-48">
+                  <img src={photoPreview} alt="Photo repas" className="w-full h-48 object-cover" />
+                </div>
+              )}
+
+              {photoAnalyzing && (
+                <div className="flex flex-col items-center gap-3 py-6">
+                  <Loader2 size={28} className="animate-spin text-nutri" />
+                  <p className="text-sm text-zinc-500">L'IA analyse votre repas…</p>
+                </div>
+              )}
+
+              {photoFoods && !photoAnalyzing && (
+                <>
+                  <p className="text-xs text-zinc-500">{photoFoods.length} aliment{photoFoods.length > 1 ? 's' : ''} détecté{photoFoods.length > 1 ? 's' : ''}. Modifiez si nécessaire.</p>
+                  <div className="flex flex-col gap-2">
+                    {photoFoods.map((f, i) => (
+                      <div key={i} className="flex items-center gap-3 bg-zinc-50 rounded-2xl px-3 py-2.5">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-zinc-900 truncate">{f.name}</p>
+                          <p className="text-xs text-zinc-400">{f.quantity}g · {Math.round(f.cal)} kcal · P:{round1(f.prot)}g · G:{round1(f.carb)}g · L:{round1(f.fat)}g</p>
+                        </div>
+                        <button onClick={() => setPhotoFoods(prev => prev ? prev.filter((_, j) => j !== i) : null)}
+                          className="p-1.5 rounded-lg hover:bg-red-100 text-zinc-300 hover:text-red-500 transition-colors flex-shrink-0">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={() => { setPhotoFoods(null); setPhotoPreview(null) }}
+                      className="flex-1 py-2.5 rounded-xl border border-zinc-200 text-sm font-medium text-zinc-600 hover:bg-zinc-50">
+                      Annuler
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!photoFoods) return
+                        await handleVoiceMealConfirm(photoFoods)
+                        setPhotoFoods(null)
+                        if (photoPreview) URL.revokeObjectURL(photoPreview)
+                        setPhotoPreview(null)
+                      }}
+                      className="flex-1 py-2.5 rounded-xl bg-nutri text-white text-sm font-bold hover:bg-nutri-dark">
+                      ✓ Ajouter au journal
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast erreur photo */}
+      {photoError && !photoAnalyzing && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center gap-2">
+          <span className="text-red-500">⚠️</span>
+          <p className="text-xs text-red-700 flex-1">{photoError}</p>
+          <button onClick={() => setPhotoError('')} className="text-red-300 hover:text-red-500"><X size={14} /></button>
+        </div>
+      )}
+
       {/* Bouton ajout vocal + Recherche */}
       {!showVoiceMeal && (
-        <button onClick={() => setShowVoiceMeal(true)}
-          className="w-full flex items-center gap-3 bg-gradient-to-r from-nutri to-nutri-mid rounded-2xl px-4 py-3 text-left hover:opacity-90 transition-all active:scale-[0.98] shadow-sm">
-          <div className="w-9 h-9 bg-white/25 rounded-xl flex items-center justify-center flex-shrink-0">
-            <Mic size={18} className="text-white" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-white">Ajouter un repas en vocal ou texte</p>
-            <p className="text-xs text-white/70">"J'ai mangé un bol de riz avec du poulet..."</p>
-          </div>
-        </button>
+        <div className="flex flex-col gap-2">
+          <button onClick={() => setShowVoiceMeal(true)}
+            className="w-full flex items-center gap-3 bg-gradient-to-r from-nutri to-nutri-mid rounded-2xl px-4 py-3 text-left hover:opacity-90 transition-all active:scale-[0.98] shadow-sm">
+            <div className="w-9 h-9 bg-white/25 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Mic size={18} className="text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white">Ajouter un repas en vocal ou texte</p>
+              <p className="text-xs text-white/70">"J'ai mangé un bol de riz avec du poulet..."</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => photoInputRef.current?.click()}
+            disabled={photoAnalyzing}
+            className="w-full flex items-center gap-3 bg-gradient-to-r from-sky-500 to-blue-600 rounded-2xl px-4 py-3 text-left hover:opacity-90 transition-all active:scale-[0.98] shadow-sm disabled:opacity-60"
+          >
+            <div className="w-9 h-9 bg-white/25 rounded-xl flex items-center justify-center flex-shrink-0">
+              {photoAnalyzing ? <Loader2 size={18} className="text-white animate-spin" /> : <Camera size={18} className="text-white" />}
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white">Analyser une photo de repas</p>
+              <p className="text-xs text-white/70">Photographiez votre assiette, l'IA détecte les aliments</p>
+            </div>
+          </button>
+        </div>
       )}
 
       {/* ── Compléments alimentaires ── */}
@@ -825,12 +982,11 @@ export default function JournalPage() {
         )
       })()}
 
-      {/* ── Micronutriments ── */}
+      {/* ── Micronutriments (barres fusionnées aliments + compléments) ── */}
       {(foodEntries.length > 0 || supplEntries.length > 0) && (() => {
         const micros = calcMicros(foodEntries.map(e => ({ food_id: e.food_id ?? '', food_name: e.food_name, quantity: e.quantity })))
-        const withData = micros.filter(m => m.hasData)
 
-        // Micronutriments des compléments
+        // Compléments
         const supplDefs = supplEntries
           .map(e => {
             const def = SUPPLEMENTS.find(s => s.id === (e.food_id ?? '').replace('supp-', ''))
@@ -838,98 +994,129 @@ export default function JournalPage() {
           })
           .filter(Boolean) as { supplement: Supplement; qty: number }[]
         const supplMicros = calcSupplementMicros(supplDefs)
-        const hasSuppMicros = Object.keys(supplMicros).length > 0
 
-        if (withData.length === 0 && !hasSuppMicros) return (
+        // Micros aliments qui ont des données
+        const withData = micros.filter(m => m.hasData)
+
+        // Micros supplément-only (vitE, curcumin, polyphenols) — pas couverts par CIQUAL
+        const suppOnlyKeys: MicroKey[] = ['vitE', 'curcumin', 'polyphenols']
+        const suppOnlyRows = suppOnlyKeys
+          .map(k => ({ key: k, val: supplMicros[k] ?? 0, def: MICRO_RDA[k] }))
+          .filter(r => r.val > 0)
+
+        const hasAnything = withData.length > 0 || suppOnlyRows.length > 0
+
+        if (!hasAnything) return (
           <div className="card">
             <h3 className="text-sm font-semibold text-zinc-700 mb-2">🔬 Micronutriments du jour</h3>
             <p className="text-xs text-zinc-400">Données insuffisantes — ajoutez des aliments CIQUAL ou des compléments pour visualiser vos apports.</p>
           </div>
         )
 
+        const hasSuppContrib = Object.keys(supplMicros).length > 0
+
         return (
           <div className="card flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-zinc-700">🔬 Micronutriments du jour</h3>
-              <span className="text-[10px] text-zinc-400">% de l'AJR</span>
+              <div className="flex items-center gap-2 text-[10px] text-zinc-400">
+                {hasSuppContrib && <span className="flex items-center gap-0.5"><span className="inline-block w-2 h-2 rounded-full bg-violet-400" /> Compléments</span>}
+                <span>% AJR</span>
+              </div>
             </div>
 
-            {/* ── Aliments ── */}
+            {/* ── Barres fusionnées CIQUAL + compléments ── */}
             {withData.length > 0 && (
-              <>
-                {supplEntries.length > 0 && (
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide -mb-1">Depuis les aliments</p>
-                )}
-                <div className="grid grid-cols-1 gap-2">
-                  {micros.map(m => (
+              <div className="grid grid-cols-1 gap-2">
+                {micros.map(m => {
+                  const suppKey = MICRO_NAME_TO_SUPP_KEY[m.name]
+                  const suppVal = suppKey ? (supplMicros[suppKey] ?? 0) : 0
+                  const suppPct = suppVal > 0 && m.ajr > 0 ? Math.round((suppVal / m.ajr) * 100) : 0
+                  const foodPct = Math.min(m.pct, 100)
+                  const totalPct = Math.min(150, (m.hasData ? m.pct : 0) + suppPct)
+
+                  return (
                     <button key={m.name} onClick={() => {
-                      if (!m.hasData) return
+                      if (!m.hasData && !suppPct) return
                       setNutriModal({
                         title: `🔬 ${m.name} — aliments du jour`,
                         color: m.color,
                         entries: foodEntries.map(e => ({ food_name: e.food_name, value: Number(e.cal), unit: 'kcal' })).filter(e => e.value > 0),
                       })
                     }}
-                      className={`flex items-center gap-2 text-left rounded-xl p-1.5 transition-colors ${m.hasData ? 'hover:bg-zinc-50 cursor-pointer' : 'cursor-default'}`}>
+                      className={`flex items-center gap-2 text-left rounded-xl p-1.5 transition-colors ${(m.hasData || suppPct > 0) ? 'hover:bg-zinc-50 cursor-pointer' : 'cursor-default'}`}>
                       <span className="text-xs text-zinc-500 w-20 flex-shrink-0">{m.name}</span>
-                      {m.hasData ? (
+                      {(m.hasData || suppPct > 0) ? (
                         <>
-                          <div className="flex-1 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
-                            <div className="h-full rounded-full transition-all duration-500"
-                              style={{ width: `${Math.min(m.pct, 100)}%`, background: m.color }} />
+                          {/* Barre fusionnée : aliments (couleur) + complément (violet, empilé) */}
+                          <div className="flex-1 h-1.5 bg-zinc-100 rounded-full overflow-hidden relative">
+                            {m.hasData && (
+                              <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
+                                style={{ width: `${foodPct}%`, background: m.color }} />
+                            )}
+                            {suppPct > 0 && (
+                              <div className="absolute inset-y-0 rounded-full transition-all duration-500"
+                                style={{
+                                  left: `${m.hasData ? foodPct : 0}%`,
+                                  width: `${Math.min(suppPct, 100 - (m.hasData ? foodPct : 0))}%`,
+                                  background: '#8b5cf6',
+                                  opacity: 0.85,
+                                }} />
+                            )}
                           </div>
-                          <span className="text-xs font-bold w-10 text-right flex-shrink-0" style={{ color: m.color }}>
-                            {m.pct > 999 ? '>999%' : `${m.pct}%`}
+                          <span className="text-xs font-bold w-10 text-right flex-shrink-0"
+                            style={{ color: totalPct >= 100 ? '#22c55e' : (m.hasData ? m.color : '#8b5cf6') }}>
+                            {totalPct > 999 ? '>999%' : `${totalPct}%`}
                           </span>
                         </>
                       ) : (
                         <span className="text-[10px] text-zinc-300 italic flex-1">données insuffisantes</span>
                       )}
                     </button>
-                  ))}
-                </div>
-              </>
+                  )
+                })}
+              </div>
             )}
 
-            {/* ── Compléments micronutrients ── */}
-            {hasSuppMicros && (
-              <>
-                <div className="border-t border-zinc-100 pt-3">
-                  <p className="text-[10px] font-bold text-violet-500 uppercase tracking-wide mb-2">💊 Apports des compléments</p>
-                  <div className="grid grid-cols-1 gap-2">
-                    {(Object.entries(supplMicros) as [MicroKey, number][]).map(([key, val]) => {
-                      const def = MICRO_RDA[key]
-                      if (!def || !val) return null
-                      const pct = Math.round((val / def.rda) * 100)
-                      return (
-                        <div key={key} className="flex items-center gap-2">
-                          <span className="text-xs text-zinc-500 w-20 flex-shrink-0">{def.label}</span>
-                          <div className="flex-1 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
-                            <div className="h-full rounded-full transition-all duration-500"
-                              style={{ width: `${Math.min(pct, 100)}%`, background: def.color }} />
-                          </div>
-                          <span className="text-xs font-bold w-10 text-right flex-shrink-0" style={{ color: def.color }}>
-                            {pct > 999 ? '>999%' : `${pct}%`}
-                          </span>
+            {/* ── Micros supplément-only (vitE, curcumine, polyphénols) ── */}
+            {suppOnlyRows.length > 0 && (
+              <div className={withData.length > 0 ? 'border-t border-zinc-100 pt-3' : ''}>
+                {withData.length > 0 && (
+                  <p className="text-[10px] font-bold text-violet-500 uppercase tracking-wide mb-2">💊 Compléments uniquement</p>
+                )}
+                <div className="grid grid-cols-1 gap-2">
+                  {suppOnlyRows.map(({ key, val, def }) => {
+                    const pct = Math.min(150, Math.round((val / def.rda) * 100))
+                    return (
+                      <div key={key} className="flex items-center gap-2">
+                        <span className="text-xs text-zinc-500 w-20 flex-shrink-0">{def.label}</span>
+                        <div className="flex-1 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-500"
+                            style={{ width: `${Math.min(pct, 100)}%`, background: '#8b5cf6' }} />
                         </div>
-                      )
-                    })}
-                  </div>
-
-                  {/* Note sur les compléments pris */}
-                  <div className="mt-3 bg-violet-50 rounded-xl px-3 py-2.5">
-                    <p className="text-[10px] font-semibold text-violet-700 mb-1">Compléments du jour :</p>
-                    <div className="flex flex-wrap gap-1">
-                      {supplDefs.map(({ supplement }) => (
-                        <span key={supplement.id} className="text-[10px] bg-white border border-violet-200 text-violet-700 px-2 py-0.5 rounded-full">
-                          {supplement.emoji} {supplement.name}
-                          {supplement.antiInflam === true && ' ✓'}
+                        <span className="text-xs font-bold w-10 text-right flex-shrink-0" style={{ color: '#8b5cf6' }}>
+                          {pct > 999 ? '>999%' : `${pct}%`}
                         </span>
-                      ))}
-                    </div>
-                  </div>
+                      </div>
+                    )
+                  })}
                 </div>
-              </>
+              </div>
+            )}
+
+            {/* Compléments du jour en badges */}
+            {supplDefs.length > 0 && (
+              <div className="bg-violet-50 rounded-xl px-3 py-2.5">
+                <p className="text-[10px] font-semibold text-violet-700 mb-1">💊 Compléments du jour :</p>
+                <div className="flex flex-wrap gap-1">
+                  {supplDefs.map(({ supplement }) => (
+                    <span key={supplement.id} className="text-[10px] bg-white border border-violet-200 text-violet-700 px-2 py-0.5 rounded-full">
+                      {supplement.emoji} {supplement.name}
+                      {supplement.antiInflam === true && ' ✓'}
+                    </span>
+                  ))}
+                </div>
+              </div>
             )}
 
             <p className="text-[10px] text-zinc-400 italic">Indicateur informatif — ne remplace pas un avis médical.</p>
