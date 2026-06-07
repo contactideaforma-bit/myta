@@ -255,6 +255,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ group })
   }
 
+  // ── Renommer ─────────────────────────────────────────────
+  if (action === 'rename') {
+    const { groupId, name } = body
+    if (!groupId || !name?.trim()) return NextResponse.json({ error: 'groupId et nom requis' }, { status: 400 })
+    const { data: membership } = await supabaseAdmin
+      .from('group_members').select('id').eq('group_id', groupId).eq('user_id', userId).single()
+    if (!membership) return NextResponse.json({ error: 'Non autorisé' }, { status: 403 })
+    const { error } = await supabaseAdmin
+      .from('friend_groups').update({ name: name.trim() }).eq('id', groupId)
+    if (error) return NextResponse.json({ error: 'Erreur mise à jour' }, { status: 500 })
+    return NextResponse.json({ ok: true })
+  }
+
   // ── Quitter ──────────────────────────────────────────────
   if (action === 'leave') {
     const { groupId } = body

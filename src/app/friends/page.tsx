@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Loader2, Copy, Check, X, UserPlus, Users, Trophy, Shield, ChevronDown, ChevronUp } from 'lucide-react'
+import { Loader2, Copy, Check, X, UserPlus, Users, Trophy, Shield, ChevronDown, ChevronUp, Pencil } from 'lucide-react'
 
 
 // ── Types ─────────────────────────────────────────────────────
@@ -135,19 +135,31 @@ function getLavaStage(dayScore: number): number {
 }
 
 // ── Composant carte groupe ────────────────────────────────────
-function GroupCard({ group, onLeave, onCopyCode }: {
+function GroupCard({ group, onLeave, onCopyCode, onRename }: {
   group: Group
   onLeave: (id: string) => void
   onCopyCode: (code: string) => void
+  onRename: (id: string, name: string) => Promise<void>
 }) {
-  const [copied, setCopied] = useState(false)
-  const isSaved    = group.teamScore >= 70
-  const lava       = LAVA_STAGES[getLavaStage(group.teamDayScore ?? 0)]
+  const [copied, setCopied]         = useState(false)
+  const [editing, setEditing]       = useState(false)
+  const [editName, setEditName]     = useState(group.name)
+  const [savingName, setSavingName] = useState(false)
+  const isSaved = group.teamScore >= 70
+  const lava    = LAVA_STAGES[getLavaStage(group.teamDayScore ?? 0)]
 
   function handleCopy() {
     onCopyCode(group.invite_code)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function handleSaveName() {
+    if (!editName.trim() || editName.trim() === group.name) { setEditing(false); return }
+    setSavingName(true)
+    await onRename(group.id, editName.trim())
+    setSavingName(false)
+    setEditing(false)
   }
 
   return (
@@ -158,7 +170,33 @@ function GroupCard({ group, onLeave, onCopyCode }: {
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-extrabold text-zinc-900 text-base">{group.name}</h3>
+              {editing ? (
+                <div className="flex items-center gap-1.5 flex-1">
+                  <input
+                    autoFocus
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setEditing(false) }}
+                    className="flex-1 text-base font-extrabold text-zinc-900 bg-zinc-50 border border-violet-300 rounded-xl px-2 py-0.5 outline-none focus:ring-2 focus:ring-violet-200"
+                    maxLength={40}
+                  />
+                  <button onClick={handleSaveName} disabled={savingName}
+                    className="px-2 py-1 rounded-lg bg-violet-600 text-white text-xs font-bold">
+                    {savingName ? <Loader2 size={11} className="animate-spin" /> : '✓'}
+                  </button>
+                  <button onClick={() => setEditing(false)} className="p-1 rounded-lg text-zinc-400">
+                    <X size={13} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <h3 className="font-extrabold text-zinc-900 text-base">{group.name}</h3>
+                  <button onClick={() => { setEditName(group.name); setEditing(true) }}
+                    className="p-1 rounded-lg text-zinc-300 hover:text-violet-500 transition-colors">
+                    <Pencil size={12} />
+                  </button>
+                </>
+              )}
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                 group.mode === 'equipe' ? 'bg-purple-100 text-purple-700' : 'bg-orange-100 text-orange-700'
               }`}>
@@ -205,30 +243,16 @@ function GroupCard({ group, onLeave, onCopyCode }: {
             {/* Jauge journalière */}
             <div className="bg-zinc-50 rounded-2xl px-4 py-2.5 flex flex-col gap-2">
               <div className="flex justify-between text-[10px] text-zinc-500">
-                <span>⚡ Aujourd'hui</span>
+                <span>⚡ Score de l'équipe aujourd'hui</span>
                 <span className="font-bold text-violet-600">{group.teamDayScore ?? 0}%</span>
               </div>
-              <div className="h-2.5 bg-zinc-200 rounded-full overflow-hidden">
+              <div className="h-3 bg-zinc-200 rounded-full overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-700"
                   style={{ width: `${group.teamDayScore ?? 0}%`, background: 'linear-gradient(90deg, #7c3aed, #a78bfa)' }} />
               </div>
-              <div className="flex justify-between text-[10px] text-zinc-500 mt-1">
-                <span>📅 Cette semaine</span>
-                <span className={`font-bold ${isSaved ? 'text-green-600' : 'text-tta-mid'}`}>
-                  {group.teamScore}% {isSaved ? '✓ Waty sauvé !' : '— objectif 70%'}
-                </span>
-              </div>
-              <div className="h-2 bg-zinc-200 rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-700"
-                  style={{
-                    width: `${group.teamScore}%`,
-                    background: isSaved ? '#22c55e' : 'linear-gradient(90deg, #4B47A0, #2BA8B0)',
-                  }} />
-              </div>
-              <div className="relative h-0">
-                <div className="absolute top-0 w-0.5 h-3 bg-zinc-400 rounded-full -translate-y-3" style={{ left: '70%' }} />
-              </div>
-              <p className="text-[10px] text-zinc-400 text-right mt-1.5">🎯 70% hebdo = 1 coupe gagnée</p>
+              <p className="text-[10px] text-zinc-400 text-right">
+                {isSaved ? '✓ Waty sauvé cette semaine 🏆' : '🎯 Atteignez 70% pour gagner une coupe'}
+              </p>
             </div>
           </div>
         )}
@@ -353,6 +377,17 @@ export default function FriendsPage() {
     setJoining(false)
   }
 
+  async function handleRename(groupId: string, name: string) {
+    const token = await getToken()
+    await fetch('/api/groups', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      credentials: 'include',
+      body: JSON.stringify({ action: 'rename', groupId, name }),
+    })
+    setGroups(prev => prev.map(g => g.id === groupId ? { ...g, name } : g))
+  }
+
   async function handleLeave(groupId: string) {
     if (!confirm('Quitter ce groupe ?')) return
     const token = await getToken()
@@ -432,50 +467,54 @@ export default function FriendsPage() {
             </div>
           ) : (
             groups.map(g => (
-              <GroupCard key={g.id} group={g} onLeave={handleLeave} onCopyCode={handleCopyCode} />
+              <GroupCard key={g.id} group={g} onLeave={handleLeave} onCopyCode={handleCopyCode} onRename={handleRename} />
             ))
           )}
 
-          {/* Classement mondial */}
-          {leaderboard.length > 0 && (
-            <div className="card flex flex-col gap-3 p-0 overflow-hidden">
-              <div className="px-5 pt-4 pb-3 border-b border-zinc-100"
-                style={{ background: 'linear-gradient(135deg, rgba(251,191,36,0.08), rgba(245,158,11,0.05))' }}>
-                <div className="flex items-center gap-2">
-                  <Trophy size={16} className="text-amber-500" />
-                  <h3 className="font-extrabold text-zinc-900 text-sm">Classement mondial</h3>
+          {/* Mes coupes */}
+          {groups.length > 0 && (() => {
+            const totalCups = groups.reduce((s, g) => s + (g.cupsWon ?? 0), 0)
+            const groupsWithCups = groups.filter(g => (g.cupsWon ?? 0) > 0)
+            return (
+              <div className="rounded-3xl overflow-hidden border border-amber-100"
+                style={{ background: 'linear-gradient(135deg, rgba(251,191,36,0.10), rgba(245,158,11,0.06))' }}>
+                <div className="px-5 pt-4 pb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Trophy size={16} className="text-amber-500" />
+                    <h3 className="font-extrabold text-zinc-900 text-sm">Mes coupes</h3>
+                  </div>
+                  <div className="text-right">
+                    {totalCups > 0 ? (
+                      <p className="text-2xl font-black text-amber-600">🏆 {totalCups}</p>
+                    ) : (
+                      <p className="text-xs text-zinc-400">Aucune encore</p>
+                    )}
+                  </div>
                 </div>
-                <p className="text-[10px] text-zinc-400 mt-0.5">Tous les groupes par coupes gagnées</p>
-              </div>
-              <div className="divide-y divide-zinc-50 pb-2">
-                {leaderboard.map((entry, i) => {
-                  const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`
-                  const isMyGroup = groups.some(g => g.id === entry.id)
-                  return (
-                    <div key={entry.id} className={`flex items-center gap-3 px-5 py-3 ${isMyGroup ? 'bg-amber-50' : ''}`}>
-                      <span className="text-base w-7 text-center flex-shrink-0">{medal}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-bold truncate ${isMyGroup ? 'text-amber-700' : 'text-zinc-800'}`}>
-                          {entry.name}
-                          {isMyGroup && <span className="text-[10px] font-normal text-amber-500 ml-1">(ton groupe)</span>}
-                        </p>
-                        <p className="text-[10px] text-zinc-400">
-                          {entry.mode === 'equipe' ? '🤝 Équipe' : '⚔️ Compétition'} · {entry.memberCount} membre{entry.memberCount > 1 ? 's' : ''}
+                {totalCups === 0 ? (
+                  <div className="px-5 pb-4">
+                    <p className="text-xs text-zinc-400 italic bg-white/60 rounded-2xl px-3 py-2.5">
+                      💬 Waty dit : "Atteignez 70% de score hebdo pour remporter votre première coupe !"
+                    </p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-amber-100/60 border-t border-amber-100/60">
+                    {groupsWithCups.map(g => (
+                      <div key={g.id} className="flex items-center gap-3 px-5 py-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-zinc-800 truncate">{g.name}</p>
+                          <p className="text-[10px] text-zinc-400">{g.mode === 'equipe' ? '🤝 Équipe' : '⚔️ Compétition'}</p>
+                        </div>
+                        <p className="text-sm font-extrabold text-amber-600 flex-shrink-0">
+                          🏆 {g.cupsWon} coupe{g.cupsWon > 1 ? 's' : ''}
                         </p>
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        {entry.cupsWon > 0 ? (
-                          <p className="text-sm font-extrabold text-amber-600">🏆 {entry.cupsWon}</p>
-                        ) : (
-                          <p className="text-xs text-zinc-300 font-medium">—</p>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            )
+          })()}
         </>
       )}
 

@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+declare global { interface Window { Stripe?: any } }
+
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2, CreditCard, Calendar, CheckCircle, XCircle, AlertTriangle, X, Shield, Gift } from 'lucide-react'
@@ -59,6 +61,13 @@ export default function BillingPage() {
   const [cancelDone, setCancelDone]   = useState<{ refunded: boolean; amount?: string; period_end?: boolean } | null>(null)
   const [token, setToken]             = useState('')
   const [portalLoading, setPortalLoading] = useState(false)
+  const [showPaymentForm, setShowPaymentForm] = useState(false)
+  const [paymentSaving, setPaymentSaving]     = useState(false)
+  const [paymentDone, setPaymentDone]         = useState(false)
+  const [paymentError, setPaymentError]       = useState('')
+  const cardRef = useRef<HTMLDivElement>(null)
+  const stripeRef = useRef<any>(null)
+  const cardElementRef = useRef<any>(null)
   const [referralCode, setReferralCode]   = useState<string | null>(null)
   const [referralCount, setReferralCount] = useState(0)
   const [referralMonths, setReferralMonths] = useState(0)
@@ -132,6 +141,75 @@ export default function BillingPage() {
       alert('Erreur : ' + err.message)
     }
     setCanceling(false)
+  }
+
+  // Monter Stripe Elements dans le div cardRef
+  useEffect(() => {
+    if (!showPaymentForm || !cardRef.current) return
+    let mounted = true
+
+    async function initStripe() {
+      // Charger Stripe.js depuis CDN si pas encore fait
+      if (!window.Stripe) {
+        await new Promise<void>((resolve) => {
+          const s = document.createElement('script')
+          s.src = 'https://js.stripe.com/v3/'
+          s.onload = () => resolve()
+          document.head.appendChild(s)
+        })
+      }
+      if (!mounted) return
+
+      stripeRef.current = window.Stripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+      const elements = stripeRef.current.elements()
+      cardElementRef.current = elements.create('card', {
+        style: {
+          base: { fontFamily: 'inherit', fontSize: '15px', color: '#18181b', '::placeholder': { color: '#a1a1aa' } },
+          invalid: { color: '#ef4444' },
+        },
+        hidePostalCode: true,
+      })
+      cardElementRef.current.mount(cardRef.current)
+    }
+
+    initStripe()
+    return () => {
+      mounted = false
+      cardElementRef.current?.unmount()
+    }
+  }, [showPaymentForm])
+
+  async function handleSavePayment() {
+    if (!stripeRef.current || !cardElementRef.current) return
+    setPaymentSaving(true)
+    setPaymentError('')
+    try {
+      // 1. Créer le SetupIntent
+      const res = await fetch('/api/stripe/setup-intent', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const { clientSecret } = await res.json()
+
+      // 2. Confirmer avec la carte
+      const { error, setupIntent } = await stripeRef.current.confirmCardSetup(clientSecret, {
+        payment_method: { card: cardElementRef.current },
+      })
+      if (error) { setPaymentError(error.message ?? 'Erreur carte'); setPaymentSaving(false); return }
+
+      // 3. Définir comme défaut côté serveur
+      await fetch('/api/stripe/setup-intent', {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentMethodId: setupIntent.payment_method }),
+      })
+
+      setPaymentDone(true)
+      setShowPaymentForm(false)
+    } catch (e: any) {
+      setPaymentError('Erreur : ' + e.message)
+    }
+    setPaymentSaving(false)
   }
 
   if (loading) return (
@@ -266,6 +344,57 @@ export default function BillingPage() {
           </div>
         )}
       </div>
+
+      {/* Changer mode de paiement */}
+      {['active', 'trialing', 'past_due'].includes(status) && (
+        <div className="bg-white rounded-3xl p-5 shadow-sm border border-zinc-100 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CreditCard size={15} className="text-tta-mid" />
+              <p className="text-sm font-semibold text-zinc-900">Mode de paiement</p>
+            </div>
+            {!showPaymentForm && (
+              <button
+                onClick={() => { setShowPaymentForm(true); setPaymentDone(false); setPaymentError('') }}
+                className="text-xs font-bold text-tta-mid hover:underline">
+                Modifier
+              </button>
+            )}
+          </div>
+
+          {paymentDone && (
+            <div className="flex items-center gap-2 bg-green-50 rounded-2xl px-3 py-2.5">
+              <CheckCircle size={13} className="text-green-600 flex-shrink-0" />
+              <p className="text-xs text-green-700 font-semibold">Carte mise à jour avec succès !</p>
+            </div>
+          )}
+
+          {showPaymentForm && (
+            <div className="flex flex-col gap-3">
+              <p className="text-xs text-zinc-400">Entrez votre nouvelle carte bancaire</p>
+              <div ref={cardRef} className="border-2 border-zinc-200 rounded-2xl px-4 py-3.5 bg-zinc-50 focus-within:border-tta-mid transition-colors" />
+              {paymentError && (
+                <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">{paymentError}</p>
+              )}
+              <div className="flex gap-2">
+                <button onClick={() => setShowPaymentForm(false)}
+                  className="flex-1 py-2.5 rounded-2xl border-2 border-zinc-200 text-sm font-semibold text-zinc-600">
+                  Annuler
+                </button>
+                <button onClick={handleSavePayment} disabled={paymentSaving}
+                  className="flex-1 py-2.5 rounded-2xl text-white text-sm font-bold flex items-center justify-center gap-2"
+                  style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
+                  {paymentSaving ? <Loader2 size={14} className="animate-spin" /> : 'Enregistrer'}
+                </button>
+              </div>
+              <div className="flex items-center gap-1.5 justify-center">
+                <Shield size={11} className="text-zinc-300" />
+                <p className="text-[10px] text-zinc-400">Sécurisé par Stripe · Aucune donnée stockée sur nos serveurs</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Pas d'abonnement */}
       {status === 'free' && (
