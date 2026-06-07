@@ -162,12 +162,16 @@ function GroupCard({ group, onLeave, onCopyCode, onRename }: {
   const [msgText, setMsgText]       = useState('')
   const [sending, setSending]       = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [token, setToken]           = useState<string | null>(null)
 
   const isSaved = group.teamScore >= 70
   const lava    = LAVA_STAGES[getLavaStage(group.teamDayScore ?? 0)]
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null))
+    supabase.auth.getSession().then(({ data }) => {
+      setCurrentUserId(data.session?.user?.id ?? null)
+      setToken(data.session?.access_token ?? null)
+    })
   }, [])
 
   useEffect(() => {
@@ -176,50 +180,43 @@ function GroupCard({ group, onLeave, onCopyCode, onRename }: {
   }, [msgOpen])
 
   async function loadMessages() {
-    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-    const { data } = await supabase
-      .from('group_messages')
-      .select('id,user_id,message,created_at,display_name')
-      .eq('group_id', group.id)
-      .gte('created_at', cutoff)
-      .order('created_at', { ascending: false })
-      .limit(30)
-    setMessages((data ?? []).reverse())
+    if (!token) return
+    const res = await fetch(`/api/groups?messages=1&groupId=${group.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) return
+    const json = await res.json()
+    setMessages(json.messages ?? [])
   }
 
   async function sendMessage() {
-    if (!msgText.trim() || sending) return
+    if (!msgText.trim() || sending || !token || !currentUserId) return
     setSending(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setSending(false); return }
-    const me = group.members.find(m => m.isMe)
-    const displayName = me?.displayName ?? 'Anonyme'
     const text = msgText.trim().slice(0, 120)
 
-    // Ajout optimiste : afficher le message immédiatement sans attendre la DB
+    // Ajout optimiste
     const tempId = `temp_${Date.now()}`
+    const me = group.members.find(m => m.isMe)
     setMessages(prev => [...prev, {
       id: tempId,
-      user_id: user.id,
+      user_id: currentUserId,
       message: text,
       created_at: new Date().toISOString(),
-      display_name: displayName,
+      display_name: me?.displayName ?? 'Moi',
     }])
     setMsgText('')
 
-    const { error } = await supabase.from('group_messages').insert({
-      group_id: group.id,
-      user_id: user.id,
-      message: text,
-      display_name: displayName,
+    const res = await fetch('/api/groups', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: 'send_message', groupId: group.id, message: text }),
     })
 
-    if (error) {
-      console.error('[group_messages] insert error:', error)
-      // Retirer le message optimiste si l'insert a échoué
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      console.error('[send_message]', err)
       setMessages(prev => prev.filter(m => m.id !== tempId))
     } else {
-      // Rafraîchir depuis la DB pour avoir l'id réel
       await loadMessages()
     }
     setSending(false)

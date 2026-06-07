@@ -109,9 +109,30 @@ async function getAuthUser(req: NextRequest): Promise<string | null> {
   return null
 }
 
-// ── GET — liste mes groupes (+ leaderboard global) ──────────
+// ── GET — liste mes groupes (+ leaderboard global + messages) ──────────
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
+
+  // ── Messages d'un groupe (24h) ────────────────────────────
+  if (searchParams.get('messages') === '1') {
+    const userId = await getAuthUser(req)
+    if (!userId) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+    const groupId = searchParams.get('groupId')
+    if (!groupId) return NextResponse.json({ error: 'groupId requis' }, { status: 400 })
+    // Vérifier que l'utilisateur est membre du groupe
+    const { data: membership } = await supabaseAdmin
+      .from('group_members').select('id').eq('group_id', groupId).eq('user_id', userId).single()
+    if (!membership) return NextResponse.json({ error: 'Non autorisé' }, { status: 403 })
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const { data: msgs } = await supabaseAdmin
+      .from('group_messages')
+      .select('id,user_id,message,created_at,display_name')
+      .eq('group_id', groupId)
+      .gte('created_at', cutoff)
+      .order('created_at', { ascending: true })
+      .limit(30)
+    return NextResponse.json({ messages: msgs ?? [] })
+  }
 
   // ── Leaderboard global — pas besoin d'auth ────────────────
   if (searchParams.get('leaderboard') === '1') {
@@ -226,6 +247,28 @@ export async function POST(req: NextRequest) {
 
   const body   = await req.json()
   const { action } = body
+
+  // ── Envoyer un message ───────────────────────────────────
+  if (action === 'send_message') {
+    const { groupId, message } = body
+    if (!groupId || !message?.trim()) return NextResponse.json({ error: 'groupId et message requis' }, { status: 400 })
+    // Vérifier que l'utilisateur est membre
+    const { data: membership } = await supabaseAdmin
+      .from('group_members').select('id').eq('group_id', groupId).eq('user_id', userId).single()
+    if (!membership) return NextResponse.json({ error: 'Non autorisé' }, { status: 403 })
+    // Récupérer le nom d'affichage
+    const { data: prof } = await supabaseAdmin
+      .from('profiles').select('full_name').eq('id', userId).single()
+    const fullName = (prof as any)?.full_name ?? 'Anonyme'
+    const displayName = fullName.split(' ')[0] + ' ' + (fullName.split(' ')[1]?.[0] ?? '') + '.'
+    const { data: msg, error } = await supabaseAdmin
+      .from('group_messages')
+      .insert({ group_id: groupId, user_id: userId, message: message.trim().slice(0, 120), display_name: displayName })
+      .select('id,user_id,message,created_at,display_name')
+      .single()
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ message: msg })
+  }
 
   // ── Créer ────────────────────────────────────────────────
   if (action === 'create') {
