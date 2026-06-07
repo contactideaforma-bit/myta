@@ -108,7 +108,7 @@ export default function DashboardPage() {
 
   function handleStartTour()  { localStorage.setItem('myta_guide_seen', '1'); setShowModal(false); setShowTour(true) }
   function handleCloseModal() { localStorage.setItem('myta_guide_seen', '1'); setShowModal(false) }
-  function handleDoneTour()   { setShowTour(false) }
+  function handleDoneTour()   { localStorage.setItem('myta_guide_seen', '1'); setShowTour(false) }
 
   useEffect(() => { loadData() }, [period])
 
@@ -205,9 +205,13 @@ export default function DashboardPage() {
       {showModal && <WelcomeModal onStartTour={handleStartTour} onClose={handleCloseModal} />}
       {showTour  && <TourGuide onDone={handleDoneTour} />}
 
-      {/* ── Salutation ── */}
-      <div id="tour-greeting">
-        <p className="text-zinc-400 text-sm capitalize">
+      {/* ── Salutation — header lavande ── */}
+      <div
+        id="tour-greeting"
+        className="rounded-3xl px-5 py-4"
+        style={{ background: 'linear-gradient(135deg, rgba(167,139,250,0.18) 0%, rgba(196,181,253,0.12) 100%)', border: '1px solid rgba(167,139,250,0.25)' }}
+      >
+        <p className="text-violet-400 text-sm capitalize font-medium">
           {format(new Date(), 'EEEE d MMMM yyyy', { locale: fr })}
         </p>
         <h1 className="text-2xl font-extrabold text-zinc-900 mt-0.5">
@@ -245,6 +249,26 @@ export default function DashboardPage() {
             </p>
           </div>
         )}
+      </div>
+
+      {/* ── Raccourcis rapides ── */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => router.push('/nutrition/journal')}
+          className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-2xl bg-orange-50 border border-orange-100 hover:bg-orange-100 active:scale-[0.97] transition-all"
+        >
+          <span className="text-lg">🥗</span>
+          <span className="text-xs font-bold text-orange-700 leading-tight">Journal<br/>alimentaire</span>
+          <ArrowRight size={12} className="ml-auto text-orange-400 flex-shrink-0" />
+        </button>
+        <button
+          onClick={() => router.push('/sport/session')}
+          className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-2xl bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 active:scale-[0.97] transition-all"
+        >
+          <span className="text-lg">🏋️</span>
+          <span className="text-xs font-bold text-indigo-700 leading-tight">Séance<br/>de sport</span>
+          <ArrowRight size={12} className="ml-auto text-indigo-400 flex-shrink-0" />
+        </button>
       </div>
 
       {/* ── Challenge du jour ── */}

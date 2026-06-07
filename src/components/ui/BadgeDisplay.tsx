@@ -1,5 +1,7 @@
 'use client'
 
+import { useState } from 'react'
+import { X } from 'lucide-react'
 import type { BadgeLevel } from '@/lib/gamification'
 import { getNextBadge, BADGE_LEVELS } from '@/lib/gamification'
 
@@ -12,6 +14,7 @@ interface BadgeDisplayProps {
 export function BadgeDisplay({ badge, streak, size = 'md' }: BadgeDisplayProps) {
   const next    = getNextBadge(streak)
   const pctNext = next ? Math.min(100, Math.round((streak / next.minStreak) * 100)) : 100
+  const [tooltip, setTooltip] = useState<BadgeLevel | null>(null)
 
   return (
     <div className="flex flex-col gap-3">
@@ -59,9 +62,13 @@ export function BadgeDisplay({ badge, streak, size = 'md' }: BadgeDisplayProps) 
           </div>
         </div>
 
-        {/* Citation Waty */}
+        {/* Citation Waty — message dynamique selon série réelle */}
         <p className="text-xs text-zinc-500 italic leading-relaxed bg-zinc-50 rounded-2xl px-3 py-2.5">
-          💬 &ldquo;{badge.watyMessage}&rdquo;
+          💬 &ldquo;{streak >= 150 ? `${streak} jours — tu es une légende absolue. Waty se prosterne devant toi.`
+            : streak >= 90  ? `${streak} jours ! Tu ES Waty désormais. On ne fait plus qu'un. Légendaire.`
+            : streak >= 30  ? `${streak} jours d'affilée ! Tu es officiellement un héros. Ton engagement est une inspiration.`
+            : streak >= 7   ? `${streak} jours consécutifs ! Tu prends de bonnes habitudes. Je suis fier de toi.`
+            : badge.watyMessage}&rdquo;
         </p>
 
         {/* Barre vers le badge suivant */}
@@ -96,13 +103,17 @@ export function BadgeDisplay({ badge, streak, size = 'md' }: BadgeDisplayProps) 
         )}
       </div>
 
-      {/* ── Rangée des 5 badges ── */}
+      {/* ── Rangée des 5 badges cliquables ── */}
       <div className="flex items-end justify-between gap-2 px-1">
         {BADGE_LEVELS.map((b) => {
           const earned  = streak >= b.minStreak
           const current = b.key === badge.key
           return (
-            <div key={b.key} className="flex flex-col items-center gap-1 flex-1">
+            <button
+              key={b.key}
+              onClick={() => setTooltip(prev => prev?.key === b.key ? null : b)}
+              className="flex flex-col items-center gap-1 flex-1 active:scale-90 transition-transform"
+            >
               <div className={`relative w-10 h-10 transition-all duration-300 ${earned ? '' : 'opacity-30 grayscale'}`}>
                 {b.image ? (
                   <img src={b.image} alt={b.label} className="w-full h-full object-contain" />
@@ -111,7 +122,6 @@ export function BadgeDisplay({ badge, streak, size = 'md' }: BadgeDisplayProps) 
                     {b.emoji}
                   </div>
                 )}
-                {/* Cadenas si non déverrouillé */}
                 {!earned && (
                   <img
                     src="/badges/badge-locked.png"
@@ -120,12 +130,37 @@ export function BadgeDisplay({ badge, streak, size = 'md' }: BadgeDisplayProps) 
                   />
                 )}
               </div>
-              {/* Point indicateur badge actuel */}
               <div className={`w-1.5 h-1.5 rounded-full transition-all ${current ? 'bg-tta-mid' : 'bg-transparent'}`} />
-            </div>
+            </button>
           )
         })}
       </div>
+
+      {/* ── Tooltip badge ── */}
+      {tooltip && (
+        <div className="relative mt-1">
+          <div className="bg-zinc-900 text-white rounded-2xl px-4 py-3 flex items-start gap-3 shadow-xl">
+            <div className={`w-10 h-10 flex-shrink-0 ${streak < tooltip.minStreak ? 'opacity-40 grayscale' : ''}`}>
+              {tooltip.image
+                ? <img src={tooltip.image} alt={tooltip.label} className="w-full h-full object-contain" />
+                : <div className="w-full h-full rounded-full bg-white/10 flex items-center justify-center text-xl">{tooltip.emoji}</div>
+              }
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-extrabold text-sm leading-tight">{tooltip.label}</p>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                {streak >= tooltip.minStreak
+                  ? `✅ Débloqué — ${tooltip.minStreak} jour${tooltip.minStreak > 1 ? 's' : ''} de série`
+                  : `🔒 Nécessite ${tooltip.minStreak} jours de série (encore ${tooltip.minStreak - streak} jours)`}
+              </p>
+              <p className="text-xs text-zinc-300 mt-1 italic">"{tooltip.watyMessage}"</p>
+            </div>
+            <button onClick={() => setTooltip(null)} className="text-zinc-400 hover:text-white flex-shrink-0 -mt-1 -mr-1">
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   )
