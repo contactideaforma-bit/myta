@@ -97,6 +97,13 @@ function TextSession({ onConfirm, onCancel }: {
           <X size={14} />
         </button>
       </div>
+      {/* Conseil Waty */}
+      <div className="flex items-start gap-3 bg-violet-50 rounded-2xl px-4 py-3">
+        <span className="text-xl flex-shrink-0 mt-0.5">🤖</span>
+        <p className="text-xs text-violet-700 leading-relaxed">
+          <span className="font-bold">Waty analyse ta description !</span> Plus tu détailles — exercice, durée, séries, charge — plus mon estimation des calories brûlées sera juste.
+        </p>
+      </div>
       <textarea value={text} onChange={e => setText(e.target.value)}
         placeholder="Ex: J'ai fait 30 min de tapis marche rapide puis 3 séries de 15 squats et 10 pompes..."
         rows={4}

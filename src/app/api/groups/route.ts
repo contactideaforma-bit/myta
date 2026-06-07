@@ -18,15 +18,40 @@ function generateInviteCode(): string {
 }
 
 // Score journalier : progression d'aujourd'hui uniquement (pour la lava)
-async function calcDayScore(userId: string): Promise<number> {
-  const today = new Date().toISOString().split('T')[0]
-  const [{ data: journal }, { data: sessions }] = await Promise.all([
-    supabaseAdmin.from('journal_entries').select('date').eq('user_id', userId).eq('date', today),
-    supabaseAdmin.from('sessions').select('id').eq('user_id', userId).eq('session_date', today),
+// localDate = date locale du client (yyyy-MM-dd) pour éviter le décalage UTC
+async function calcDayScore(userId: string, localDate: string): Promise<number> {
+  const [
+    { data: journal },
+    { data: sessions },
+    { data: completions },
+    { data: profile },
+  ] = await Promise.all([
+    supabaseAdmin.from('journal_entries').select('cal').eq('user_id', userId).eq('date', localDate),
+    supabaseAdmin.from('sessions').select('id').eq('user_id', userId).eq('session_date', localDate),
+    supabaseAdmin.from('challenge_completions').select('id').eq('user_id', userId).eq('completed_date', localDate),
+    supabaseAdmin.from('profiles').select('calorie_target').eq('id', userId).single(),
   ])
-  const hasNutri  = (journal ?? []).length > 0
-  const hasSport  = (sessions ?? []).length > 0
-  return hasNutri && hasSport ? 100 : hasNutri ? 60 : hasSport ? 40 : 0
+
+  let score = 0
+
+  // Journal loggé : 40 pts
+  const hasNutri = (journal ?? []).length > 0
+  if (hasNutri) score += 40
+
+  // Objectif calorique atteint (≥ 80%) : +20 pts
+  const calorieTarget = (profile as any)?.calorie_target ?? 0
+  if (hasNutri && calorieTarget > 0) {
+    const totalCal = (journal ?? []).reduce((s: number, e: any) => s + (e.cal ?? 0), 0)
+    if (totalCal >= calorieTarget * 0.8) score += 20
+  }
+
+  // Séance sport : 20 pts
+  if ((sessions ?? []).length > 0) score += 20
+
+  // Au moins 1 challenge complété : 20 pts
+  if ((completions ?? []).length > 0) score += 20
+
+  return score
 }
 
 async function calcWeekScore(userId: string, joinedAt: string): Promise<number> {
@@ -107,6 +132,9 @@ export async function GET(req: NextRequest) {
   const userId = await getAuthUser(req)
   if (!userId) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
 
+  // Utiliser la date locale du client si fournie (évite le décalage UTC)
+  const localDate = searchParams.get('localDate') ?? new Date().toISOString().split('T')[0]
+
   const { data: memberships } = await supabaseAdmin
     .from('group_members').select('group_id, privacy_level').eq('user_id', userId)
 
@@ -126,7 +154,7 @@ export async function GET(req: NextRequest) {
 
       const [score, dayScore] = await Promise.all([
         calcWeekScore(m.user_id, m.joined_at),
-        calcDayScore(m.user_id),
+        calcDayScore(m.user_id, localDate),
       ])
       const isMe  = m.user_id === userId
 
@@ -137,9 +165,11 @@ export async function GET(req: NextRequest) {
           .gte('date', format(new Date(Date.now() - 90 * 86400000), 'yyyy-MM-dd'))
         const uniqueDates = [...new Set((jDates ?? []).map((r: any) => r.date))]
           .sort((a: any, b: any) => b.localeCompare(a)) as string[]
-        const today = new Date().toISOString().split('T')[0]
-        const yest  = new Date(Date.now() - 86400000).toISOString().split('T')[0]
-        if (uniqueDates[0] === today || uniqueDates[0] === yest) {
+        // Calculer "hier" local à partir de la date locale transmise par le client
+        const yestDate = new Date(localDate + 'T12:00:00')
+        yestDate.setDate(yestDate.getDate() - 1)
+        const yest = yestDate.toISOString().split('T')[0]
+        if (uniqueDates[0] === localDate || uniqueDates[0] === yest) {
           let s = 0; let cur = uniqueDates[0]
           for (const d of uniqueDates) {
             if (d === cur) {

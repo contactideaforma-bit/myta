@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { format, subDays, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import {
@@ -213,8 +213,9 @@ type Tab = 'bilan' | 'profil' | 'calculateur'
 type CalcTab = 'tdee' | 'imc' | 'macros'
 
 export default function ProfilePage() {
-  const router   = useRouter()
-  const supabase = createClient()
+  const router        = useRouter()
+  const searchParams  = useSearchParams()
+  const supabase      = createClient()
 
   // ── États principaux ────────────────────────────────────────────────────────
   const [tab, setTab]         = useState<Tab>('bilan')
@@ -272,6 +273,19 @@ export default function ProfilePage() {
   useEffect(() => { loadProfile(); loadReferral() }, [])
   useEffect(() => { if (tab === 'bilan') loadBilan() }, [tab, period])
   useEffect(() => { loadBilan() }, [])
+
+  // Scroll vers le rapport IA si on arrive depuis le dashboard
+  useEffect(() => {
+    if (searchParams.get('section') === 'rapport') {
+      setTab('bilan')
+      const scroll = () => {
+        const el = document.getElementById('rapport-ia')
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+      // Attendre que les données chargent avant de scroller
+      setTimeout(scroll, 1800)
+    }
+  }, [searchParams])
 
   // Charger rapport IA du jour depuis localStorage
   useEffect(() => {
@@ -800,7 +814,7 @@ export default function ProfilePage() {
               )}
 
               {/* Rapport IA */}
-              <div className="card flex flex-col gap-3">
+              <div id="rapport-ia" className="card flex flex-col gap-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-zinc-700">Rapport IA — 7 jours</h3>
                   <button onClick={generateAIReport} disabled={loadingReport}

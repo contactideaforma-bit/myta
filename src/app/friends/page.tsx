@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { todayISO } from '@/lib/utils'
 import { Loader2, Copy, Check, X, UserPlus, Users, Trophy, Shield, ChevronDown, ChevronUp, Pencil, MessageCircle, Send } from 'lucide-react'
 
 
@@ -93,7 +94,7 @@ function WatyRulesCard() {
           </div>
           <div className="flex items-start gap-2">
             <span className="text-base flex-shrink-0">🥗</span>
-            <p><strong>Note un repas</strong> → Waty monte. <strong>Ajoute une séance sport</strong> → Waty monte encore plus haut.</p>
+            <p><strong>Note un repas</strong> → Waty monte. <strong>Ajoute une séance sport</strong> → Waty monte encore plus haut. <strong>Coche tes challenges</strong> → Waty s'envole !</p>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-base flex-shrink-0">🤝</span>
@@ -175,12 +176,14 @@ function GroupCard({ group, onLeave, onCopyCode, onRename }: {
   }, [msgOpen])
 
   async function loadMessages() {
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     const { data } = await supabase
       .from('group_messages')
       .select('id,user_id,message,created_at,display_name')
       .eq('group_id', group.id)
+      .gte('created_at', cutoff)
       .order('created_at', { ascending: false })
-      .limit(20)
+      .limit(30)
     setMessages((data ?? []).reverse())
   }
 
@@ -427,6 +430,11 @@ export default function FriendsPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
 
   useEffect(() => {
+    // Marquer la visite et effacer le badge non-lu
+    try {
+      localStorage.setItem('myta_friends_last_visit', String(Date.now()))
+      localStorage.removeItem('myta_friends_unread')
+    } catch {}
     loadGroups()
     loadLeaderboard()
   }, [])
@@ -452,13 +460,18 @@ export default function FriendsPage() {
     if (!user) { router.push('/auth'); return }
 
     const token = await getToken()
-    const res = await fetch('/api/groups', {
+    const res = await fetch(`/api/groups?localDate=${todayISO()}`, {
       credentials: 'include',
       headers: { Authorization: `Bearer ${token}` },
     })
     if (res.ok) {
       const data = await res.json()
-      setGroups(data.groups ?? [])
+      const loadedGroups = data.groups ?? []
+      setGroups(loadedGroups)
+      // Sauvegarder les IDs de groupe pour la pastille non-lus dans la Navbar
+      try {
+        localStorage.setItem('myta_group_ids', JSON.stringify(loadedGroups.map((g: Group) => g.id)))
+      } catch {}
     }
     setLoading(false)
   }

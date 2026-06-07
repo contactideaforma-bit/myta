@@ -74,6 +74,7 @@ export function Navbar() {
   const [showModal, setShowModal]     = useState(false)
   const [pendingHref, setPendingHref] = useState<string | null>(null)
   const [sidebarModule, setSidebarModule] = useState<Module>('nutrition')
+  const [hasUnread, setHasUnread]     = useState(false)
 
   // ── Modal signalement ──
   const [showReport, setShowReport]         = useState(false)
@@ -125,6 +126,31 @@ export function Navbar() {
     document.body.style.overflow = sidebarOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [sidebarOpen])
+
+  // Effacer le badge quand on visite /friends
+  useEffect(() => {
+    if (pathname === '/friends') setHasUnread(false)
+  }, [pathname])
+
+  // Vérifier les messages non-lus au montage
+  useEffect(() => {
+    try {
+      const groupIds: string[] = JSON.parse(localStorage.getItem('myta_group_ids') || '[]')
+      const lastVisit = parseInt(localStorage.getItem('myta_friends_last_visit') || '0')
+      if (!groupIds.length || !lastVisit) return
+      const cutoff = new Date(lastVisit).toISOString()
+      supabase.auth.getUser().then(({ data }) => {
+        if (!data.user) return
+        supabase
+          .from('group_messages')
+          .select('id', { count: 'exact', head: true })
+          .in('group_id', groupIds)
+          .gt('created_at', cutoff)
+          .neq('user_id', data.user.id)
+          .then(({ count }) => { if ((count ?? 0) > 0) setHasUnread(true) })
+      })
+    } catch {}
+  }, [])
 
   const isDashboard  = pathname === '/dashboard'
   const activeModule: Module = pathname.startsWith('/sport') ? 'sport' : 'nutrition'
@@ -388,9 +414,14 @@ export function Navbar() {
               'w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-all',
               pathname === '/friends' ? 'bg-tta-light' : 'hover:bg-zinc-50 text-zinc-600'
             )}>
-            <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center',
-              pathname === '/friends' ? 'bg-tta-mid/20' : 'bg-purple-50')}>
-              <Users size={16} className={pathname === '/friends' ? 'text-tta-mid' : 'text-purple-400'} />
+            <div className="relative">
+              <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center',
+                pathname === '/friends' ? 'bg-tta-mid/20' : 'bg-purple-50')}>
+                <Users size={16} className={pathname === '/friends' ? 'text-tta-mid' : 'text-purple-400'} />
+              </div>
+              {hasUnread && pathname !== '/friends' && (
+                <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
+              )}
             </div>
             <div className="flex-1">
               <p className="text-sm font-bold text-zinc-700">Amis & Challenges</p>

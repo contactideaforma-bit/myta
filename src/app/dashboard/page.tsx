@@ -237,18 +237,7 @@ export default function DashboardPage() {
           </span>
         </div>
 
-        {badge ? (
-          <BadgeDisplay badge={badge} streak={s.streak} size="sm" />
-        ) : (
-          <div className="bg-zinc-50 rounded-2xl px-4 py-3 text-center">
-            <p className="text-sm text-zinc-500">
-              📝 Note ton premier repas aujourd'hui pour démarrer ta série !
-            </p>
-            <p className="text-xs text-zinc-400 mt-1 italic">
-              💬 Waty dit : Tout commence par un premier pas. Je t'attends !
-            </p>
-          </div>
-        )}
+        {badge && <BadgeDisplay badge={badge} streak={s.streak} size="sm" />}
       </div>
 
       {/* ── Raccourcis rapides ── */}
@@ -273,7 +262,7 @@ export default function DashboardPage() {
 
       {/* ── Bilan IA 7j ── */}
       <button
-        onClick={() => router.push('/profile')}
+        onClick={() => router.push('/profile?section=rapport')}
         className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left hover:opacity-90 active:scale-[0.98] transition-all shadow-sm"
         style={{ background: 'linear-gradient(90deg, #4B47A0, #7b7fd4)' }}
       >
