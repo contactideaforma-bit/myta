@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Loader2, Copy, Check, X, UserPlus, Users, Trophy, Shield } from 'lucide-react'
+import { Loader2, Copy, Check, X, UserPlus, Users, Trophy, Shield, ChevronDown, ChevronUp } from 'lucide-react'
 
 
 // ── Types ─────────────────────────────────────────────────────
@@ -12,19 +12,30 @@ interface GroupMember {
   isMe:         boolean
   displayName:  string
   score:        number
+  dayScore:     number
   streak:       number | null
   privacyLevel: string
   joinedAt:     string
 }
 
 interface Group {
+  id:           string
+  name:         string
+  mode:         'equipe' | 'competition'
+  invite_code:  string
+  created_by:   string
+  teamScore:    number
+  teamDayScore: number
+  cupsWon:      number
+  members:      GroupMember[]
+}
+
+interface LeaderboardEntry {
   id:          string
   name:        string
-  mode:        'equipe' | 'competition'
-  invite_code: string
-  created_by:  string
-  teamScore:   number
-  members:     GroupMember[]
+  mode:        string
+  cupsWon:     number
+  memberCount: number
 }
 
 // ── Composant carte membre ────────────────────────────────────
@@ -56,24 +67,70 @@ function MemberRow({ member, rank }: { member: GroupMember; rank: number }) {
   )
 }
 
+// ── Carte règles du jeu ───────────────────────────────────────
+function WatyRulesCard() {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="rounded-3xl overflow-hidden border border-violet-100" style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(167,139,250,0.05))' }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-start gap-3 px-4 py-3.5 text-left"
+      >
+        <img src="/waty-nutrition.png" alt="Waty" className="w-10 h-10 object-contain flex-shrink-0 mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-extrabold text-violet-700 uppercase tracking-wide mb-0.5">Waty explique les règles</p>
+          <p className="text-sm font-semibold text-zinc-800 leading-snug">
+            Comment fonctionne "Sauver Waty" ?
+          </p>
+        </div>
+        {open ? <ChevronUp size={16} className="text-violet-400 mt-1 flex-shrink-0" /> : <ChevronDown size={16} className="text-violet-400 mt-1 flex-shrink-0" />}
+      </button>
+      {open && (
+        <div className="px-4 pb-4 flex flex-col gap-2.5 text-sm text-zinc-600 leading-relaxed border-t border-violet-100 pt-3">
+          <div className="flex items-start gap-2">
+            <span className="text-base flex-shrink-0">🔄</span>
+            <p><strong>Chaque jour repart à zéro.</strong> Waty démarre en bas de la lave au lever du soleil. C'est une ardoise vierge chaque matin.</p>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-base flex-shrink-0">🥗</span>
+            <p><strong>Note un repas</strong> → Waty monte. <strong>Ajoute une séance sport</strong> → Waty monte encore plus haut.</p>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-base flex-shrink-0">🤝</span>
+            <p><strong>L'équipe joue ensemble.</strong> Plus vos membres sont actifs aujourd'hui, plus Waty s'élève dans la journée.</p>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-base flex-shrink-0">🏆</span>
+            <p><strong>Score hebdo ≥ 70%</strong> = Waty sauvé ! L'équipe gagne une <strong>Coupe</strong> comptabilisée au classement global.</p>
+          </div>
+          <div className="bg-violet-50 rounded-2xl px-3 py-2.5 mt-1">
+            <p className="text-xs text-violet-700 italic">💬 "Chaque repas noté, chaque séance ajoutée me sauve un peu plus. Vous êtes ma force !" — Waty</p>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Floor is Lava — progression Sauver Waty ──────────────────
 const LAVA_STAGES = [
-  { img: '/lava-0.png',   label: 'Prêt à jouer ! Go Go Go !' },
-  { img: '/lava-1.png',   label: 'Connecte-toi tous les jours pour progresser !' },
-  { img: '/lava-2.png',   label: 'Super ! Continue comme ça !' },
-  { img: '/lava-3.png',   label: "Vous êtes une équipe qui déchire !" },
-  { img: '/lava-4.png',   label: 'Encore un petit effort !' },
-  { img: '/lava-5.png',   label: 'Waw ! Vous y êtes presque !' },
-  { img: '/lava-win.png', label: "Bravo l'équipe des Champions ! 🏆" },
+  { img: '/lava-0.png',   label: 'Waty attend votre premier geste du jour…' },
+  { img: '/lava-1.png',   label: 'Bien joué ! Waty commence à se relever !' },
+  { img: '/lava-2.png',   label: "Super ! Continue comme ça, l'équipe assure !" },
+  { img: '/lava-3.png',   label: "Vous déchirez ! Waty remonte à toute vitesse !" },
+  { img: '/lava-4.png',   label: 'Encore un petit effort, on y est presque !' },
+  { img: '/lava-5.png',   label: 'Waw ! Waty est presque sauvé !' },
+  { img: '/lava-win.png', label: "Bravo l'équipe des Champions ! Waty est sauvé 🏆" },
 ]
 
-function getLavaStage(score: number): number {
-  if (score >= 70) return 6
-  if (score >= 60) return 5
-  if (score >= 45) return 4
-  if (score >= 30) return 3
-  if (score >= 15) return 2
-  if (score >= 1)  return 1
+// Lava basé sur le score JOURNALIER (repart à 0 chaque jour)
+function getLavaStage(dayScore: number): number {
+  if (dayScore >= 90) return 6
+  if (dayScore >= 70) return 5
+  if (dayScore >= 50) return 4
+  if (dayScore >= 35) return 3
+  if (dayScore >= 20) return 2
+  if (dayScore >= 1)  return 1
   return 0
 }
 
@@ -84,8 +141,8 @@ function GroupCard({ group, onLeave, onCopyCode }: {
   onCopyCode: (code: string) => void
 }) {
   const [copied, setCopied] = useState(false)
-  const isSaved = group.teamScore >= 70
-  const lava    = LAVA_STAGES[getLavaStage(group.teamScore)]
+  const isSaved    = group.teamScore >= 70
+  const lava       = LAVA_STAGES[getLavaStage(group.teamDayScore ?? 0)]
 
   function handleCopy() {
     onCopyCode(group.invite_code)
@@ -108,7 +165,12 @@ function GroupCard({ group, onLeave, onCopyCode }: {
                 {group.mode === 'equipe' ? '🤝 Équipe' : '⚔️ Compétition'}
               </span>
             </div>
-            <p className="text-xs text-zinc-400 mt-0.5">{group.members.length} membre{group.members.length > 1 ? 's' : ''}</p>
+            <div className="flex items-center gap-3 mt-0.5">
+              <p className="text-xs text-zinc-400">{group.members.length} membre{group.members.length > 1 ? 's' : ''}</p>
+              {(group.cupsWon ?? 0) > 0 && (
+                <p className="text-xs font-bold text-amber-600">🏆 {group.cupsWon} coupe{group.cupsWon > 1 ? 's' : ''}</p>
+              )}
+            </div>
           </div>
           <button onClick={() => onLeave(group.id)}
             className="p-1.5 rounded-xl hover:bg-red-50 text-zinc-300 hover:text-red-400 transition-colors flex-shrink-0">
@@ -140,29 +202,33 @@ function GroupCard({ group, onLeave, onCopyCode }: {
               />
             </div>
 
-            {/* Jauge + score */}
-            <div className="bg-zinc-50 rounded-2xl px-4 py-2.5">
-              <div className="flex justify-between text-[10px] text-zinc-500 mb-1.5">
-                <span>Score équipe cette semaine</span>
-                <span className="font-bold text-tta-mid">
-                  {group.teamScore}% {isSaved ? '✓ Waty sauvé !' : '— objectif 70%'}
-                </span>
+            {/* Jauge journalière */}
+            <div className="bg-zinc-50 rounded-2xl px-4 py-2.5 flex flex-col gap-2">
+              <div className="flex justify-between text-[10px] text-zinc-500">
+                <span>⚡ Aujourd'hui</span>
+                <span className="font-bold text-violet-600">{group.teamDayScore ?? 0}%</span>
               </div>
               <div className="h-2.5 bg-zinc-200 rounded-full overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${group.teamDayScore ?? 0}%`, background: 'linear-gradient(90deg, #7c3aed, #a78bfa)' }} />
+              </div>
+              <div className="flex justify-between text-[10px] text-zinc-500 mt-1">
+                <span>📅 Cette semaine</span>
+                <span className={`font-bold ${isSaved ? 'text-green-600' : 'text-tta-mid'}`}>
+                  {group.teamScore}% {isSaved ? '✓ Waty sauvé !' : '— objectif 70%'}
+                </span>
+              </div>
+              <div className="h-2 bg-zinc-200 rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-700"
                   style={{
                     width: `${group.teamScore}%`,
-                    background: isSaved
-                      ? '#22c55e'
-                      : 'linear-gradient(90deg, #4B47A0, #2BA8B0)',
+                    background: isSaved ? '#22c55e' : 'linear-gradient(90deg, #4B47A0, #2BA8B0)',
                   }} />
               </div>
-              {/* Marqueur objectif 70% */}
               <div className="relative h-0">
-                <div className="absolute top-0 w-0.5 h-3 bg-zinc-400 rounded-full -translate-y-4"
-                  style={{ left: '70%' }} />
+                <div className="absolute top-0 w-0.5 h-3 bg-zinc-400 rounded-full -translate-y-3" style={{ left: '70%' }} />
               </div>
-              <p className="text-[10px] text-zinc-400 text-right mt-2.5">🎯 70% pour sauver Waty</p>
+              <p className="text-[10px] text-zinc-400 text-right mt-1.5">🎯 70% hebdo = 1 coupe gagnée</p>
             </div>
           </div>
         )}
@@ -212,8 +278,12 @@ export default function FriendsPage() {
   const [joinError, setJoinError]   = useState('')
 
   const [toast, setToast] = useState('')
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
 
-  useEffect(() => { loadGroups() }, [])
+  useEffect(() => {
+    loadGroups()
+    loadLeaderboard()
+  }, [])
 
   async function getToken(): Promise<string> {
     const { data: { session } } = await supabase.auth.getSession()
@@ -221,6 +291,14 @@ export default function FriendsPage() {
     // Tente un refresh si la session est expirée
     const { data: { session: refreshed } } = await supabase.auth.refreshSession()
     return refreshed?.access_token ?? ''
+  }
+
+  async function loadLeaderboard() {
+    const res = await fetch('/api/groups?leaderboard=1')
+    if (res.ok) {
+      const data = await res.json()
+      setLeaderboard(data.leaderboard ?? [])
+    }
   }
 
   async function loadGroups() {
@@ -335,6 +413,9 @@ export default function FriendsPage() {
             </button>
           </div>
 
+          {/* Règles du jeu Waty */}
+          <WatyRulesCard />
+
           {/* Groupes */}
           {groups.length === 0 ? (
             <div className="card flex flex-col items-center py-12 gap-4 text-center">
@@ -353,6 +434,47 @@ export default function FriendsPage() {
             groups.map(g => (
               <GroupCard key={g.id} group={g} onLeave={handleLeave} onCopyCode={handleCopyCode} />
             ))
+          )}
+
+          {/* Classement mondial */}
+          {leaderboard.length > 0 && (
+            <div className="card flex flex-col gap-3 p-0 overflow-hidden">
+              <div className="px-5 pt-4 pb-3 border-b border-zinc-100"
+                style={{ background: 'linear-gradient(135deg, rgba(251,191,36,0.08), rgba(245,158,11,0.05))' }}>
+                <div className="flex items-center gap-2">
+                  <Trophy size={16} className="text-amber-500" />
+                  <h3 className="font-extrabold text-zinc-900 text-sm">Classement mondial</h3>
+                </div>
+                <p className="text-[10px] text-zinc-400 mt-0.5">Tous les groupes par coupes gagnées</p>
+              </div>
+              <div className="divide-y divide-zinc-50 pb-2">
+                {leaderboard.map((entry, i) => {
+                  const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`
+                  const isMyGroup = groups.some(g => g.id === entry.id)
+                  return (
+                    <div key={entry.id} className={`flex items-center gap-3 px-5 py-3 ${isMyGroup ? 'bg-amber-50' : ''}`}>
+                      <span className="text-base w-7 text-center flex-shrink-0">{medal}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-bold truncate ${isMyGroup ? 'text-amber-700' : 'text-zinc-800'}`}>
+                          {entry.name}
+                          {isMyGroup && <span className="text-[10px] font-normal text-amber-500 ml-1">(ton groupe)</span>}
+                        </p>
+                        <p className="text-[10px] text-zinc-400">
+                          {entry.mode === 'equipe' ? '🤝 Équipe' : '⚔️ Compétition'} · {entry.memberCount} membre{entry.memberCount > 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        {entry.cupsWon > 0 ? (
+                          <p className="text-sm font-extrabold text-amber-600">🏆 {entry.cupsWon}</p>
+                        ) : (
+                          <p className="text-xs text-zinc-300 font-medium">—</p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           )}
         </>
       )}

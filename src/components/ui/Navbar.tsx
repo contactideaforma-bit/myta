@@ -126,6 +126,7 @@ export function Navbar() {
     return () => { document.body.style.overflow = '' }
   }, [sidebarOpen])
 
+  const isDashboard  = pathname === '/dashboard'
   const activeModule: Module = pathname.startsWith('/sport') ? 'sport' : 'nutrition'
   const navItems = activeModule === 'nutrition' ? NAV_NUTRI : NAV_SPORT
   const isNutri  = activeModule === 'nutrition'
@@ -237,12 +238,15 @@ export function Navbar() {
       )}
 
       {/* ── Header coloré ── */}
-      <header className={cn(
-        'sticky top-0 z-50 border-b',
-        isNutri
-          ? 'bg-gradient-to-r from-nutri to-nutri-mid border-nutri-mid/50'
-          : 'bg-gradient-to-r from-tta-mid to-sport border-sport'
-      )}>
+      <header
+        className={cn(
+          'sticky top-0 z-50 border-b',
+          !isDashboard && (isNutri
+            ? 'bg-gradient-to-r from-nutri to-nutri-mid border-nutri-mid/50'
+            : 'bg-gradient-to-r from-tta-mid to-sport border-sport')
+        )}
+        style={isDashboard ? { background: 'linear-gradient(90deg, rgba(109,40,217,0.82) 0%, rgba(167,139,250,0.78) 100%)', borderColor: 'rgba(167,139,250,0.35)' } : {}}
+      >
         <div className="px-4 h-14 flex items-center justify-between">
 
           {/* Burger */}
@@ -281,12 +285,15 @@ export function Navbar() {
       )}>
 
         {/* Header sidebar coloré */}
-        <div className={cn(
-          'px-5 py-5 flex items-center justify-between',
-          isNutri
-            ? 'bg-gradient-to-r from-nutri to-nutri-mid'
-            : 'bg-gradient-to-r from-tta-mid to-sport'
-        )}>
+        <div
+          className={cn(
+            'px-5 py-5 flex items-center justify-between',
+            !isDashboard && (isNutri
+              ? 'bg-gradient-to-r from-nutri to-nutri-mid'
+              : 'bg-gradient-to-r from-tta-mid to-sport')
+          )}
+          style={isDashboard ? { background: 'linear-gradient(135deg, rgba(109,40,217,0.9) 0%, rgba(167,139,250,0.85) 100%)' } : {}}
+        >
           <div className="flex items-center">
             <div className="bg-white/90 rounded-2xl px-3 py-1 shadow-sm">
               <img src="/logo_my_twin_app.png" alt="MYTA" className="h-8 object-contain" />
@@ -427,63 +434,50 @@ export function Navbar() {
           </button>
         </nav>
 
-        {/* Footer */}
-        <div className="px-4 py-4 border-t border-zinc-100 flex flex-col gap-2">
+        {/* Footer compact */}
+        <div className="px-4 py-3 border-t border-zinc-100 flex flex-col gap-2">
 
-          {/* ── Guide d'utilisation ── */}
+          {/* Guide — ligne pleine avec desc */}
           <button onClick={() => { router.push('/guide'); setSidebarOpen(false) }}
             className={cn(
-              'w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-left transition-all',
+              'w-full flex items-center gap-2.5 px-3 py-2 rounded-2xl text-left transition-all',
               pathname === '/guide' ? 'bg-tta-light' : 'hover:bg-zinc-50'
             )}>
-            <div className={cn(
-              'w-9 h-9 rounded-xl flex items-center justify-center',
-              pathname === '/guide' ? 'bg-tta-mid/20' : 'bg-tta-light'
-            )}>
-              <HelpCircle size={15} className="text-tta-mid" />
-            </div>
-            <div className="flex-1">
-              <p className={cn('text-sm font-bold', pathname === '/guide' ? 'text-tta-mid' : 'text-zinc-700')}>
-                Guide d'utilisation
-              </p>
-              <p className="text-[10px] text-zinc-400">Toutes les fonctionnalités</p>
-            </div>
+            <HelpCircle size={15} className="text-tta-mid flex-shrink-0" />
+            <p className={cn('text-sm font-bold', pathname === '/guide' ? 'text-tta-mid' : 'text-zinc-600')}>
+              Guide d'utilisation
+            </p>
           </button>
 
-          {/* Dark mode toggle */}
-          <button onClick={toggle}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-left hover:bg-zinc-50 transition-all">
-            <div className="w-9 h-9 rounded-xl bg-zinc-100 flex items-center justify-center">
+          {/* Ligne 2 : Mode sombre + Signaler + Déconnexion en icônes */}
+          <div className="flex items-center gap-1">
+            {/* Dark mode toggle compact */}
+            <button onClick={toggle}
+              className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl hover:bg-zinc-50 transition-all text-zinc-500">
               {theme === 'dark'
-                ? <Sun size={15} className="text-amber-400" />
-                : <Moon size={15} className="text-zinc-500" />}
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-zinc-700">
-                {theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
-              </p>
-            </div>
-            <div className={cn('w-10 h-5 rounded-full relative transition-colors', theme === 'dark' ? 'bg-tta-mid' : 'bg-zinc-300')}>
-              <div className={cn('absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all', theme === 'dark' ? 'left-5' : 'left-0.5')} />
-            </div>
-          </button>
+                ? <Sun size={14} className="text-amber-400" />
+                : <Moon size={14} className="text-zinc-400" />}
+              <span className="text-xs font-semibold text-zinc-500">{theme === 'dark' ? 'Clair' : 'Sombre'}</span>
+            </button>
 
-          {/* Signaler un problème */}
-          <button onClick={() => { setShowReport(true); setSidebarOpen(false) }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-left hover:bg-zinc-50 transition-all text-zinc-500">
-            <div className="w-9 h-9 rounded-xl bg-zinc-100 flex items-center justify-center">
-              <MessageSquareWarning size={15} className="text-zinc-400" />
-            </div>
-            <p className="text-sm font-bold">Signaler un problème</p>
-          </button>
+            <div className="w-px h-5 bg-zinc-100" />
 
-          <button onClick={signOut}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-left hover:bg-red-50 hover:text-red-500 transition-all text-zinc-500">
-            <div className="w-9 h-9 rounded-xl bg-zinc-100 flex items-center justify-center">
-              <LogOut size={15} />
-            </div>
-            <p className="text-sm font-bold">Déconnexion</p>
-          </button>
+            {/* Signaler */}
+            <button onClick={() => { setShowReport(true); setSidebarOpen(false) }}
+              className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl hover:bg-zinc-50 transition-all text-zinc-400 hover:text-amber-500">
+              <MessageSquareWarning size={14} />
+              <span className="text-xs font-semibold">Signaler</span>
+            </button>
+
+            <div className="w-px h-5 bg-zinc-100" />
+
+            {/* Déconnexion */}
+            <button onClick={signOut}
+              className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl hover:bg-red-50 transition-all text-zinc-400 hover:text-red-500">
+              <LogOut size={14} />
+              <span className="text-xs font-semibold">Sortir</span>
+            </button>
+          </div>
         </div>
       </aside>
     </>

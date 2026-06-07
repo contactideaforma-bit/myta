@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createServerClient } from '@supabase/ssr'
-import { format, startOfWeek, endOfWeek } from 'date-fns'
+import { format, startOfWeek } from 'date-fns'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,6 +15,18 @@ function generateInviteCode(): string {
   let code = 'WATY-'
   for (let i = 0; i < 4; i++) code += chars[bytes[i] % chars.length]
   return code
+}
+
+// Score journalier : progression d'aujourd'hui uniquement (pour la lava)
+async function calcDayScore(userId: string): Promise<number> {
+  const today = new Date().toISOString().split('T')[0]
+  const [{ data: journal }, { data: sessions }] = await Promise.all([
+    supabaseAdmin.from('journal_entries').select('date').eq('user_id', userId).eq('date', today),
+    supabaseAdmin.from('sessions').select('id').eq('user_id', userId).eq('session_date', today),
+  ])
+  const hasNutri  = (journal ?? []).length > 0
+  const hasSport  = (sessions ?? []).length > 0
+  return hasNutri && hasSport ? 100 : hasNutri ? 60 : hasSport ? 40 : 0
 }
 
 async function calcWeekScore(userId: string, joinedAt: string): Promise<number> {
@@ -72,8 +84,26 @@ async function getAuthUser(req: NextRequest): Promise<string | null> {
   return null
 }
 
-// ── GET — liste mes groupes ──────────────────────────────────
+// ── GET — liste mes groupes (+ leaderboard global) ──────────
 export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
+
+  // ── Leaderboard global — pas besoin d'auth ────────────────
+  if (searchParams.get('leaderboard') === '1') {
+    const { data: allGroups } = await supabaseAdmin
+      .from('friend_groups')
+      .select('id, name, mode, cups_won')
+      .order('cups_won', { ascending: false })
+      .limit(20)
+
+    const leaderboard = await Promise.all((allGroups ?? []).map(async (g: any) => {
+      const { count } = await supabaseAdmin
+        .from('group_members').select('id', { count: 'exact', head: true }).eq('group_id', g.id)
+      return { id: g.id, name: g.name, mode: g.mode, cupsWon: g.cups_won ?? 0, memberCount: count ?? 0 }
+    }))
+    return NextResponse.json({ leaderboard })
+  }
+
   const userId = await getAuthUser(req)
   if (!userId) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
 
@@ -94,7 +124,10 @@ export async function GET(req: NextRequest) {
       const { data: prof } = await supabaseAdmin
         .from('profiles').select('full_name').eq('id', m.user_id).single()
 
-      const score = await calcWeekScore(m.user_id, m.joined_at)
+      const [score, dayScore] = await Promise.all([
+        calcWeekScore(m.user_id, m.joined_at),
+        calcDayScore(m.user_id),
+      ])
       const isMe  = m.user_id === userId
 
       let streak = null
@@ -126,6 +159,7 @@ export async function GET(req: NextRequest) {
           ? (prof as any).full_name.split(' ')[0] + ' ' + ((prof as any).full_name.split(' ')[1]?.[0] ?? '') + '.'
           : 'Anonyme',
         score,
+        dayScore,
         streak,
         privacyLevel: m.privacy_level,
       }
@@ -135,7 +169,21 @@ export async function GET(req: NextRequest) {
       ? Math.round(membersWithScore.reduce((s, m) => s + m.score, 0) / membersWithScore.length)
       : 0
 
-    return { ...group, members: membersWithScore.sort((a, b) => b.score - a.score), teamScore }
+    const teamDayScore = membersWithScore.length
+      ? Math.round(membersWithScore.reduce((s, m) => s + (m as any).dayScore, 0) / membersWithScore.length)
+      : 0
+
+    // ── Coupes : incrémenter si score hebdo >= 70% sur une nouvelle semaine ──
+    const currentWeek = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd')
+    if (group.mode === 'equipe' && teamScore >= 70 && group.last_cup_week !== currentWeek) {
+      await supabaseAdmin.from('friend_groups').update({
+        cups_won:      (group.cups_won ?? 0) + 1,
+        last_cup_week: currentWeek,
+      }).eq('id', group.id)
+      group.cups_won = (group.cups_won ?? 0) + 1
+    }
+
+    return { ...group, members: membersWithScore.sort((a, b) => b.score - a.score), teamScore, teamDayScore, cupsWon: group.cups_won ?? 0 }
   }))
 
   return NextResponse.json({ groups: result })
