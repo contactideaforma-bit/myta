@@ -192,17 +192,36 @@ function GroupCard({ group, onLeave, onCopyCode, onRename }: {
     setSending(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setSending(false); return }
-    // Récupère le nom d'affichage
     const me = group.members.find(m => m.isMe)
     const displayName = me?.displayName ?? 'Anonyme'
-    await supabase.from('group_messages').insert({
+    const text = msgText.trim().slice(0, 120)
+
+    // Ajout optimiste : afficher le message immédiatement sans attendre la DB
+    const tempId = `temp_${Date.now()}`
+    setMessages(prev => [...prev, {
+      id: tempId,
+      user_id: user.id,
+      message: text,
+      created_at: new Date().toISOString(),
+      display_name: displayName,
+    }])
+    setMsgText('')
+
+    const { error } = await supabase.from('group_messages').insert({
       group_id: group.id,
       user_id: user.id,
-      message: msgText.trim().slice(0, 120),
+      message: text,
       display_name: displayName,
     })
-    setMsgText('')
-    await loadMessages()
+
+    if (error) {
+      console.error('[group_messages] insert error:', error)
+      // Retirer le message optimiste si l'insert a échoué
+      setMessages(prev => prev.filter(m => m.id !== tempId))
+    } else {
+      // Rafraîchir depuis la DB pour avoir l'id réel
+      await loadMessages()
+    }
     setSending(false)
   }
 
