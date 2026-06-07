@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Loader2, Copy, Check, X, UserPlus, Users, Trophy, Shield, ChevronDown, ChevronUp, Pencil } from 'lucide-react'
+import { Loader2, Copy, Check, X, UserPlus, Users, Trophy, Shield, ChevronDown, ChevronUp, Pencil, MessageCircle, Send } from 'lucide-react'
 
 
 // ── Types ─────────────────────────────────────────────────────
@@ -134,6 +134,15 @@ function getLavaStage(dayScore: number): number {
   return 0
 }
 
+// ── Types messages ────────────────────────────────────────────
+interface GroupMessage {
+  id: string
+  user_id: string
+  message: string
+  created_at: string
+  display_name?: string
+}
+
 // ── Composant carte groupe ────────────────────────────────────
 function GroupCard({ group, onLeave, onCopyCode, onRename }: {
   group: Group
@@ -141,12 +150,58 @@ function GroupCard({ group, onLeave, onCopyCode, onRename }: {
   onCopyCode: (code: string) => void
   onRename: (id: string, name: string) => Promise<void>
 }) {
+  const supabase = createClient()
   const [copied, setCopied]         = useState(false)
   const [editing, setEditing]       = useState(false)
   const [editName, setEditName]     = useState(group.name)
   const [savingName, setSavingName] = useState(false)
+  // Messages
+  const [messages, setMessages]     = useState<GroupMessage[]>([])
+  const [msgOpen, setMsgOpen]       = useState(false)
+  const [msgText, setMsgText]       = useState('')
+  const [sending, setSending]       = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+
   const isSaved = group.teamScore >= 70
   const lava    = LAVA_STAGES[getLavaStage(group.teamDayScore ?? 0)]
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null))
+  }, [])
+
+  useEffect(() => {
+    if (!msgOpen) return
+    loadMessages()
+  }, [msgOpen])
+
+  async function loadMessages() {
+    const { data } = await supabase
+      .from('group_messages')
+      .select('id,user_id,message,created_at,display_name')
+      .eq('group_id', group.id)
+      .order('created_at', { ascending: false })
+      .limit(20)
+    setMessages((data ?? []).reverse())
+  }
+
+  async function sendMessage() {
+    if (!msgText.trim() || sending) return
+    setSending(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setSending(false); return }
+    // Récupère le nom d'affichage
+    const me = group.members.find(m => m.isMe)
+    const displayName = me?.displayName ?? 'Anonyme'
+    await supabase.from('group_messages').insert({
+      group_id: group.id,
+      user_id: user.id,
+      message: msgText.trim().slice(0, 120),
+      display_name: displayName,
+    })
+    setMsgText('')
+    await loadMessages()
+    setSending(false)
+  }
 
   function handleCopy() {
     onCopyCode(group.invite_code)
@@ -274,6 +329,73 @@ function GroupCard({ group, onLeave, onCopyCode, onRename }: {
         {group.members.map((m, i) => (
           <MemberRow key={m.userId} member={m} rank={i + 1} />
         ))}
+      </div>
+
+      {/* Messages groupe */}
+      <div className="border-t border-zinc-100">
+        <button
+          onClick={() => setMsgOpen(v => !v)}
+          className="w-full flex items-center gap-2 px-5 py-3 text-left hover:bg-zinc-50 transition-colors"
+        >
+          <MessageCircle size={14} className="text-violet-400 flex-shrink-0" />
+          <span className="text-xs font-semibold text-zinc-500 flex-1">Messages du groupe</span>
+          {msgOpen ? <ChevronUp size={14} className="text-zinc-300" /> : <ChevronDown size={14} className="text-zinc-300" />}
+        </button>
+
+        {msgOpen && (
+          <div className="px-4 pb-4 flex flex-col gap-3">
+            {/* Liste messages */}
+            <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
+              {messages.length === 0 ? (
+                <p className="text-xs text-zinc-400 text-center py-4 italic">Aucun message pour l'instant. Soyez le premier ! 👋</p>
+              ) : (
+                messages.map(msg => {
+                  const isMe = msg.user_id === currentUserId
+                  return (
+                    <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                      <div className={`max-w-[85%] px-3 py-2 rounded-2xl text-xs leading-relaxed ${
+                        isMe
+                          ? 'bg-violet-600 text-white rounded-tr-sm'
+                          : 'bg-zinc-100 text-zinc-800 rounded-tl-sm'
+                      }`}>
+                        {!isMe && (
+                          <p className="text-[10px] font-bold text-violet-500 mb-0.5">{msg.display_name ?? 'Anonyme'}</p>
+                        )}
+                        <p>{msg.message}</p>
+                      </div>
+                      <p className="text-[9px] text-zinc-300 mt-0.5 px-1">
+                        {new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            {/* Saisie message */}
+            <div className="flex gap-2 items-center">
+              <input
+                type="text"
+                value={msgText}
+                onChange={e => setMsgText(e.target.value.slice(0, 120))}
+                onKeyDown={e => e.key === 'Enter' && sendMessage()}
+                placeholder="Message au groupe…"
+                className="flex-1 text-xs bg-zinc-50 border border-zinc-200 rounded-2xl px-3 py-2 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+              />
+              <span className="text-[9px] text-zinc-300 flex-shrink-0">{msgText.length}/120</span>
+              <button
+                onClick={sendMessage}
+                disabled={!msgText.trim() || sending}
+                className="w-8 h-8 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
+              >
+                {sending
+                  ? <Loader2 size={13} className="text-white animate-spin" />
+                  : <Send size={13} className="text-white" />
+                }
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

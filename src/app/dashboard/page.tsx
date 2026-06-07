@@ -271,6 +271,20 @@ export default function DashboardPage() {
         </button>
       </div>
 
+      {/* ── Bilan IA 7j ── */}
+      <button
+        onClick={() => router.push('/profile')}
+        className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left hover:opacity-90 active:scale-[0.98] transition-all shadow-sm"
+        style={{ background: 'linear-gradient(90deg, #4B47A0, #7b7fd4)' }}
+      >
+        <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">📊</div>
+        <div className="flex-1">
+          <p className="text-sm font-bold text-white">Bilan santé 7 jours — Waty IA</p>
+          <p className="text-xs text-white/70">Analyse personnalisée de ta semaine</p>
+        </div>
+        <ArrowRight size={16} className="text-white/60 flex-shrink-0" />
+      </button>
+
       {/* ── Challenge du jour ── */}
       <ChallengeCard
         challenges={challenges}

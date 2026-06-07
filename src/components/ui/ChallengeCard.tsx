@@ -6,9 +6,10 @@ import { createClient } from '@/lib/supabase/client'
 import { todayISO } from '@/lib/utils'
 import type { DailyChallenge } from '@/lib/gamification'
 
-const CUSTOM_CHALLENGE_KEY = 'myta_custom_challenge'
+const CUSTOM_CHALLENGE_KEY = 'myta_custom_challenges'
 
 interface CustomChallenge {
+  id: string
   label: string
   emoji: string
 }
@@ -24,7 +25,7 @@ const EMOJI_OPTIONS = ['💪','🏃','🚴','🧘','🎯','🔥','⚡','🌟','�
 export function ChallengeCard({ challenges, completedKeys, onComplete }: ChallengeCardProps) {
   const [saving, setSaving] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [customChallenge, setCustomChallenge] = useState<CustomChallenge | null>(null)
+  const [customChallenges, setCustomChallenges] = useState<CustomChallenge[]>([])
   const [newLabel, setNewLabel] = useState('')
   const [newEmoji, setNewEmoji] = useState('💪')
   const supabase = createClient()
@@ -32,33 +33,39 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
   useEffect(() => {
     try {
       const stored = localStorage.getItem(CUSTOM_CHALLENGE_KEY)
-      if (stored) setCustomChallenge(JSON.parse(stored))
+      if (stored) setCustomChallenges(JSON.parse(stored))
     } catch {}
   }, [])
 
   function saveCustomChallenge() {
     if (!newLabel.trim()) return
-    const c: CustomChallenge = { label: newLabel.trim(), emoji: newEmoji }
-    localStorage.setItem(CUSTOM_CHALLENGE_KEY, JSON.stringify(c))
-    setCustomChallenge(c)
+    const c: CustomChallenge = {
+      id: `custom_${Date.now()}`,
+      label: newLabel.trim(),
+      emoji: newEmoji,
+    }
+    const updated = [...customChallenges, c]
+    localStorage.setItem(CUSTOM_CHALLENGE_KEY, JSON.stringify(updated))
+    setCustomChallenges(updated)
     setShowCreateModal(false)
     setNewLabel('')
+    setNewEmoji('💪')
   }
 
-  function deleteCustomChallenge() {
-    localStorage.removeItem(CUSTOM_CHALLENGE_KEY)
-    setCustomChallenge(null)
+  function deleteCustomChallenge(id: string) {
+    const updated = customChallenges.filter(c => c.id !== id)
+    localStorage.setItem(CUSTOM_CHALLENGE_KEY, JSON.stringify(updated))
+    setCustomChallenges(updated)
   }
 
-  const customKey = 'custom_challenge'
   const allChallenges: DailyChallenge[] = [
     ...challenges,
-    ...(customChallenge ? [{
-      key: customKey,
-      label: customChallenge.label,
-      emoji: customChallenge.emoji,
+    ...customChallenges.map(c => ({
+      key: c.id,
+      label: c.label,
+      emoji: c.emoji,
       watyMessage: 'Challenge perso complété ! Tu te connais mieux que personne.',
-    }] : []),
+    })),
   ]
 
   async function complete(challenge: DailyChallenge) {
@@ -67,8 +74,6 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
 
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
-      // Tente l'insert, ignore le conflit si déjà existant
-      // Conflit unique = déjà complété, pas d'erreur à remonter
       try {
         await supabase.from('challenge_completions').insert(
           { user_id: user.id, challenge_key: challenge.key, completed_date: todayISO() }
@@ -79,6 +84,7 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
     setSaving(null)
   }
 
+  const isCustom = (key: string) => key.startsWith('custom_')
   const allDone = allChallenges.every(c => completedKeys.includes(c.key))
 
   return (
@@ -93,14 +99,12 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
               ✓ Complété !
             </span>
           )}
-          {!customChallenge && (
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-1 text-[10px] font-bold text-tta-mid bg-tta-light px-2 py-1 rounded-full hover:bg-tta-mid hover:text-white transition-all"
-            >
-              <Plus size={10} /> Mon challenge
-            </button>
-          )}
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-1 text-[10px] font-bold text-tta-mid bg-tta-light px-2 py-1 rounded-full hover:bg-tta-mid hover:text-white transition-all"
+          >
+            <Plus size={10} /> Mon challenge
+          </button>
         </div>
       </div>
 
@@ -108,12 +112,13 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
         {allChallenges.map(challenge => {
           const done = completedKeys.includes(challenge.key)
           const isSaving = saving === challenge.key
+          const custom = isCustom(challenge.key)
 
           return (
             <div key={challenge.key} className="relative">
-            {challenge.key === customKey && !done && (
+            {custom && !done && (
               <button
-                onClick={deleteCustomChallenge}
+                onClick={() => deleteCustomChallenge(challenge.key)}
                 className="absolute -top-1 -right-1 z-10 w-5 h-5 bg-zinc-300 hover:bg-red-400 rounded-full flex items-center justify-center transition-colors"
               >
                 <X size={10} className="text-white" />
@@ -125,7 +130,7 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all text-left
                 ${done
                   ? 'bg-green-50 border-green-300'
-                  : challenge.key === customKey
+                  : custom
                     ? 'bg-violet-50 border-violet-200 hover:border-violet-400 hover:bg-violet-100 active:scale-[0.98]'
                     : 'bg-zinc-50 border-zinc-100 hover:border-tta-mid/50 hover:bg-tta-light active:scale-[0.98]'
                 }`}
@@ -142,7 +147,7 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
                 )}
               </div>
               <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-all
-                ${done ? 'bg-green-500' : challenge.key === customKey ? 'bg-violet-200' : 'bg-zinc-200'}`}>
+                ${done ? 'bg-green-500' : custom ? 'bg-violet-200' : 'bg-zinc-200'}`}>
                 {isSaving
                   ? <div className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                   : done

@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
   const goal       = s(raw.goal,       100)
   const condition  = s(raw.condition,  200)
   const weightGoal = s(raw.weightGoal, 50)
+  const micros     = s(raw.micros,     400)
   const age        = Number(raw.age) || null
 
   const contextLines = [
@@ -44,6 +45,7 @@ DONNÉES DES 7 DERNIERS JOURS :
 🏋️ Sport : ${sport}
 😴 Sommeil : ${sleep}
 ⚖️ Poids : ${weight}
+${micros ? `🔬 Micronutriments (carences semaine) : ${micros}` : ''}
 </user_data>
 
 CONSIGNES DE RÉDACTION :
@@ -51,8 +53,9 @@ CONSIGNES DE RÉDACTION :
 - Sois précis et concret : cite les chiffres réels (calories, durées, poids)
 - Adapte le ton aux conditions de santé si présentes (ex: diabète → parle glycémie, gluten → alternatives sans gluten)
 - Si poids cible : commente la progression vers cet objectif
-- Structure : 1 phrase d'intro motivante → analyse nutrition → analyse sport → analyse sommeil → 2 conseils actionnables → 1 phrase de motivation finale
-- Maximum 220 mots, emojis pour aérer
+- Si des carences micronutriments sont présentes : mentionne-les concrètement et suggère les aliments pour y remédier
+- Structure : 1 phrase d'intro motivante → analyse nutrition → analyse sport → analyse sommeil → ${micros ? 'carences micro si pertinent → ' : ''}2 conseils actionnables → 1 phrase de motivation finale
+- Maximum 250 mots, emojis pour aérer
 - Ne mentionne pas les données manquantes sauf si c'est critique`
 
   const encoder = new TextEncoder()

@@ -10,6 +10,7 @@ import {
   Dumbbell, LogOut, Layers, BarChart3, CreditCard,
 } from 'lucide-react'
 import { Waty } from '@/components/ui/Waty'
+import { calcMicros, MICROS_AJR, MICROS_NAMES } from '@/lib/nutrition-analysis'
 import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, AreaChart, Area,
@@ -428,7 +429,7 @@ export default function ProfilePage() {
       const user = session.user
       const from7 = format(subDays(new Date(), 7), 'yyyy-MM-dd')
       const [{ data: jnl }, { data: ses }, { data: slp }, { data: wts }] = await Promise.all([
-        supabase.from('journal_entries').select('date,cal,prot,carb,fat').eq('user_id', user.id).gte('date', from7),
+        supabase.from('journal_entries').select('date,cal,prot,carb,fat,food_id,food_name,quantity').eq('user_id', user.id).gte('date', from7),
         supabase.from('sessions').select('session_date,duration_min,calories_burned').eq('user_id', user.id).gte('session_date', from7),
         supabase.from('sleep_log').select('date,duration_min').eq('user_id', user.id).gte('date', from7),
         supabase.from('weight_log').select('date,weight_kg').eq('user_id', user.id).gte('date', from7).order('date'),
@@ -454,6 +455,20 @@ export default function ProfilePage() {
         hc.includes('hypertension')             ? 'Hypertension — sel < 5g/jour.'                   : '',
         hc.includes('hypothyroidie')            ? 'Hypothyroïdie — métabolisme ralenti.'             : '',
       ].filter(Boolean).join(' ')
+      // Calcul micronutriments 7 jours
+      const foodEntries = (jnl ?? [])
+        .filter(r => r.food_id && r.quantity)
+        .map(r => ({ food_id: r.food_id as string, food_name: r.food_name as string, quantity: Number(r.quantity) }))
+      const micros7 = calcMicros(foodEntries)
+      // Carences = < 60% de l'AJR sur 7 jours (AJR journalier × 7)
+      const deficits = micros7
+        .filter(m => m.hasData && m.ajr > 0 && m.value < m.ajr * 7 * 0.6)
+        .map(m => {
+          const pct7 = Math.round((m.value / (m.ajr * 7)) * 100)
+          return `${m.name} ${pct7}% de l'AJR (${Math.round(m.value)}${m.unit}/${m.ajr * 7}${m.unit} sur 7j)`
+        })
+      const microsText = deficits.length > 0 ? `Carences détectées : ${deficits.join(', ')}` : ''
+
       const res = await fetch('/api/health-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
@@ -467,6 +482,7 @@ export default function ProfilePage() {
           weightGoal:   profile?.weight_goal ? `Objectif poids : ${profile.weight_goal} kg` : null,
           age:          form.birth_date ? `${new Date().getFullYear() - new Date(form.birth_date).getFullYear()} ans` : null,
           condition:    conditionNote,
+          micros:       microsText || null,
         }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
