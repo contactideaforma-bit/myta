@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { format, subDays, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import {
@@ -213,9 +213,8 @@ type Tab = 'bilan' | 'profil' | 'calculateur'
 type CalcTab = 'tdee' | 'imc' | 'macros'
 
 export default function ProfilePage() {
-  const router        = useRouter()
-  const searchParams  = useSearchParams()
-  const supabase      = createClient()
+  const router   = useRouter()
+  const supabase = createClient()
 
   // ── États principaux ────────────────────────────────────────────────────────
   const [tab, setTab]         = useState<Tab>('bilan')
@@ -274,18 +273,16 @@ export default function ProfilePage() {
   useEffect(() => { if (tab === 'bilan') loadBilan() }, [tab, period])
   useEffect(() => { loadBilan() }, [])
 
-  // Scroll vers le rapport IA si on arrive depuis le dashboard
+  // Scroll vers le rapport IA si on arrive depuis le dashboard (?section=rapport)
   useEffect(() => {
-    if (searchParams.get('section') === 'rapport') {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('section') === 'rapport') {
       setTab('bilan')
-      const scroll = () => {
-        const el = document.getElementById('rapport-ia')
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }
-      // Attendre que les données chargent avant de scroller
-      setTimeout(scroll, 1800)
+      setTimeout(() => {
+        document.getElementById('rapport-ia')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 1800)
     }
-  }, [searchParams])
+  }, [])
 
   // Charger rapport IA du jour depuis localStorage
   useEffect(() => {
