@@ -145,11 +145,13 @@ interface GroupMessage {
 }
 
 // ── Composant carte groupe ────────────────────────────────────
-function GroupCard({ group, onLeave, onCopyCode, onRename }: {
+function GroupCard({ group, onLeave, onCopyCode, onRename, hasUnread, onMarkRead }: {
   group: Group
   onLeave: (id: string) => void
   onCopyCode: (code: string) => void
   onRename: (id: string, name: string) => Promise<void>
+  hasUnread?: boolean
+  onMarkRead?: () => void
 }) {
   const supabase = createClient()
   const [copied, setCopied]         = useState(false)
@@ -353,11 +355,22 @@ function GroupCard({ group, onLeave, onCopyCode, onRename }: {
       {/* Messages groupe */}
       <div className="border-t border-zinc-100">
         <button
-          onClick={() => setMsgOpen(v => !v)}
+          onClick={() => {
+            const opening = !msgOpen
+            setMsgOpen(opening)
+            if (opening && hasUnread && onMarkRead) onMarkRead()
+          }}
           className="w-full flex items-center gap-2 px-5 py-3 text-left hover:bg-zinc-50 transition-colors"
         >
-          <MessageCircle size={14} className="text-violet-400 flex-shrink-0" />
-          <span className="text-xs font-semibold text-zinc-500 flex-1">Messages du groupe</span>
+          <div className="relative flex-shrink-0">
+            <MessageCircle size={14} className="text-violet-400" />
+            {hasUnread && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+            )}
+          </div>
+          <span className={`text-xs font-semibold flex-1 ${hasUnread ? 'text-zinc-800 font-bold' : 'text-zinc-500'}`}>
+            Messages du groupe{hasUnread ? ' 🔴' : ''}
+          </span>
           {msgOpen ? <ChevronUp size={14} className="text-zinc-300" /> : <ChevronDown size={14} className="text-zinc-300" />}
         </button>
 
@@ -444,14 +457,17 @@ export default function FriendsPage() {
 
   const [toast, setToast] = useState('')
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
+  const [unreadGroupIds, setUnreadGroupIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    // Marquer la visite et effacer le badge non-lu
+    // Lire l'ancien timestamp AVANT de le mettre à jour
+    let oldLastVisit = 0
     try {
+      oldLastVisit = parseInt(localStorage.getItem('myta_friends_last_visit') || '0')
       localStorage.setItem('myta_friends_last_visit', String(Date.now()))
       localStorage.removeItem('myta_friends_unread')
     } catch {}
-    loadGroups()
+    loadGroups(oldLastVisit)
     loadLeaderboard()
   }, [])
 
@@ -471,7 +487,7 @@ export default function FriendsPage() {
     }
   }
 
-  async function loadGroups() {
+  async function loadGroups(oldLastVisit = 0) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/auth'); return }
 
@@ -488,8 +504,37 @@ export default function FriendsPage() {
       try {
         localStorage.setItem('myta_group_ids', JSON.stringify(loadedGroups.map((g: Group) => g.id)))
       } catch {}
+      // Vérifier les non-lus par groupe
+      if (oldLastVisit > 0 && loadedGroups.length > 0) {
+        checkUnreadByGroup(loadedGroups.map((g: Group) => g.id), user.id, oldLastVisit)
+      }
     }
     setLoading(false)
+  }
+
+  async function checkUnreadByGroup(groupIds: string[], userId: string, globalLastVisit: number) {
+    const newUnread = new Set<string>()
+    for (const groupId of groupIds) {
+      try {
+        const perGroupRead = parseInt(localStorage.getItem(`myta_group_last_read_${groupId}`) || '0')
+        const cutoffMs = Math.max(globalLastVisit, perGroupRead)
+        if (!cutoffMs) continue
+        const cutoff = new Date(cutoffMs).toISOString()
+        const { count } = await supabase
+          .from('group_messages')
+          .select('id', { count: 'exact', head: true })
+          .eq('group_id', groupId)
+          .gt('created_at', cutoff)
+          .neq('user_id', userId)
+        if ((count ?? 0) > 0) newUnread.add(groupId)
+      } catch {}
+    }
+    setUnreadGroupIds(newUnread)
+  }
+
+  function markGroupRead(groupId: string) {
+    try { localStorage.setItem(`myta_group_last_read_${groupId}`, String(Date.now())) } catch {}
+    setUnreadGroupIds(prev => { const next = new Set(prev); next.delete(groupId); return next })
   }
 
   async function handleCreate() {
@@ -618,7 +663,8 @@ export default function FriendsPage() {
             </div>
           ) : (
             groups.map(g => (
-              <GroupCard key={g.id} group={g} onLeave={handleLeave} onCopyCode={handleCopyCode} onRename={handleRename} />
+              <GroupCard key={g.id} group={g} onLeave={handleLeave} onCopyCode={handleCopyCode} onRename={handleRename}
+                hasUnread={unreadGroupIds.has(g.id)} onMarkRead={() => markGroupRead(g.id)} />
             ))
           )}
 
