@@ -20,6 +20,7 @@ export default function AuthPage() {
   const [loading, setLoading]   = useState(false)
   const [message, setMessage]   = useState('')
   const [showPass, setShowPass] = useState(false)
+  const [forgotSent, setForgotSent] = useState(false)
 
   const supabase = createClient()
 
@@ -37,6 +38,17 @@ export default function AuthPage() {
       }
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleForgotPassword() {
+    if (!email) { setMessage('Saisis ton adresse e-mail d\'abord.'); return }
+    setLoading(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    })
+    setLoading(false)
+    if (error) setMessage(error.message)
+    else { setForgotSent(true); setMessage('✅ Email de réinitialisation envoyé ! Vérifie ta boîte mail.') }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -164,6 +176,17 @@ export default function AuthPage() {
                 {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             </div>
+
+            {mode === 'login' && !forgotSent && (
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={loading}
+                className="self-end text-xs text-tta-mid hover:underline disabled:opacity-50 transition-colors"
+              >
+                Mot de passe oublié ?
+              </button>
+            )}
 
             {message && (
               <div className={`text-xs px-4 py-3 rounded-2xl flex items-start gap-2 ${

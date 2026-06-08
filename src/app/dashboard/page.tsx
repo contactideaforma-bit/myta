@@ -334,15 +334,6 @@ export default function DashboardPage() {
         </h1>
       </div>
 
-      {/* ── Waty proactif ── */}
-      <div className="card bg-tta-light border border-tta-mid/20 flex items-start gap-3">
-        <img src="/waty-nutrition.png" alt="Waty" className="w-12 h-12 object-contain flex-shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold text-tta-mid mb-1">Waty te parle :</p>
-          <p className="text-sm text-zinc-700 leading-relaxed">{watyMsg}</p>
-        </div>
-      </div>
-
       {/* ── Série + Badge ── */}
       <div className="card flex flex-col gap-3">
         <div className="flex items-center justify-between">
@@ -356,22 +347,32 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Raccourcis rapides ── */}
-      <div className="flex gap-2">
+      <div className="grid grid-cols-2 gap-3">
         <button
           onClick={() => router.push('/nutrition/journal')}
-          className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-2xl bg-orange-50 border border-orange-100 hover:bg-orange-100 active:scale-[0.97] transition-all"
+          className="flex flex-col items-center gap-2.5 px-4 py-5 rounded-3xl bg-orange-50 border-2 border-orange-100 hover:bg-orange-100 active:scale-[0.97] transition-all shadow-sm"
         >
-          <span className="text-lg">🥗</span>
-          <span className="text-xs font-bold text-orange-700 leading-tight">Journal<br/>alimentaire</span>
-          <ArrowRight size={12} className="ml-auto text-orange-400 flex-shrink-0" />
+          <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center text-3xl">🥗</div>
+          <div className="text-center">
+            <p className="text-sm font-extrabold text-orange-700">Journal</p>
+            <p className="text-xs text-orange-500 font-medium">alimentaire</p>
+          </div>
+          <div className="flex items-center gap-1 text-xs font-bold text-orange-600">
+            Ouvrir <ArrowRight size={12} />
+          </div>
         </button>
         <button
           onClick={() => router.push('/sport/session')}
-          className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-2xl bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 active:scale-[0.97] transition-all"
+          className="flex flex-col items-center gap-2.5 px-4 py-5 rounded-3xl bg-indigo-50 border-2 border-indigo-100 hover:bg-indigo-100 active:scale-[0.97] transition-all shadow-sm"
         >
-          <span className="text-lg">🏋️</span>
-          <span className="text-xs font-bold text-indigo-700 leading-tight">Séance<br/>de sport</span>
-          <ArrowRight size={12} className="ml-auto text-indigo-400 flex-shrink-0" />
+          <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center text-3xl">🏋️</div>
+          <div className="text-center">
+            <p className="text-sm font-extrabold text-indigo-700">Séance</p>
+            <p className="text-xs text-indigo-500 font-medium">de sport</p>
+          </div>
+          <div className="flex items-center gap-1 text-xs font-bold text-indigo-600">
+            Logger <ArrowRight size={12} />
+          </div>
         </button>
       </div>
 
@@ -421,7 +422,9 @@ export default function DashboardPage() {
       {/* ── Objectifs semaine/mois ── */}
       <div id="tour-objectives" className="card flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-extrabold text-zinc-900">🎯 Mes objectifs</h2>
+          <h2 className="font-extrabold text-zinc-900">
+            {period === 'semaine' ? '🎯 Mes objectifs de la semaine' : '🎯 Mes objectifs du mois'}
+          </h2>
           <div className="flex bg-zinc-100 rounded-2xl p-0.5 gap-0.5">
             {(['semaine', 'mois'] as Period[]).map(p => (
               <button key={p} onClick={() => setPeriod(p)}
@@ -486,58 +489,6 @@ export default function DashboardPage() {
           />
         )}
       </div>
-
-      {/* ── Nutrition aujourd'hui ── */}
-      <button id="tour-nutrition" onClick={() => router.push('/nutrition/journal')}
-        className="w-full text-left bg-gradient-to-br from-nutri to-nutri-mid rounded-3xl p-5 shadow-sm hover:shadow-md transition-all active:scale-[0.98] group">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 bg-white/25 rounded-2xl flex items-center justify-center text-xl">🥗</div>
-            <span className="font-extrabold text-white text-lg">Nutrition</span>
-          </div>
-          <span className="text-xs font-bold bg-white/25 text-white px-3 py-1 rounded-full">Aujourd'hui</span>
-        </div>
-        <div className="mb-3">
-          <div className="flex justify-between text-xs text-white/80 mb-2">
-            <span className="font-bold">{Math.round(s.calToday)} kcal consommées</span>
-            <span>{s.calTarget} kcal objectif</span>
-          </div>
-          <div className="h-2.5 bg-white/30 rounded-full overflow-hidden">
-            <div className="h-full bg-white rounded-full transition-all duration-500" style={{ width: `${calPct}%` }} />
-          </div>
-          <p className="text-xs text-white/70 mt-1">{calPct}% de l'objectif</p>
-        </div>
-        <div className="flex items-center gap-1 text-sm text-white font-bold group-hover:gap-2 transition-all">
-          Ouvrir le journal <ArrowRight size={14} />
-        </div>
-      </button>
-
-      {/* ── Sport ── */}
-      <button id="tour-sport" onClick={() => router.push('/sport/session')}
-        className="w-full text-left bg-gradient-to-br from-sport to-tta-mid rounded-3xl p-5 shadow-sm hover:shadow-md transition-all active:scale-[0.98] group">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 bg-white/25 rounded-2xl flex items-center justify-center text-xl">🏋️</div>
-            <span className="font-extrabold text-white text-lg">Sport</span>
-          </div>
-          <span className="text-xs font-bold bg-white/25 text-white px-3 py-1 rounded-full capitalize">{period}</span>
-        </div>
-        <div className="grid grid-cols-3 gap-2 mb-3">
-          {[
-            { label: 'Séances',      value: s.weekSessions },
-            { label: 'Cal. brûlées', value: Math.round(s.calBurned) },
-            { label: 'Temps',        value: minutesToHuman(s.weekMinutes) },
-          ].map(({ label, value }) => (
-            <div key={label} className="bg-white/20 rounded-2xl p-2.5 text-center">
-              <p className="text-lg font-extrabold text-white">{value}</p>
-              <p className="text-[10px] text-white/70">{label}</p>
-            </div>
-          ))}
-        </div>
-        <div className="flex items-center gap-1 text-sm text-white font-bold group-hover:gap-2 transition-all">
-          Nouvelle séance <ArrowRight size={14} />
-        </div>
-      </button>
 
     </div>
   )

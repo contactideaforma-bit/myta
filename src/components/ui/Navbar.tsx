@@ -166,25 +166,38 @@ export function Navbar() {
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Vérifier les messages non-lus au montage
+  // Vérifier les messages non-lus au montage (fetch groupes depuis DB)
   useEffect(() => {
-    try {
-      const groupIds: string[] = JSON.parse(localStorage.getItem('myta_group_ids') || '[]')
-      const lastVisit = parseInt(localStorage.getItem('myta_friends_last_visit') || '0')
-      if (!groupIds.length || !lastVisit) return
-      const cutoff = new Date(lastVisit).toISOString()
-      supabase.auth.getUser().then(({ data }) => {
-        if (!data.user) return
-        supabase
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return
+      try {
+        // Récupérer les groupes depuis la DB (plus fiable que localStorage)
+        const { data: memberRows } = await supabase
+          .from('group_members')
+          .select('group_id')
+          .eq('user_id', data.user.id)
+
+        const groupIds = (memberRows ?? []).map((r: any) => r.group_id as string)
+        if (!groupIds.length) return
+
+        // Cutoff = dernière visite ou 7 jours si jamais visité
+        const lastVisitRaw = localStorage.getItem('myta_friends_last_visit')
+        const lastVisit = lastVisitRaw ? parseInt(lastVisitRaw) : 0
+        const cutoff = lastVisit > 0
+          ? new Date(lastVisit).toISOString()
+          : new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
+
+        const { count } = await supabase
           .from('group_messages')
           .select('id', { count: 'exact', head: true })
           .in('group_id', groupIds)
           .gt('created_at', cutoff)
           .neq('user_id', data.user.id)
-          .then(({ count }) => { if ((count ?? 0) > 0) setHasUnread(true) })
-      })
-    } catch {}
-  }, [])
+
+        if ((count ?? 0) > 0) setHasUnread(true)
+      } catch {}
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const isDashboard  = pathname === '/dashboard'
   const activeModule: Module = pathname.startsWith('/sport') ? 'sport' : 'nutrition'
