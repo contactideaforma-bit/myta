@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check, Loader2, Crown, Shield, Star, Zap, Users, Baby, Info } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -277,6 +277,21 @@ export default function PricingPage() {
   const [loading,   setLoading]   = useState<string | null>(null)
   const router   = useRouter()
   const supabase = createClient()
+
+  // Rediriger vers /account si déjà abonné
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) return
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('subscription_status')
+        .eq('id', session.user.id)
+        .single()
+      if (['trialing', 'active', 'vip'].includes(profile?.subscription_status ?? '')) {
+        router.replace('/account')
+      }
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentTab = TABS.find(t => t.key === activeTab)!
 

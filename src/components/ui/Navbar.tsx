@@ -3,13 +3,14 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
-  LayoutDashboard, CreditCard,
+  LayoutDashboard,
   BookOpen, ChefHat, Lightbulb,
   Dumbbell, Timer, History, User,
   LogOut, AlertTriangle, Menu, X,
   ChevronRight, Sun, Moon, MessageSquareWarning, Send, CheckCircle,
-  HelpCircle, Users, Settings,
+  HelpCircle, Users, Settings, ArrowLeft,
 } from 'lucide-react'
+import { ProfileSwitcher } from './ProfileSwitcher'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
 import { useTheme } from '@/components/ui/ThemeProvider'
@@ -76,6 +77,11 @@ export function Navbar() {
   const [sidebarModule, setSidebarModule] = useState<Module>('nutrition')
   const [hasUnread, setHasUnread]     = useState(false)
 
+  // ── Plan & profil actif ──
+  const [userPlan,      setUserPlan]      = useState<string | null>(null)
+  const [viewingAsId,   setViewingAsId]   = useState<string | null>(null)
+  const [viewingAsName, setViewingAsName] = useState<string | null>(null)
+
   // ── Modal signalement ──
   const [showReport, setShowReport]         = useState(false)
   const [reportCategory, setReportCategory] = useState('Bug technique')
@@ -131,6 +137,34 @@ export function Navbar() {
   useEffect(() => {
     if (pathname === '/friends') setHasUnread(false)
   }, [pathname])
+
+  // Charger le plan et le profil actif
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) return
+      const selfId = data.user.id
+
+      // Lire le profil actif depuis localStorage
+      const storedId   = localStorage.getItem('myta_viewing_as_id')
+      const storedName = localStorage.getItem('myta_viewing_as_name')
+      if (storedId && storedId !== selfId) {
+        setViewingAsId(storedId)
+        setViewingAsName(storedName)
+      }
+
+      // Charger le plan Supabase
+      supabase
+        .from('profiles')
+        .select('plan')
+        .eq('id', selfId)
+        .single()
+        .then(({ data: profile }) => {
+          const plan = profile?.plan ?? null
+          setUserPlan(plan)
+          if (plan) localStorage.setItem('myta_plan', plan)
+        })
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Vérifier les messages non-lus au montage
   useEffect(() => {
@@ -289,14 +323,27 @@ export function Navbar() {
 
           <div className="flex-1" />
 
-          {/* Abonnement */}
-          <button onClick={() => router.push('/billing')}
-            className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-1.5 rounded-2xl transition-all">
-            <CreditCard size={13} />
-            <span>Abonnement</span>
-          </button>
+          {/* Switch profil (couple/famille) ou rien */}
+          <ProfileSwitcher plan={userPlan} />
         </div>
       </header>
+
+      {/* ── Banner "Vous consultez le profil de…" ── */}
+      {viewingAsId && viewingAsName && (
+        <div className="sticky top-14 z-40 flex items-center justify-between gap-2 px-4 py-2 text-xs font-bold text-white"
+          style={{ background: 'linear-gradient(90deg, #d97706, #f59e0b)' }}>
+          <span>👁️ Profil de {viewingAsName.split(' ')[0]}</span>
+          <button
+            onClick={() => {
+              localStorage.removeItem('myta_viewing_as_id')
+              localStorage.removeItem('myta_viewing_as_name')
+              window.location.reload()
+            }}
+            className="flex items-center gap-1 underline underline-offset-2 hover:no-underline">
+            <ArrowLeft size={11} />Retour à mon profil
+          </button>
+        </div>
+      )}
 
       {/* ── Overlay ── */}
       {sidebarOpen && (

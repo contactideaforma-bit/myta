@@ -8,8 +8,9 @@ import { createClient } from '@/lib/supabase/client'
 import {
   Loader2, Check, User, Mail, Lock, CreditCard,
   Eye, EyeOff, Shield, LogOut, ChevronRight,
-  AlertCircle, CheckCircle2, ExternalLink,
+  AlertCircle, CheckCircle2, ExternalLink, Crown, Users,
 } from 'lucide-react'
+import { getPlanLabel, getPlanPrice, hasFamilySwitch, isPremium } from '@/lib/plan-utils'
 
 /* ─── helpers ── */
 function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
@@ -79,6 +80,7 @@ export default function AccountPage() {
 
   // ── Abonnement ──
   const [subStatus, setSubStatus]     = useState<string>('free')
+  const [userPlan,  setUserPlan]      = useState<string | null>(null)
   const [portalLoading, setPortalLoading] = useState(false)
 
   useEffect(() => {
@@ -90,13 +92,15 @@ export default function AccountPage() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('full_name, subscription_status')
+        .select('full_name, subscription_status, plan')
         .eq('id', session.user.id)
         .single()
 
       if (profile) {
         setFullName(profile.full_name ?? '')
         setSubStatus(profile.subscription_status ?? 'free')
+        setUserPlan(profile.plan ?? null)
+        if (profile.plan) localStorage.setItem('myta_plan', profile.plan)
       }
       setLoading(false)
     }
@@ -368,15 +372,30 @@ export default function AccountPage() {
         </Section>
       )}
 
-      {/* ── Abonnement ── */}
-      <Section title="Abonnement" icon={<CreditCard size={16} />}>
+      {/* ── Mon forfait ── */}
+      <Section title="Mon forfait" icon={<Crown size={16} />}>
         <div className="flex flex-col gap-3">
 
-          {/* Statut */}
-          <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold self-start ${sc.bg} ${sc.color}`}>
-            <span className="w-2 h-2 rounded-full bg-current opacity-70" />
-            {sc.text}
+          {/* Nom du plan + statut */}
+          <div className="flex items-center gap-3">
+            {userPlan && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-extrabold self-start"
+                style={{
+                  background: isPremium(userPlan) ? 'linear-gradient(90deg, #4B47A0, #2BA8B0)' : '#f4f4f5',
+                  color:      isPremium(userPlan) ? '#fff' : '#18181b',
+                }}>
+                {isPremium(userPlan) ? '⭐' : '🔹'} {getPlanLabel(userPlan)}
+              </div>
+            )}
+            <div className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold ${sc.bg} ${sc.color}`}>
+              <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
+              {sc.text}
+            </div>
           </div>
+
+          {userPlan && getPlanPrice(userPlan) > 0 && (
+            <p className="text-xs text-zinc-400">{getPlanPrice(userPlan).toFixed(2)} € / mois</p>
+          )}
 
           {subStatus === 'past_due' && (
             <div className="bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 text-sm text-orange-700">
@@ -385,14 +404,24 @@ export default function AccountPage() {
           )}
 
           {['active', 'trialing', 'past_due'].includes(subStatus) && (
-            <button onClick={openPortal} disabled={portalLoading}
-              className="w-full flex items-center justify-between py-3.5 px-4 rounded-2xl border-2 border-zinc-200 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-all">
-              <span className="flex items-center gap-2">
-                {portalLoading ? <Loader2 size={14} className="animate-spin" /> : <ExternalLink size={14} />}
-                Gérer / résilier mon abonnement
-              </span>
-              <ChevronRight size={15} className="text-zinc-400" />
-            </button>
+            <>
+              <button onClick={() => router.push('/pricing')}
+                className="w-full flex items-center justify-between py-3 px-4 rounded-2xl border-2 border-zinc-200 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-all">
+                <span className="flex items-center gap-2">
+                  <Crown size={14} className="text-[#4B47A0]" />
+                  Changer de forfait
+                </span>
+                <ChevronRight size={15} className="text-zinc-400" />
+              </button>
+              <button onClick={openPortal} disabled={portalLoading}
+                className="w-full flex items-center justify-between py-3 px-4 rounded-2xl border-2 border-zinc-200 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-all">
+                <span className="flex items-center gap-2">
+                  {portalLoading ? <Loader2 size={14} className="animate-spin" /> : <ExternalLink size={14} />}
+                  Gérer / résilier mon abonnement
+                </span>
+                <ChevronRight size={15} className="text-zinc-400" />
+              </button>
+            </>
           )}
 
           {subStatus === 'free' && (
@@ -413,14 +442,17 @@ export default function AccountPage() {
         </div>
       </Section>
 
-      {/* ── Famille ── */}
-      <button onClick={() => router.push('/account/family')}
-        className="w-full flex items-center justify-between py-3.5 px-4 rounded-2xl border-2 border-zinc-200 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-all bg-white">
-        <span className="flex items-center gap-2">
-          <span className="text-lg">👨‍👩‍👧‍👦</span> Mon forfait famille
-        </span>
-        <ChevronRight size={15} className="text-zinc-400" />
-      </button>
+      {/* ── Famille (couple/famille uniquement) ── */}
+      {hasFamilySwitch(userPlan) && (
+        <button onClick={() => router.push('/account/family')}
+          className="w-full flex items-center justify-between py-3.5 px-4 rounded-2xl border-2 border-zinc-200 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-all bg-white">
+          <span className="flex items-center gap-2">
+            <Users size={16} className="text-[#4B47A0]" />
+            Gérer mes membres famille
+          </span>
+          <ChevronRight size={15} className="text-zinc-400" />
+        </button>
+      )}
 
       {/* ── Déconnexion ── */}
       <button onClick={signOut}

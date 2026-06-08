@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { PremiumGate } from '@/components/ui/PremiumGate'
 import { Waty, WATY_MESSAGES } from '@/components/ui/Waty'
 import {
   ChevronLeft, Clock, Users, Flame,
@@ -384,6 +385,7 @@ export default function RecipesPage() {
 
   // ── Vue liste ──────────────────────────────────────────────────────────────
   return (
+    <PremiumGate label="Recettes IA — fonctionnalité Premium">
     <div className="page">
       {toast && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-semibold text-white bg-nutri shadow-lg">{toast}</div>}
 
@@ -537,5 +539,6 @@ export default function RecipesPage() {
         </div>
       )}
     </div>
+    </PremiumGate>
   )
 }
