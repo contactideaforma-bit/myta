@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 // Pages accessibles sans auth
-const PUBLIC_PATHS = ['/auth', '/pricing', '/onboarding', '/legal', '/success', '/cancel', '/_next', '/static']
+const PUBLIC_PATHS = ['/auth', '/pricing', '/payment-failed', '/onboarding', '/legal', '/success', '/cancel', '/_next', '/static']
 
 // Routes API publiques (sans auth requise)
 const PUBLIC_API  = [
@@ -61,7 +61,11 @@ export async function middleware(req: NextRequest) {
     const status    = profile?.subscription_status
     const hasAccess = ['trialing', 'active', 'vip'].includes(status ?? '')
 
-    if (!hasAccess) return NextResponse.redirect(new URL('/pricing', req.url))
+    if (!hasAccess) {
+      // Paiement en échec → page dédiée avec lien mise à jour CB
+      if (status === 'past_due') return NextResponse.redirect(new URL('/payment-failed', req.url))
+      return NextResponse.redirect(new URL('/pricing', req.url))
+    }
 
     return NextResponse.next()
   } catch {

@@ -8,7 +8,7 @@ import {
   Dumbbell, Timer, History, User,
   LogOut, AlertTriangle, Menu, X,
   ChevronRight, Sun, Moon, MessageSquareWarning, Send, CheckCircle,
-  HelpCircle, Users,
+  HelpCircle, Users, Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
@@ -447,6 +447,22 @@ export function Navbar() {
               <p className="text-sm font-bold text-zinc-700">Profil & Bilan</p>
               <p className="text-[10px] text-zinc-400">Objectifs & statistiques</p>
             </div>
+          </button>
+
+          <button onClick={() => handleNavClick('/account')}
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-all',
+              pathname === '/account' ? 'bg-tta-light' : 'hover:bg-zinc-50 text-zinc-600'
+            )}>
+            <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center',
+              pathname === '/account' ? 'bg-tta-mid/20' : 'bg-zinc-100')}>
+              <Settings size={16} className={pathname === '/account' ? 'text-tta-mid' : 'text-zinc-400'} />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-zinc-700">Mon compte</p>
+              <p className="text-[10px] text-zinc-400">Email · mdp · paiement</p>
+            </div>
+            {pathname === '/account' && <ChevronRight size={14} className="text-tta-mid" />}
           </button>
 
           <button onClick={() => handleNavClick('/sleep')}
