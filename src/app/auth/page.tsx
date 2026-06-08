@@ -23,36 +23,70 @@ export default function AuthPage() {
 
   const supabase = createClient()
 
+  // ── Auto-redirect si déjà connecté (gère le token refresh côté client) ────
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) return
+      try {
+        const { data: profile } = await supabase
+          .from('profiles').select('subscription_status').eq('id', session.user.id).single()
+        const hasAccess = ['trialing', 'active', 'vip'].includes(profile?.subscription_status ?? '')
+        window.location.href = hasAccess ? '/dashboard' : '/pricing'
+      } catch {
+        window.location.href = '/dashboard'
+      }
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setMessage('')
 
-    if (mode === 'login') {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) { setMessage(error.message); setLoading(false); return }
+    try {
+      if (mode === 'login') {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) {
+          setMessage(error.message || 'Erreur de connexion')
+          setLoading(false)
+          return
+        }
+        if (!data?.user) {
+          setMessage('Connexion échouée, réessaie.')
+          setLoading(false)
+          return
+        }
 
-      // Vérifier statut abonnement
-      const { data: profile } = await supabase
-        .from('profiles').select('subscription_status').eq('id', data.user.id).single()
-      const status    = profile?.subscription_status
-      const hasAccess = ['trialing', 'active', 'vip'].includes(status ?? '')
-      window.location.href = hasAccess ? '/dashboard' : '/pricing'
+        // Vérifier statut abonnement
+        const { data: profile } = await supabase
+          .from('profiles').select('subscription_status').eq('id', data.user.id).single()
+        const status    = profile?.subscription_status
+        const hasAccess = ['trialing', 'active', 'vip'].includes(status ?? '')
 
-    } else {
-      const { error } = await supabase.auth.signUp({
-        email, password,
-        options: {
-          data: { full_name: name, referred_by: referralInput.trim().toUpperCase() || null },
-          emailRedirectTo: `${window.location.origin}/auth/confirm`,
-        },
-      })
-      if (error) { setMessage(error.message) }
-      else {
-        // Sauvegarder le code parrain en localStorage pour le checkout
-        if (referralInput.trim()) localStorage.setItem('myta_referral', referralInput.trim().toUpperCase())
-        setMessage('Vérifiez votre email pour confirmer votre compte.')
+        setMessage('✅ Connexion réussie, redirection…')
+        // Petit délai pour que le cookie soit bien posé avant la navigation
+        setTimeout(() => {
+          window.location.href = hasAccess ? '/dashboard' : '/pricing'
+        }, 300)
+
+      } else {
+        const { error } = await supabase.auth.signUp({
+          email, password,
+          options: {
+            data: { full_name: name, referred_by: referralInput.trim().toUpperCase() || null },
+            emailRedirectTo: `${window.location.origin}/auth/confirm`,
+          },
+        })
+        if (error) { setMessage(error.message) }
+        else {
+          if (referralInput.trim()) localStorage.setItem('myta_referral', referralInput.trim().toUpperCase())
+          setMessage('Vérifiez votre email pour confirmer votre compte.')
+        }
+        setLoading(false)
       }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setMessage('Erreur inattendue : ' + msg)
       setLoading(false)
     }
   }

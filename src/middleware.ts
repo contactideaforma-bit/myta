@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 
-// ─── Routes publiques (pas de vérification de session) ────────────────────────
+// ─── Routes publiques ─────────────────────────────────────────────────────────
 const PUBLIC_PATHS = [
   '/',
   '/auth',
@@ -14,14 +13,48 @@ const PUBLIC_PATHS = [
   '/cancel',
   '/family/accept',
 ]
-
 const PUBLIC_API = ['/api/stripe', '/api/webhook', '/api/notifications']
 
-// Admin uniquement pour la vérification d'abonnement
+// Client admin — utilise le service role, bypass RLS
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { persistSession: false } }
 )
+
+/**
+ * Extrait l'access_token depuis les cookies posés par @supabase/ssr createBrowserClient.
+ * Le cookie peut être :
+ *   - non-fragmenté : sb-{ref}-auth-token  (valeur = JSON URL-encodé)
+ *   - fragmenté      : sb-{ref}-auth-token.0, .1, …  (à ré-assembler)
+ */
+function getAccessToken(req: NextRequest): string | null {
+  const cookies = req.cookies.getAll()
+
+  // 1. Cookie non-fragmenté
+  const main = cookies.find(c => /^sb-[a-z0-9]+-auth-token$/.test(c.name))
+  let raw: string | null = main?.value ?? null
+
+  // 2. Cookie fragmenté
+  if (!raw) {
+    const chunks: [number, string][] = []
+    for (const { name, value } of cookies) {
+      const m = name.match(/^sb-[a-z0-9]+-auth-token\.(\d+)$/)
+      if (m) chunks.push([parseInt(m[1]), value])
+    }
+    if (chunks.length)
+      raw = chunks.sort((a, b) => a[0] - b[0]).map(c => c[1]).join('')
+  }
+
+  if (!raw) return null
+
+  try {
+    const session = JSON.parse(decodeURIComponent(raw))
+    return typeof session?.access_token === 'string' ? session.access_token : null
+  } catch {
+    return null
+  }
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -30,73 +63,41 @@ export async function middleware(request: NextRequest) {
   if (pathname.includes('.')) return NextResponse.next()
 
   // Routes publiques
-  if (PUBLIC_PATHS.some(p => pathname === p || (p !== '/' && pathname.startsWith(p)))) {
+  if (PUBLIC_PATHS.some(p => pathname === p || (p !== '/' && pathname.startsWith(p))))
     return NextResponse.next()
-  }
   if (PUBLIC_API.some(p => pathname.startsWith(p))) return NextResponse.next()
 
-  // Routes API privées : chaque handler gère sa propre auth
+  // Routes API privées — chaque handler valide lui-même via Bearer / cookies
   if (pathname.startsWith('/api/')) return NextResponse.next()
 
-  // ─── Pattern officiel Supabase @supabase/ssr v0.3 ─────────────────────────
-  // IMPORTANT : supabaseResponse doit être recréé dans setAll pour que les
-  // headers de la requête incluent les tokens rafraîchis.
-  let supabaseResponse = NextResponse.next({ request })
+  // ─── Vérification de session ──────────────────────────────────────────────
+  const token = getAccessToken(request)
+  if (!token) return NextResponse.redirect(new URL('/auth', request.url))
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
-          // 1. Mettre à jour les cookies dans la requête (pour le downstream)
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          // 2. Recréer la réponse avec la requête mise à jour
-          supabaseResponse = NextResponse.next({ request })
-          // 3. Écrire les nouveaux cookies dans la réponse (vers le navigateur)
-          cookiesToSet.forEach(({ name, value, options }) =>
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            supabaseResponse.cookies.set(name, value, options as any)
-          )
-        },
-      },
-    }
-  )
+  // Validation du JWT via Supabase Auth (fonctionne dans l'Edge runtime)
+  const { data: { user } } = await supabaseAdmin.auth.getUser(token)
+  if (!user) return NextResponse.redirect(new URL('/auth', request.url))
 
-  // getSession() : lecture locale des cookies, pas d'appel réseau.
-  // Le mécanisme setAll ci-dessus gère le refresh silencieux du token.
-  const { data: { session } } = await supabase.auth.getSession()
-
-  if (!session?.user) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/auth'
-    return NextResponse.redirect(url)
-  }
-
-  // Vérifier l'abonnement
+  // ─── Vérification de l'abonnement ────────────────────────────────────────
   try {
     const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('subscription_status')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single()
 
     const status = profile?.subscription_status
     const hasAccess = ['trialing', 'active', 'vip'].includes(status ?? '')
 
     if (!hasAccess) {
-      const url = request.nextUrl.clone()
-      url.pathname = status === 'past_due' ? '/payment-failed' : '/pricing'
-      return NextResponse.redirect(url)
+      const dest = status === 'past_due' ? '/payment-failed' : '/pricing'
+      return NextResponse.redirect(new URL(dest, request.url))
     }
   } catch {
-    // Erreur DB : laisser passer, les routes valident elles-mêmes
+    // Erreur DB → laisser passer, les routes valident elles-mêmes
   }
 
-  return supabaseResponse
+  return NextResponse.next()
 }
 
 export const config = {
