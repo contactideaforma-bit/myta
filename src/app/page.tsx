@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 // ─── Tarifs ────────────────────────────────────────────────────────────────────
 const PLANS = {
@@ -167,6 +168,22 @@ type TabKey = 'solo' | 'couple' | 'famille'
 export default function HomePage() {
   const [tab, setTab] = useState<TabKey>('solo')
   const [screenIdx, setScreenIdx] = useState(0)
+
+  // ── Redirect to dashboard if already logged in ────────────────────────────
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) return
+      try {
+        const { data: profile } = await supabase
+          .from('profiles').select('subscription_status').eq('id', session.user.id).single()
+        const hasAccess = ['trialing', 'active', 'vip'].includes(profile?.subscription_status ?? '')
+        window.location.href = hasAccess ? '/dashboard' : '/pricing'
+      } catch {
+        window.location.href = '/dashboard'
+      }
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const plans = PLANS[tab]
 
