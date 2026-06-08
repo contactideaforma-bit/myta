@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import { getPlanIdFromPriceId } from '@/lib/stripe-plans'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2026-05-27.dahlia' as any,
@@ -244,17 +245,24 @@ export async function POST(req: NextRequest) {
       const session = event.data.object
       const uid = session?.metadata?.supabase_user_id
       if (uid) {
+        // Détecter le plan depuis le price_id de la session
+        const checkoutSub  = session.subscription
+          ? await stripe.subscriptions.retrieve(session.subscription as string)
+          : null
+        const checkoutPriceId = checkoutSub?.items?.data?.[0]?.price?.id ?? null
+        const checkoutPlanId  = checkoutPriceId ? getPlanIdFromPriceId(checkoutPriceId) : 'premium'
+
         // Mettre à jour le profil
         await supabaseAdmin.from('profiles').update({
           subscription_status: 'trialing',
           stripe_customer_id:  session.customer,
+          plan:                checkoutPlanId ?? 'premium',
         }).eq('id', uid)
 
         // ── Parrainage : créditer le parrain d'1 mois gratuit ──
+        // Réutilise checkoutSub déjà récupéré plus haut
         try {
-          const stripeSubscription = session.subscription
-            ? await stripe.subscriptions.retrieve(session.subscription as string)
-            : null
+          const stripeSubscription = checkoutSub
           const referredBy = stripeSubscription?.metadata?.referred_by
 
           if (referredBy) {
@@ -327,10 +335,17 @@ export async function POST(req: NextRequest) {
       const sub = event.data.object
       const uid = sub?.metadata?.supabase_user_id
       if (uid) {
-        await supabaseAdmin.from('profiles').update({
+        // Détecter le plan depuis le premier price_id de l'abonnement
+        const priceId  = sub?.items?.data?.[0]?.price?.id ?? null
+        const planId   = priceId ? getPlanIdFromPriceId(priceId) : null
+
+        const updatePayload: Record<string, unknown> = {
           subscription_status: sub.status,
           subscription_end:    new Date(sub.current_period_end * 1000).toISOString(),
-        }).eq('id', uid)
+        }
+        if (planId) updatePayload.plan = planId
+
+        await supabaseAdmin.from('profiles').update(updatePayload).eq('id', uid)
       }
       break
     }

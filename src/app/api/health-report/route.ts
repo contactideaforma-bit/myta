@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { requireAuth, checkRateLimit } from '@/lib/auth'
+import { checkAiQuota } from '@/lib/ai-guard'
 
 export const maxDuration = 60
 
@@ -12,6 +13,9 @@ export async function POST(req: NextRequest) {
   if (!checkRateLimit(auth.userId, 5)) {
     return NextResponse.json({ error: 'Trop de requêtes — réessaie dans 1h' }, { status: 429 })
   }
+  const aiCheck = await checkAiQuota(auth.userId, 'report')
+  if (!aiCheck.allowed) return aiCheck.error!
+
   const raw = await req.json()
 
   // Troncature de tous les champs pour prévenir l'injection de prompt

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { requireAuth, checkRateLimit } from '@/lib/auth'
+import { checkAiQuota } from '@/lib/ai-guard'
 
 export const maxDuration = 60
 
@@ -33,6 +34,9 @@ export async function GET(req: NextRequest) {
   if (!checkRateLimit(auth.userId, 15)) {
     return NextResponse.json({ error: 'Trop de requêtes — réessaie dans 1h' }, { status: 429 })
   }
+  // Vérification quota IA selon le plan d'abonnement
+  const aiCheck = await checkAiQuota(auth.userId, 'recipe')
+  if (!aiCheck.allowed) return aiCheck.error!
   // Validation catégorie + troncature keywords
   const rawCategory = req.nextUrl.searchParams.get('category') ?? ''
   const category    = Object.keys(CATEGORY_PROMPTS).includes(rawCategory) ? rawCategory : ''

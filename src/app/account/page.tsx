@@ -413,6 +413,15 @@ export default function AccountPage() {
         </div>
       </Section>
 
+      {/* ── Famille ── */}
+      <button onClick={() => router.push('/account/family')}
+        className="w-full flex items-center justify-between py-3.5 px-4 rounded-2xl border-2 border-zinc-200 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-all bg-white">
+        <span className="flex items-center gap-2">
+          <span className="text-lg">👨‍👩‍👧‍👦</span> Mon forfait famille
+        </span>
+        <ChevronRight size={15} className="text-zinc-400" />
+      </button>
+
       {/* ── Déconnexion ── */}
       <button onClick={signOut}
         className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl border-2 border-dashed border-zinc-200 text-zinc-400 text-sm font-semibold hover:text-red-500 hover:border-red-200 transition-all">

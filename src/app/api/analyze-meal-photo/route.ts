@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, checkRateLimit } from '@/lib/auth'
+import { checkAiQuota } from '@/lib/ai-guard'
 import Anthropic from '@anthropic-ai/sdk'
 
 const anthropic = new Anthropic()
@@ -10,6 +11,9 @@ export async function POST(req: NextRequest) {
   if (!checkRateLimit(auth.userId, 10)) {
     return NextResponse.json({ error: 'Trop de requêtes' }, { status: 429 })
   }
+  // Vérification quota IA selon le plan d'abonnement
+  const aiCheck = await checkAiQuota(auth.userId, 'meal')
+  if (!aiCheck.allowed) return aiCheck.error!
 
   try {
     const formData = await req.formData()

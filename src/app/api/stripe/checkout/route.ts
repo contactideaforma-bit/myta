@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import { ALL_PLAN_IDS, getPriceId, type PlanId } from '@/lib/stripe-plans'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2026-05-27.dahlia' as any,
@@ -26,14 +27,24 @@ export async function POST(req: NextRequest) {
 
     const { plan, promoCode, referredBy } = await req.json()
 
-    // Validation stricte du plan
-    if (!['monthly', 'yearly'].includes(plan)) {
+    // Validation stricte : 6 nouveaux plans OU legacy monthly/yearly
+    let resolvedPlanId: PlanId | null = null
+    let priceId: string | null | undefined = null
+
+    if (ALL_PLAN_IDS.includes(plan as PlanId)) {
+      // Nouveau système 6 plans
+      resolvedPlanId = plan as PlanId
+      priceId = getPriceId(resolvedPlanId)
+    } else if (plan === 'monthly') {
+      // Ancien plan legacy → essentiel par défaut (migration douce)
+      priceId = process.env.STRIPE_PRICE_MONTHLY ?? getPriceId('essentiel')
+      resolvedPlanId = 'essentiel'
+    } else if (plan === 'yearly') {
+      priceId = process.env.STRIPE_PRICE_YEARLY ?? getPriceId('premium')
+      resolvedPlanId = 'premium'
+    } else {
       return NextResponse.json({ error: 'Plan invalide' }, { status: 400 })
     }
-
-    const priceId = plan === 'monthly'
-      ? process.env.STRIPE_PRICE_MONTHLY
-      : process.env.STRIPE_PRICE_YEARLY
 
     if (!priceId) {
       return NextResponse.json({ error: 'Configuration tarifaire manquante' }, { status: 500 })
@@ -68,7 +79,11 @@ export async function POST(req: NextRequest) {
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: {
         trial_period_days: validReferredBy ? 30 : 3,
-        metadata: { supabase_user_id: user.id, referred_by: validReferredBy },
+        metadata: {
+          supabase_user_id: user.id,
+          referred_by:      validReferredBy,
+          myta_plan:        resolvedPlanId ?? '',
+        },
       },
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
       cancel_url:  `${process.env.NEXT_PUBLIC_APP_URL}/pricing?cancelled=true`,

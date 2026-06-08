@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, checkRateLimit } from '@/lib/auth'
+import { checkAiQuota } from '@/lib/ai-guard'
 import Anthropic from '@anthropic-ai/sdk'
 
 const anthropic = new Anthropic()
@@ -67,6 +68,9 @@ export async function POST(req: NextRequest) {
   if (!checkRateLimit(auth.userId, 20)) {
     return NextResponse.json({ error: 'Trop de requêtes' }, { status: 429 })
   }
+  const aiCheck = await checkAiQuota(auth.userId, 'sport')
+  if (!aiCheck.allowed) return aiCheck.error!
+
   try {
     const contentType = req.headers.get('content-type') ?? ''
     let transcript = ''
