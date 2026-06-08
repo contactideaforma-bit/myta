@@ -66,18 +66,18 @@ export async function middleware(req: NextRequest) {
     }
   )
 
-  // getUser() valide le token côté serveur ET déclenche un refresh silencieux
-  // si l'access token est expiré (le refresh token en cookie est utilisé).
-  const { data: { user } } = await supabase.auth.getUser()
+  // getSession() lit la session depuis les cookies (pas d'appel réseau = fiable en Edge).
+  // Le createServerClient + setAll s'occupe du refresh silencieux si le token est expiré.
+  const { data: { session } } = await supabase.auth.getSession()
 
-  if (!user) return NextResponse.redirect(new URL('/auth', req.url))
+  if (!session?.user) return NextResponse.redirect(new URL('/auth', req.url))
 
   // Vérifier l'abonnement (admin bypasse RLS)
   try {
     const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('subscription_status')
-      .eq('id', user.id)
+      .eq('id', session.user.id)
       .single()
 
     const status    = profile?.subscription_status
