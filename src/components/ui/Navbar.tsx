@@ -432,7 +432,7 @@ export function Navbar() {
 
           {/* Profil */}
           <div className="px-3 pt-3 pb-1">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-300">Mon compte</p>
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-300">Profil</p>
           </div>
           <button onClick={() => handleNavClick('/profile')}
             className={cn(
@@ -447,22 +447,6 @@ export function Navbar() {
               <p className="text-sm font-bold text-zinc-700">Profil & Bilan</p>
               <p className="text-[10px] text-zinc-400">Objectifs & statistiques</p>
             </div>
-          </button>
-
-          <button onClick={() => handleNavClick('/account')}
-            className={cn(
-              'w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-all',
-              pathname === '/account' ? 'bg-tta-light' : 'hover:bg-zinc-50 text-zinc-600'
-            )}>
-            <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center',
-              pathname === '/account' ? 'bg-tta-mid/20' : 'bg-zinc-100')}>
-              <Settings size={16} className={pathname === '/account' ? 'text-tta-mid' : 'text-zinc-400'} />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-zinc-700">Mon compte</p>
-              <p className="text-[10px] text-zinc-400">Email · mdp · paiement</p>
-            </div>
-            {pathname === '/account' && <ChevronRight size={14} className="text-tta-mid" />}
           </button>
 
           <button onClick={() => handleNavClick('/sleep')}
@@ -484,21 +468,35 @@ export function Navbar() {
         {/* Footer compact */}
         <div className="px-4 py-3 border-t border-zinc-100 flex flex-col gap-2">
 
-          {/* Guide — ligne pleine avec desc */}
-          <button onClick={() => { router.push('/guide'); setSidebarOpen(false) }}
-            className={cn(
-              'w-full flex items-center gap-2.5 px-3 py-2 rounded-2xl text-left transition-all',
-              pathname === '/guide' ? 'bg-tta-light' : 'hover:bg-zinc-50'
-            )}>
-            <HelpCircle size={15} className="text-tta-mid flex-shrink-0" />
-            <p className={cn('text-sm font-bold', pathname === '/guide' ? 'text-tta-mid' : 'text-zinc-600')}>
-              Guide d'utilisation
-            </p>
-          </button>
+          {/* Ligne 1 mini : Guide · FAQ · Mon compte */}
+          <div className="flex items-center justify-center gap-3 py-1">
+            <button onClick={() => { router.push('/guide'); setSidebarOpen(false) }}
+              className="flex items-center gap-1 text-zinc-400 hover:text-tta-mid transition-colors">
+              <HelpCircle size={12} />
+              <span className="text-[11px] font-semibold">Guide</span>
+            </button>
+            <span className="text-zinc-200 text-xs">·</span>
+            <button onClick={() => { router.push('/faq'); setSidebarOpen(false) }}
+              className={cn(
+                'flex items-center gap-1 transition-colors',
+                pathname === '/faq' ? 'text-tta-mid' : 'text-zinc-400 hover:text-tta-mid'
+              )}>
+              <HelpCircle size={12} />
+              <span className="text-[11px] font-semibold">FAQ</span>
+            </button>
+            <span className="text-zinc-200 text-xs">·</span>
+            <button onClick={() => { router.push('/account'); setSidebarOpen(false) }}
+              className={cn(
+                'flex items-center gap-1 transition-colors',
+                pathname === '/account' ? 'text-tta-mid' : 'text-zinc-400 hover:text-tta-mid'
+              )}>
+              <Settings size={12} />
+              <span className="text-[11px] font-semibold">Mon compte</span>
+            </button>
+          </div>
 
-          {/* Ligne 2 : Mode sombre + Signaler + Déconnexion en icônes */}
+          {/* Ligne 2 : Mode sombre + Signaler + Déconnexion */}
           <div className="flex items-center gap-1">
-            {/* Dark mode toggle compact */}
             <button onClick={toggle}
               className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl hover:bg-zinc-50 transition-all text-zinc-500">
               {theme === 'dark'
@@ -509,7 +507,6 @@ export function Navbar() {
 
             <div className="w-px h-5 bg-zinc-100" />
 
-            {/* Signaler */}
             <button onClick={() => { setShowReport(true); setSidebarOpen(false) }}
               className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl hover:bg-zinc-50 transition-all text-zinc-400 hover:text-amber-500">
               <MessageSquareWarning size={14} />
@@ -518,7 +515,6 @@ export function Navbar() {
 
             <div className="w-px h-5 bg-zinc-100" />
 
-            {/* Déconnexion */}
             <button onClick={signOut}
               className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl hover:bg-red-50 transition-all text-zinc-400 hover:text-red-500">
               <LogOut size={14} />
