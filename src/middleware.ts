@@ -37,7 +37,7 @@ export async function middleware(request: NextRequest) {
   // Routes API privées — chaque handler valide lui-même via Bearer / cookies
   if (pathname.startsWith('/api/')) return NextResponse.next()
 
-  // ─── Vérification de session via @supabase/ssr (gère le refresh auto) ──────
+  // ─── Session via @supabase/ssr 0.3 — refresh automatique du token ──────────
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -45,16 +45,19 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll()
+        get(name: string) {
+          return request.cookies.get(name)?.value
         },
-        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
-          // Mettre à jour les cookies dans la requête et la réponse (token refresh)
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+        set(name: string, value: string, options: CookieOptions) {
+          // Propager le cookie rafraîchi dans la requête ET la réponse
+          request.cookies.set({ name, value, ...options } as any)
           response = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options as any)
-          )
+          response.cookies.set({ name, value, ...options } as any)
+        },
+        remove(name: string, options: CookieOptions) {
+          request.cookies.set({ name, value: '', ...options } as any)
+          response = NextResponse.next({ request })
+          response.cookies.set({ name, value: '', ...options } as any)
         },
       },
     }
@@ -80,7 +83,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(dest, request.url))
     }
   } catch {
-    // Erreur DB → laisser passer, les routes valident elles-mêmes
+    // Erreur DB → laisser passer
   }
 
   return response
