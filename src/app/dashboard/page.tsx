@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } from 'date-fns'
 // WeightChart et MonthProgress déplacés vers journal/profil
 import { fr } from 'date-fns/locale'
-import { ArrowRight, Loader2 } from 'lucide-react'
+import { ArrowRight, Loader2, Baby } from 'lucide-react'
 import { todayISO, minutesToHuman } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { Waty } from '@/components/ui/Waty'
@@ -18,6 +18,7 @@ import {
   getChallengesForToday, getWatyProactifMessage,
 } from '@/lib/gamification'
 import { getDailyTip } from '@/lib/daily-tips'
+import { getActiveProfile } from '@/lib/active-profile'
 import type { Profile } from '@/types'
 
 type Period = 'semaine' | 'mois'
@@ -86,12 +87,81 @@ function MonthProgress({ calConsumed, calTarget, sessions, sessionTarget, calBur
   )
 }
 
+// ── Dashboard enfant ─────────────────────────────────────────────────────────
+interface ChildStats { firstName: string; calToday: number; calTarget: number; prot: number }
+
+function ChildDashboard({ cs, router }: { cs: ChildStats; router: ReturnType<typeof useRouter> }) {
+  const calPct = Math.min(100, cs.calTarget > 0 ? Math.round((cs.calToday / cs.calTarget) * 100) : 0)
+  return (
+    <div className="page">
+      {/* Salutation enfant */}
+      <div className="rounded-3xl px-5 py-4 flex items-center gap-3"
+        style={{ background: 'linear-gradient(135deg, rgba(251,191,36,0.18) 0%, rgba(245,158,11,0.10) 100%)', border: '1px solid rgba(251,191,36,0.3)' }}>
+        <div className="w-11 h-11 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+          <Baby size={22} className="text-amber-600" />
+        </div>
+        <div>
+          <p className="text-amber-600 text-sm font-medium capitalize">
+            {format(new Date(), 'EEEE d MMMM yyyy', { locale: fr })}
+          </p>
+          <h1 className="text-2xl font-extrabold text-zinc-900">
+            Bonjour{cs.firstName ? `, ${cs.firstName}` : ''} 👋
+          </h1>
+        </div>
+      </div>
+
+      {/* Calories du jour */}
+      <button onClick={() => router.push('/nutrition/journal')}
+        className="w-full text-left bg-gradient-to-br from-nutri to-nutri-mid rounded-3xl p-5 shadow-sm hover:shadow-md transition-all active:scale-[0.98] group">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 bg-white/25 rounded-2xl flex items-center justify-center text-xl">🥗</div>
+            <span className="font-extrabold text-white text-lg">Nutrition</span>
+          </div>
+          <span className="text-xs font-bold bg-white/25 text-white px-3 py-1 rounded-full">Aujourd'hui</span>
+        </div>
+        <div className="mb-3">
+          <div className="flex justify-between text-xs text-white/80 mb-2">
+            <span className="font-bold">{Math.round(cs.calToday)} kcal consommées</span>
+            <span>{cs.calTarget} kcal objectif</span>
+          </div>
+          <div className="h-2.5 bg-white/30 rounded-full overflow-hidden">
+            <div className="h-full bg-white rounded-full transition-all duration-500" style={{ width: `${calPct}%` }} />
+          </div>
+          <p className="text-xs text-white/70 mt-1">{calPct}% de l'objectif</p>
+        </div>
+        <div className="flex items-center gap-1 text-sm text-white font-bold group-hover:gap-2 transition-all">
+          Ouvrir le journal <ArrowRight size={14} />
+        </div>
+      </button>
+
+      {/* Protéines */}
+      {cs.prot > 0 && (
+        <div className="card flex items-center gap-4">
+          <div className="text-3xl">💪</div>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-zinc-800">Protéines aujourd'hui</p>
+            <p className="text-2xl font-black text-blue-600">{Math.round(cs.prot)} <span className="text-sm font-semibold text-zinc-400">g</span></p>
+          </div>
+        </div>
+      )}
+
+      <div className="card text-center py-6 text-zinc-400">
+        <p className="text-4xl mb-3">👨‍👩‍👧</p>
+        <p className="text-sm font-semibold text-zinc-600">Tu consultes le profil de {cs.firstName}</p>
+        <p className="text-xs mt-1">Le journal alimentaire ci-dessus est propre à {cs.firstName}.</p>
+      </div>
+    </div>
+  )
+}
+
 export default function DashboardPage() {
-  const [stats, setStats]     = useState<Stats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [period, setPeriod]   = useState<Period>('semaine')
+  const [stats, setStats]         = useState<Stats | null>(null)
+  const [loading, setLoading]     = useState(true)
+  const [period, setPeriod]       = useState<Period>('semaine')
   const [showModal, setShowModal] = useState(false)
   const [showTour,  setShowTour]  = useState(false)
+  const [childStats, setChildStats] = useState<ChildStats | null>(null)
 
   const router   = useRouter()
   const supabase = createClient()
@@ -115,6 +185,48 @@ export default function DashboardPage() {
   async function loadData() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/auth'); return }
+
+    // ── Mode enfant ──────────────────────────────────────────────────────────
+    const ap = getActiveProfile()
+    if (ap.isChild && ap.childId) {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+      const today = todayISO()
+
+      // Profil enfant
+      const cpRes = await fetch(`/api/family/child?id=${ap.childId}`, { headers })
+      const cp    = cpRes.ok ? await cpRes.json() : null
+
+      // Entrées du jour
+      const jRes  = await fetch(`/api/child-journal?child_id=${ap.childId}&date=${today}`, { headers })
+      const entries: any[] = jRes.ok ? await jRes.json() : []
+
+      const calToday = entries.reduce((s, e) => s + Number(e.cal ?? 0), 0)
+      const prot     = entries.filter((e: any) => e.food_cat !== 'complément')
+                              .reduce((s: number, e: any) => s + Number(e.prot ?? 0), 0)
+
+      // Objectif calorique enfant (BMR × 1.4)
+      let calTarget = 1800
+      if (cp?.weight_kg && cp?.height_cm && cp?.birth_date) {
+        const age = new Date().getFullYear() - new Date(cp.birth_date).getFullYear()
+        const isFemale = ['female', 'fille', 'f'].includes((cp.gender ?? '').toLowerCase())
+        const bmr = isFemale
+          ? 10 * cp.weight_kg + 6.25 * cp.height_cm - 5 * age - 161
+          : 10 * cp.weight_kg + 6.25 * cp.height_cm - 5 * age + 5
+        calTarget = Math.max(1000, Math.round(bmr * 1.4))
+      }
+
+      setChildStats({
+        firstName: ap.viewingName.split(' ')[0] || ap.viewingName,
+        calToday,
+        calTarget,
+        prot,
+      })
+      setLoading(false)
+      return
+    }
+    // ── Fin mode enfant ──────────────────────────────────────────────────────
 
     const today   = todayISO()
     const now     = new Date()
@@ -178,6 +290,9 @@ export default function DashboardPage() {
       <div className="w-10 h-10 border-4 border-nutri/30 border-t-nutri rounded-full animate-spin" />
     </div>
   )
+
+  // Mode enfant — dashboard simplifié
+  if (childStats) return <ChildDashboard cs={childStats} router={router} />
 
   const s            = stats!
   const calPct    = Math.min(100, s.calTarget > 0 ? Math.round((s.calToday / s.calTarget) * 100) : 0)

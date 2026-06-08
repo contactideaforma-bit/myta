@@ -22,6 +22,7 @@ import {
   SUPPLEMENTS, searchSupplements, calcSupplementMicros, MICRO_RDA,
   type Supplement, type MicroKey,
 } from '@/lib/supplements-db'
+import { getActiveProfile } from '@/lib/active-profile'
 import type { JournalEntry, WeightLog, Profile } from '@/types'
 
 interface DayMacros { cal: number; prot: number; carb: number; fat: number }
@@ -233,6 +234,12 @@ export default function JournalPage() {
     }
   }, [profile])
 
+  // Helper : récupérer le token d'auth pour les appels API
+  async function getToken(): Promise<string | null> {
+    const { data: { session } } = await supabase.auth.getSession()
+    return session?.access_token ?? null
+  }
+
   // Charge données initiales
   useEffect(() => { loadAll() }, [])
 
@@ -242,6 +249,65 @@ export default function JournalPage() {
   async function loadAll() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+
+    // ── Mode enfant ──────────────────────────────────────────────────────────
+    const ap = getActiveProfile()
+    if (ap.isChild && ap.childId) {
+      const token   = await getToken()
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+      const childId = ap.childId
+
+      // Profil enfant → construit un objet Profile-like pour goals()
+      const cpRes = await fetch(`/api/family/child?id=${childId}`, { headers })
+      if (cpRes.ok) {
+        const cp = await cpRes.json()
+        if (cp) {
+          const isFemale = ['female', 'fille', 'f'].includes((cp.gender ?? '').toLowerCase())
+          setProfile({
+            id:             childId,
+            full_name:      cp.name,
+            avatar_url:     null,
+            weight_kg:      cp.weight_kg   ?? null,
+            height_cm:      cp.height_cm   ?? null,
+            birth_date:     cp.birth_date  ?? null,
+            goal:           isFemale ? 'femme' : null,
+            calorie_target: null,
+            prot_target:    null,
+            carb_target:    null,
+            fat_target:     null,
+            created_at:     cp.created_at  ?? new Date().toISOString(),
+          } as Profile)
+        }
+      }
+
+      // Résumé 7 jours
+      const days    = Array.from({ length: 7 }, (_, i) => addDays(todayISO(), -i))
+      const wkRes   = await fetch(`/api/child-journal?child_id=${childId}&week=${days.join(',')}`, { headers })
+      if (wkRes.ok) {
+        const rows: any[] = await wkRes.json()
+        const map: Record<string, number> = {}
+        for (const r of rows) map[r.date] = (map[r.date] ?? 0) + Number(r.cal)
+        setWeekCal(map)
+      }
+
+      // Aliments récents
+      const recRes = await fetch(`/api/child-journal?child_id=${childId}&recent=true`, { headers })
+      if (recRes.ok) {
+        const recent: any[] = await recRes.json()
+        const seen  = new Set<string>()
+        const deduped: JournalEntry[] = []
+        for (const r of recent) {
+          if (!seen.has(r.food_name)) { seen.add(r.food_name); deduped.push(r) }
+          if (deduped.length >= 8) break
+        }
+        setRecentFoods(deduped)
+      }
+
+      await loadDay(currentDate)
+      setLoading(false)
+      return
+    }
+    // ── Fin mode enfant ──────────────────────────────────────────────────────
 
     const [{ data: prof }, { data: wts }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
@@ -300,6 +366,14 @@ export default function JournalPage() {
   }
 
   async function loadDay(date: string) {
+    const ap = getActiveProfile()
+    if (ap.isChild && ap.childId) {
+      const token   = await getToken()
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+      const res = await fetch(`/api/child-journal?child_id=${ap.childId}&date=${date}`, { headers })
+      if (res.ok) setEntries((await res.json()) as JournalEntry[])
+      return
+    }
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     const { data } = await supabase.from('journal_entries')
@@ -327,26 +401,35 @@ export default function JournalPage() {
   }
 
   async function addSupplement(supp: Supplement, qty: number = 1) {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const ap    = getActiveProfile()
+    const token = await getToken()
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
     setAddingSuppl(true)
-    const entry = {
-      user_id:   user.id,
+    const entryBase = {
       date:      currentDate,
       food_id:   'supp-' + supp.id,
       food_name: supp.name,
       food_cat:  'complément',
-      quantity:  qty,   // nombre de doses
+      quantity:  qty,
       cal: 0, prot: 0, carb: 0, fat: 0,
       image_url: null,
     }
-    const { error } = await supabase.from('journal_entries').insert(entry)
-    if (!error) {
-      await loadDay(currentDate)
-      showToast(`✓ ${supp.emoji} ${supp.name} ajouté`, 'ok')
+
+    if (ap.isChild && ap.childId) {
+      const res = await fetch('/api/child-journal', {
+        method: 'POST', headers,
+        body: JSON.stringify({ child_id: ap.childId, ...entryBase }),
+      })
+      if (res.ok) { await loadDay(currentDate); showToast(`✓ ${supp.emoji} ${supp.name} ajouté`, 'ok') }
+      else { showToast('Erreur ajout complément', 'err') }
     } else {
-      showToast('Erreur ajout complément', 'err')
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { setAddingSuppl(false); return }
+      const { error } = await supabase.from('journal_entries').insert({ user_id: user.id, ...entryBase })
+      if (!error) { await loadDay(currentDate); showToast(`✓ ${supp.emoji} ${supp.name} ajouté`, 'ok') }
+      else { showToast('Erreur ajout complément', 'err') }
     }
+
     setAddingSuppl(false)
     setSupplQuery('')
     setSupplResults([])
@@ -385,35 +468,50 @@ export default function JournalPage() {
 
   async function confirmAdd(qty: number) {
     if (!selectedFood) return
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const ap    = getActiveProfile()
+    const token = await getToken()
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
     const ratio = qty / 100
-    const entry = {
-      user_id: user.id, date: currentDate,
-      food_id: selectedFood.id, food_name: selectedFood.name,
-      food_cat: selectedFood.cat ?? 'produit',
-      quantity: qty,
-      cal:  Math.round(selectedFood.cal  * ratio),
-      prot: round1(selectedFood.prot * ratio),
-      carb: round1(selectedFood.carb * ratio),
-      fat:  round1(selectedFood.fat  * ratio),
+    const entryBase = {
+      date:      currentDate,
+      food_id:   selectedFood.id,
+      food_name: selectedFood.name,
+      food_cat:  selectedFood.cat ?? 'produit',
+      quantity:  qty,
+      cal:       Math.round(selectedFood.cal  * ratio),
+      prot:      round1(selectedFood.prot * ratio),
+      carb:      round1(selectedFood.carb * ratio),
+      fat:       round1(selectedFood.fat  * ratio),
       image_url: selectedFood.image_url ?? null,
     }
-    const { error } = await supabase.from('journal_entries').insert(entry)
-    if (error) { showToast('Erreur ajout', 'err'); return }
+
+    if (ap.isChild && ap.childId) {
+      const res = await fetch('/api/child-journal', {
+        method: 'POST', headers,
+        body: JSON.stringify({ child_id: ap.childId, ...entryBase }),
+      })
+      if (!res.ok) { showToast('Erreur ajout', 'err'); return }
+    } else {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { error } = await supabase.from('journal_entries').insert({ user_id: user.id, ...entryBase })
+      if (error) { showToast('Erreur ajout', 'err'); return }
+    }
+
     setSelectedFood(null)
     setQuery('')
     setResults([])
     await loadDay(currentDate)
-    setWeekCal(prev => ({ ...prev, [currentDate]: (prev[currentDate] ?? 0) + entry.cal }))
+    setWeekCal(prev => ({ ...prev, [currentDate]: (prev[currentDate] ?? 0) + entryBase.cal }))
     showToast(`✓ ${selectedFood.name} ajouté`, 'ok')
   }
 
   async function handleVoiceMealConfirm(foods: DetectedFood[]) {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const entries = foods.map(f => ({
-      user_id:   user.id,
+    const ap    = getActiveProfile()
+    const token = await getToken()
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+
+    const foodEntries = foods.map(f => ({
       date:      currentDate,
       food_id:   null,
       food_name: f.name,
@@ -425,11 +523,25 @@ export default function JournalPage() {
       fat:       round1(f.fat),
       image_url: null,
     }))
-    const { error } = await supabase.from('journal_entries').insert(entries)
-    if (error) { showToast('Erreur ajout', 'err'); return }
+
+    if (ap.isChild && ap.childId) {
+      for (const e of foodEntries) {
+        const res = await fetch('/api/child-journal', {
+          method: 'POST', headers,
+          body: JSON.stringify({ child_id: ap.childId, ...e }),
+        })
+        if (!res.ok) { showToast('Erreur ajout', 'err'); return }
+      }
+    } else {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { error } = await supabase.from('journal_entries').insert(foodEntries.map(e => ({ user_id: user.id, ...e })))
+      if (error) { showToast('Erreur ajout', 'err'); return }
+    }
+
     setShowVoiceMeal(false)
     await loadDay(currentDate)
-    const totalCal = entries.reduce((s, e) => s + e.cal, 0)
+    const totalCal = foodEntries.reduce((s, e) => s + e.cal, 0)
     setWeekCal(prev => ({ ...prev, [currentDate]: (prev[currentDate] ?? 0) + totalCal }))
     showToast(`✓ ${foods.length} aliment${foods.length > 1 ? 's' : ''} ajouté${foods.length > 1 ? 's' : ''}`, 'ok')
   }
@@ -470,7 +582,14 @@ export default function JournalPage() {
   }
 
   async function deleteEntry(id: string) {
-    await supabase.from('journal_entries').delete().eq('id', id)
+    const ap = getActiveProfile()
+    if (ap.isChild && ap.childId) {
+      const token = await getToken()
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+      await fetch(`/api/child-journal?id=${id}&child_id=${ap.childId}`, { method: 'DELETE', headers })
+    } else {
+      await supabase.from('journal_entries').delete().eq('id', id)
+    }
     await loadDay(currentDate)
     showToast('Aliment supprimé', 'err')
   }
@@ -1224,8 +1343,8 @@ export default function JournalPage() {
       {/* Deux colonnes : poids + graphique semaine */}
       <div className="grid grid-cols-1 gap-4">
 
-        {/* Poids */}
-        <div className="card flex flex-col gap-3">
+        {/* Poids — masqué pour les profils enfants */}
+        {!getActiveProfile().isChild && <div className="card flex flex-col gap-3">
           <h3 className="text-sm font-semibold flex items-center gap-1.5"><Scale size={14} />Poids du jour</h3>
           <div className="flex gap-2">
             <input type="number" step="0.1" min="30" max="300" value={weightInput}
@@ -1255,7 +1374,7 @@ export default function JournalPage() {
             })}
             {weights.length === 0 && <p className="text-xs text-zinc-400">Aucune entrée encore.</p>}
           </div>
-        </div>
+        </div>}
 
         {/* Calories 7 jours — curseurs de progression */}
         <div className="card flex flex-col gap-3">

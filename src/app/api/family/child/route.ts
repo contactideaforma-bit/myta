@@ -14,10 +14,25 @@ async function getUser(req: NextRequest) {
   return user ?? null
 }
 
-/** GET /api/family/child — liste les profils enfants du parent connecté */
+/** GET /api/family/child — liste les profils enfants du parent connecté
+ *  GET /api/family/child?id=UUID — un seul profil enfant
+ */
 export async function GET(req: NextRequest) {
   const user = await getUser(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const id = new URL(req.url).searchParams.get('id')
+
+  if (id) {
+    const { data: child } = await supabaseAdmin
+      .from('child_profiles')
+      .select('id, name, birth_date, weight_kg, height_cm, gender, created_at')
+      .eq('id', id)
+      .eq('owner_id', user.id)
+      .single()
+    if (!child) return NextResponse.json({ error: 'Enfant introuvable' }, { status: 404 })
+    return NextResponse.json(child)
+  }
 
   const { data: children } = await supabaseAdmin
     .from('child_profiles')
