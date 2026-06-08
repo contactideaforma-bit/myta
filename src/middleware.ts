@@ -1,78 +1,82 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
-import { createClient }       from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js'
 
-// Pages accessibles sans auth
+// ─── Routes publiques (pas de vérification de session) ────────────────────────
 const PUBLIC_PATHS = [
-  '/auth', '/pricing', '/payment-failed', '/onboarding',
-  '/legal', '/success', '/cancel', '/family/accept',
-  '/_next', '/static',
+  '/',
+  '/auth',
+  '/pricing',
+  '/payment-failed',
+  '/onboarding',
+  '/legal',
+  '/success',
+  '/cancel',
+  '/family/accept',
 ]
 
-// Routes API publiques (webhooks Stripe, crons…)
-const PUBLIC_API = [
-  '/api/stripe',
-  '/api/webhook',
-  '/api/notifications',
-]
+const PUBLIC_API = ['/api/stripe', '/api/webhook', '/api/notifications']
 
-// Client admin (service role) pour la vérification d'abonnement uniquement
+// Admin uniquement pour la vérification d'abonnement
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
 
-  // Page marketing publique
-  if (pathname === '/') return NextResponse.next()
-
-  // Fichiers statiques (images, fonts…)
+  // Fichiers statiques
   if (pathname.includes('.')) return NextResponse.next()
 
-  // Pages / routes publiques
-  if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) return NextResponse.next()
-  if (PUBLIC_API.some(p  => pathname.startsWith(p)))  return NextResponse.next()
+  // Routes publiques
+  if (PUBLIC_PATHS.some(p => pathname === p || (p !== '/' && pathname.startsWith(p)))) {
+    return NextResponse.next()
+  }
+  if (PUBLIC_API.some(p => pathname.startsWith(p))) return NextResponse.next()
 
-  // Routes API privées : chaque route gère son propre requireAuth
+  // Routes API privées : chaque handler gère sa propre auth
   if (pathname.startsWith('/api/')) return NextResponse.next()
 
-  // ─── Pages app : session via @supabase/ssr (auto-refresh du token) ──────────
-  //
-  // createServerClient + setAll met à jour les cookies de réponse avec le
-  // nouveau access_token si le précédent a expiré → l'utilisateur reste connecté
-  // tant que son refresh_token est valide (60 jours par défaut dans Supabase).
-  //
-  // On retourne `res` (pas NextResponse.next()) pour propager les cookies rafraîchis.
-
-  const res = NextResponse.next({ request: { headers: req.headers } })
+  // ─── Pattern officiel Supabase @supabase/ssr v0.3 ─────────────────────────
+  // IMPORTANT : supabaseResponse doit être recréé dans setAll pour que les
+  // headers de la requête incluent les tokens rafraîchis.
+  let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll()          { return req.cookies.getAll() },
-        setAll(toSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
-          // Propage les tokens rafraîchis vers le navigateur
-          toSet.forEach(({ name, value, options }) => {
-            req.cookies.set(name, value)
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
+          // 1. Mettre à jour les cookies dans la requête (pour le downstream)
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          // 2. Recréer la réponse avec la requête mise à jour
+          supabaseResponse = NextResponse.next({ request })
+          // 3. Écrire les nouveaux cookies dans la réponse (vers le navigateur)
+          cookiesToSet.forEach(({ name, value, options }) =>
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            res.cookies.set(name, value, options as any)
-          })
+            supabaseResponse.cookies.set(name, value, options as any)
+          )
         },
       },
     }
   )
 
-  // getSession() lit la session depuis les cookies (pas d'appel réseau = fiable en Edge).
-  // Le createServerClient + setAll s'occupe du refresh silencieux si le token est expiré.
+  // getSession() : lecture locale des cookies, pas d'appel réseau.
+  // Le mécanisme setAll ci-dessus gère le refresh silencieux du token.
   const { data: { session } } = await supabase.auth.getSession()
 
-  if (!session?.user) return NextResponse.redirect(new URL('/auth', req.url))
+  if (!session?.user) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/auth'
+    return NextResponse.redirect(url)
+  }
 
-  // Vérifier l'abonnement (admin bypasse RLS)
+  // Vérifier l'abonnement
   try {
     const { data: profile } = await supabaseAdmin
       .from('profiles')
@@ -80,21 +84,23 @@ export async function middleware(req: NextRequest) {
       .eq('id', session.user.id)
       .single()
 
-    const status    = profile?.subscription_status
+    const status = profile?.subscription_status
     const hasAccess = ['trialing', 'active', 'vip'].includes(status ?? '')
 
     if (!hasAccess) {
-      if (status === 'past_due') return NextResponse.redirect(new URL('/payment-failed', req.url))
-      return NextResponse.redirect(new URL('/pricing', req.url))
+      const url = request.nextUrl.clone()
+      url.pathname = status === 'past_due' ? '/payment-failed' : '/pricing'
+      return NextResponse.redirect(url)
     }
   } catch {
-    // En cas d'erreur DB on laisse passer plutôt que de déconnecter
-    return res
+    // Erreur DB : laisser passer, les routes valident elles-mêmes
   }
 
-  return res
+  return supabaseResponse
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon-192.png|icon-512.png|logo_my_twin_app.png|manifest.json|sw.js).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|icon-192.png|icon-512.png|logo_my_twin_app.png|manifest.json|sw.js|workbox-.*\\.js).*)',
+  ],
 }
