@@ -53,5 +53,12 @@ export async function GET(req: NextRequest) {
   // Exclure l'utilisateur courant de la liste des membres
   const others = (members ?? []).filter((m: { id: string }) => m.id !== user.id)
 
-  return NextResponse.json({ self, members: others, owner })
+  // Profils enfants (child_profiles) rattachés au propriétaire
+  const { data: childProfiles } = await supabaseAdmin
+    .from('child_profiles')
+    .select('id, name, gender')
+    .eq('owner_id', ownerId)
+    .order('created_at')
+
+  return NextResponse.json({ self, members: others, owner, children: childProfiles ?? [] })
 }

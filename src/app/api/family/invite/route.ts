@@ -140,22 +140,25 @@ export async function POST(req: NextRequest) {
 </body></html>`
 
   try {
-    await fetch('https://api.resend.com/emails', {
+    const emailRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         Authorization:  `Bearer ${process.env.RESEND_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from:    'Waty de MYTA <contact@mytwinapp.fr>',
+        from:    'MYTA <contact@mytwinapp.fr>',
         to:      [email],
         subject: `👋 Tu es invité(e) à rejoindre MYTA en famille !`,
         html:    emailHtml,
       }),
     })
+    if (!emailRes.ok) {
+      const errBody = await emailRes.text()
+      console.error('[family/invite] Resend HTTP', emailRes.status, errBody)
+    }
   } catch (emailErr) {
-    console.error('[family/invite] Erreur envoi email:', emailErr)
-    // Ne pas bloquer — l'invite est créée, l'email peut être renvoyé
+    console.error('[family/invite] Erreur réseau Resend:', emailErr)
   }
 
   return NextResponse.json({ success: true, inviteId: invite.id })
