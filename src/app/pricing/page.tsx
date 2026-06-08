@@ -103,7 +103,7 @@ const FAMILLE_PLANS: PlanConfig[] = [
   {
     id:       'essentiel_famille',
     label:    'Essentiel Famille',
-    price:    7.99,
+    price:    9.99,
     aiLabel:  'IA limitée (adultes)',
     aiColor:  'text-amber-600 bg-amber-50',
     features: [
@@ -119,7 +119,7 @@ const FAMILLE_PLANS: PlanConfig[] = [
   {
     id:       'premium_famille',
     label:    'Premium Famille',
-    price:    11.95,
+    price:    13.99,
     badge:    'Complet',
     badgeColor: 'bg-gradient-to-r from-violet-500 to-purple-600',
     aiLabel:  'IA illimitée pour les adultes',
