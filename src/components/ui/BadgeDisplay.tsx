@@ -62,15 +62,6 @@ export function BadgeDisplay({ badge, streak, size = 'md' }: BadgeDisplayProps) 
           </div>
         </div>
 
-        {/* Citation Waty — message dynamique selon série réelle */}
-        <p className="text-xs text-zinc-500 italic leading-relaxed bg-zinc-50 rounded-2xl px-3 py-2.5">
-          💬 &ldquo;{streak >= 150 ? `${streak} jours — tu es une légende absolue. Waty se prosterne devant toi.`
-            : streak >= 90  ? `${streak} jours ! Tu ES Waty désormais. On ne fait plus qu'un. Légendaire.`
-            : streak >= 30  ? `${streak} jours d'affilée ! Tu es officiellement un héros. Ton engagement est une inspiration.`
-            : streak >= 7   ? `${streak} jours consécutifs ! Tu prends de bonnes habitudes. Je suis fier de toi.`
-            : badge.watyMessage}&rdquo;
-        </p>
-
         {/* Barre vers le badge suivant */}
         {next && (
           <div>
