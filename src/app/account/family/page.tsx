@@ -62,7 +62,11 @@ export default function FamilyPage() {
         fetch('/api/family/members', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/family/invites',  { headers: { Authorization: `Bearer ${token}` } }),
       ])
-      if (membersRes.ok) setMembers(await membersRes.json())
+      if (membersRes.ok) {
+        const data = await membersRes.json()
+        // L'API retourne { self, members[], owner } — on extrait members
+        setMembers(Array.isArray(data) ? data : (data.members ?? []))
+      }
       if (invitesRes.ok) setInvites(await invitesRes.json())
     }
 
