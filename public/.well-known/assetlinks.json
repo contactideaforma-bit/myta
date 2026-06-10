@@ -2,9 +2,9 @@
   "relation": ["delegate_permission/common.handle_all_urls"],
   "target": {
     "namespace": "android_app",
-    "package_name": "com.mytwinapp.app",
+    "package_name": "fr.mytwinapp.app",
     "sha256_cert_fingerprints": [
-      "REMPLACE_PAR_TON_EMPREINTE_SHA256_APRES_BUBBLEWRAP"
+      "67:28:6C:4C:FA:83:C1:3A:67:F5:14:89:D7:F1:4E:21:19:C9:B5:AE:AF:3A:7D:7A:A4:00:57:94:99:4F:8C:FD"
     ]
   }
 }]
