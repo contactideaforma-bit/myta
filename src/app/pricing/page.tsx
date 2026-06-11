@@ -275,28 +275,36 @@ function AiExplainer() {
 function PricingContent() {
   const [activeTab, setActiveTab] = useState<TabKey>('solo')
   const [loading,   setLoading]   = useState<string | null>(null)
+  const [mounted,   setMounted]   = useState(false)
   const router       = useRouter()
   const searchParams = useSearchParams()
-  const isChanging   = searchParams.get('change') === 'true'
   const supabase     = createClient()
+
+  // Attendre le montage complet avant toute vérification
+  useEffect(() => { setMounted(true) }, [])
 
   // Rediriger vers /account si déjà abonné (sauf si on vient changer de forfait)
   useEffect(() => {
-    // Lire directement l'URL pour éviter les problèmes d'hydratation
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('change') === 'true') return
+    if (!mounted) return
+    // searchParams vient du contexte Router — fiable après montage complet
+    if (searchParams.get('change') === 'true') return
+
+    let active = true
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!active) return
       if (!session) return
       const { data: profile } = await supabase
         .from('profiles')
         .select('subscription_status')
         .eq('id', session.user.id)
         .single()
+      if (!active) return
       if (['trialing', 'active', 'vip'].includes(profile?.subscription_status ?? '')) {
         router.replace('/account')
       }
     })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    return () => { active = false }
+  }, [mounted, searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentTab = TABS.find(t => t.key === activeTab)!
 
@@ -312,7 +320,7 @@ function PricingContent() {
           'Content-Type':  'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ plan: planId, changePlan: isChanging }),
+        body: JSON.stringify({ plan: planId, changePlan: searchParams.get('change') === 'true' }),
       })
       const data = await res.json()
       if (data.redirect) { window.location.href = data.redirect; return }
