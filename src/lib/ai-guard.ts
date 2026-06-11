@@ -127,7 +127,7 @@ export async function checkAiQuota(userId: string, feature: AiFeature): Promise<
           hint:       "Passe en Premium pour accéder à cette fonctionnalité sans limite.",
           code:       'FEATURE_NOT_INCLUDED',
           feature,
-          upgradeUrl: '/pricing',
+          upgradeUrl: '/pricing?change=true',
         }, { status: 403 }),
       }
     }
@@ -149,7 +149,7 @@ export async function checkAiQuota(userId: string, feature: AiFeature): Promise<
           feature,
           limit,
           used:       usedCount,
-          upgradeUrl: '/pricing',
+          upgradeUrl: '/pricing?change=true',
         }, { status: 429 }),
       }
     }
