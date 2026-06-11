@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Check, Loader2, Crown, Shield, Star, Zap, Users, Baby, Info } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -272,7 +272,7 @@ function AiExplainer() {
 
 // ─── Page principale ──────────────────────────────────────────────────────────
 
-export default function PricingPage() {
+function PricingContent() {
   const [activeTab, setActiveTab] = useState<TabKey>('solo')
   const [loading,   setLoading]   = useState<string | null>(null)
   const router       = useRouter()
@@ -456,5 +456,18 @@ export default function PricingPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center"
+        style={{ background: 'linear-gradient(160deg, #f0f0ff 0%, #e8fbf8 50%, #f0fdf4 100%)' }}>
+        <Loader2 size={32} className="animate-spin text-[#4B47A0]" />
+      </div>
+    }>
+      <PricingContent />
+    </Suspense>
   )
 }
