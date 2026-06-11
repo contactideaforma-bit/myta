@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   Loader2, Check, User, Mail, Lock, CreditCard,
   Eye, EyeOff, Shield, LogOut, ChevronRight,
-  AlertCircle, CheckCircle2, ExternalLink, Crown, Users,
+  AlertCircle, CheckCircle2, ExternalLink, Crown, Users, Trash2,
 } from 'lucide-react'
 import { getPlanLabel, getPlanPrice, hasFamilySwitch, isPremium } from '@/lib/plan-utils'
 
@@ -80,6 +80,12 @@ export default function AccountPage() {
 
   // ── Abonnement ──
   const [planChanged, setPlanChanged] = useState(false)
+
+  // ── Suppression de compte ──
+  const [showDelete, setShowDelete]     = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [deleting, setDeleting]         = useState(false)
+  const [deleteFb, setDeleteFb]         = useState<string | null>(null)
   const [subStatus, setSubStatus]     = useState<string>('free')
   const [userPlan,  setUserPlan]      = useState<string | null>(null)
   const [portalLoading, setPortalLoading] = useState(false)
@@ -232,6 +238,27 @@ export default function AccountPage() {
   async function signOut() {
     await supabase.auth.signOut()
     router.push('/auth')
+  }
+
+  async function deleteAccount() {
+    if (deleteConfirm !== 'SUPPRIMER') return
+    setDeleting(true); setDeleteFb(null)
+    try {
+      const res = await fetch('/api/account/delete', {
+        method:  'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ confirm: 'SUPPRIMER' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Erreur')
+      // Compte supprimé — nettoyer la session locale et sortir
+      localStorage.clear()
+      await supabase.auth.signOut()
+      window.location.href = '/'
+    } catch (e: any) {
+      setDeleteFb(e.message ?? 'Erreur lors de la suppression')
+      setDeleting(false)
+    }
   }
 
   if (loading) return (
@@ -469,6 +496,50 @@ export default function AccountPage() {
         <LogOut size={14} />
         Se déconnecter
       </button>
+
+      {/* ── Suppression de compte (exigence App Store / Play Store) ── */}
+      {!showDelete ? (
+        <button onClick={() => { setShowDelete(true); setDeleteConfirm(''); setDeleteFb(null) }}
+          className="flex items-center justify-center gap-2 w-full py-3 text-xs font-semibold text-zinc-300 hover:text-red-500 transition-colors">
+          <Trash2 size={12} />
+          Supprimer mon compte
+        </button>
+      ) : (
+        <div className="bg-red-50 border border-red-200 rounded-3xl p-5 flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <Trash2 size={16} className="text-red-500" />
+            <h2 className="text-sm font-bold text-red-700">Supprimer définitivement mon compte</h2>
+          </div>
+          <p className="text-xs text-red-600 leading-relaxed">
+            Cette action est <strong>irréversible</strong> : ton abonnement sera annulé immédiatement
+            et toutes tes données (journal, séances, sommeil, recettes, groupes, famille) seront
+            définitivement effacées.
+          </p>
+          <div>
+            <label className="text-xs text-red-500 mb-1 block">
+              Tape <strong>SUPPRIMER</strong> pour confirmer
+            </label>
+            <input
+              className="input border-red-200"
+              placeholder="SUPPRIMER"
+              value={deleteConfirm}
+              onChange={e => setDeleteConfirm(e.target.value.toUpperCase())}
+              autoComplete="off"
+            />
+          </div>
+          {deleteFb && <FeedbackBanner type="err" msg={deleteFb} />}
+          <div className="flex gap-2">
+            <button onClick={() => setShowDelete(false)} disabled={deleting}
+              className="flex-1 py-2.5 rounded-2xl border-2 border-zinc-200 bg-white text-sm font-semibold text-zinc-600">
+              Annuler
+            </button>
+            <button onClick={deleteAccount} disabled={deleting || deleteConfirm !== 'SUPPRIMER'}
+              className="flex-1 py-2.5 rounded-2xl bg-red-600 text-white text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-40">
+              {deleting ? <Loader2 size={14} className="animate-spin" /> : <><Trash2 size={13} />Supprimer</>}
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   )
