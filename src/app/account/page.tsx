@@ -79,6 +79,7 @@ export default function AccountPage() {
   const cardElemRef   = useRef<any>(null)
 
   // ── Abonnement ──
+  const [planChanged, setPlanChanged] = useState(false)
   const [subStatus, setSubStatus]     = useState<string>('free')
   const [userPlan,  setUserPlan]      = useState<string | null>(null)
   const [portalLoading, setPortalLoading] = useState(false)
@@ -102,6 +103,7 @@ export default function AccountPage() {
         setUserPlan(profile.plan ?? null)
         if (profile.plan) localStorage.setItem('myta_plan', profile.plan)
       }
+      if (new URLSearchParams(window.location.search).get('changed') === 'true') setPlanChanged(true)
       setLoading(false)
     }
     load()
@@ -397,6 +399,13 @@ export default function AccountPage() {
             <p className="text-xs text-zinc-400">{getPlanPrice(userPlan).toFixed(2)} € / mois</p>
           )}
 
+              {planChanged && (
+            <div className="bg-green-50 border border-green-200 rounded-2xl px-4 py-3 text-sm text-green-700 flex items-center gap-2">
+              <CheckCircle2 size={14} className="flex-shrink-0" />
+              Forfait mis à jour avec succès ✓
+            </div>
+          )}
+
           {subStatus === 'past_due' && (
             <div className="bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 text-sm text-orange-700">
               ⚠️ Ton paiement a échoué. Mets à jour ta carte ci-dessus pour rétablir l'accès.
@@ -405,7 +414,7 @@ export default function AccountPage() {
 
           {['active', 'trialing', 'past_due'].includes(subStatus) && (
             <>
-              <button onClick={() => router.push('/pricing')}
+              <button onClick={() => router.push('/pricing?change=true')}
                 className="w-full flex items-center justify-between py-3 px-4 rounded-2xl border-2 border-zinc-200 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-all">
                 <span className="flex items-center gap-2">
                   <Crown size={14} className="text-[#4B47A0]" />

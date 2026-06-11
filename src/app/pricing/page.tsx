@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Check, Loader2, Crown, Shield, Star, Zap, Users, Baby, Info } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { PlanId } from '@/lib/stripe-plans'
@@ -275,19 +275,13 @@ function AiExplainer() {
 function PricingContent() {
   const [activeTab, setActiveTab] = useState<TabKey>('solo')
   const [loading,   setLoading]   = useState<string | null>(null)
-  const [mounted,   setMounted]   = useState(false)
-  const router       = useRouter()
-  const searchParams = useSearchParams()
-  const supabase     = createClient()
-
-  // Attendre le montage complet avant toute vérification
-  useEffect(() => { setMounted(true) }, [])
+  const router   = useRouter()
+  const supabase = createClient()
 
   // Rediriger vers /account si déjà abonné (sauf si on vient changer de forfait)
   useEffect(() => {
-    if (!mounted) return
-    // searchParams vient du contexte Router — fiable après montage complet
-    if (searchParams.get('change') === 'true') return
+    // window.location.search = source de vérité, aucune race d'hydratation
+    if (new URLSearchParams(window.location.search).get('change') === 'true') return
 
     let active = true
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -304,7 +298,7 @@ function PricingContent() {
       }
     })
     return () => { active = false }
-  }, [mounted, searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentTab = TABS.find(t => t.key === activeTab)!
 
@@ -320,7 +314,10 @@ function PricingContent() {
           'Content-Type':  'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ plan: planId, changePlan: searchParams.get('change') === 'true' }),
+        body: JSON.stringify({
+          plan: planId,
+          changePlan: new URLSearchParams(window.location.search).get('change') === 'true',
+        }),
       })
       const data = await res.json()
       if (data.redirect) { window.location.href = data.redirect; return }

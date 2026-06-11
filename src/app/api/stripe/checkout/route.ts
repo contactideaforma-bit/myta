@@ -50,6 +50,45 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Configuration tarifaire manquante' }, { status: 500 })
     }
 
+    // ── Changement de forfait : détection automatique côté serveur ──────────
+    // Si l'utilisateur a déjà un abonnement actif/trialing, on le met à jour
+    // au lieu de créer un 2e abonnement (peu importe ce qu'envoie le client).
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('stripe_customer_id')
+      .eq('id', user.id)
+      .single()
+
+    if (profile?.stripe_customer_id) {
+      const subs = await stripe.subscriptions.list({
+        customer: profile.stripe_customer_id,
+        status:   'all',
+        limit:    5,
+      })
+      const activeSub = subs.data.find(s => ['active', 'trialing'].includes(s.status))
+
+      if (activeSub) {
+        // Même price → rien à faire
+        if (activeSub.items.data[0]?.price?.id === priceId) {
+          return NextResponse.json({ redirect: `${process.env.NEXT_PUBLIC_APP_URL}/account?changed=true` })
+        }
+        await stripe.subscriptions.update(activeSub.id, {
+          items: [{ id: activeSub.items.data[0].id, price: priceId }],
+          proration_behavior: 'create_prorations',
+          cancel_at_period_end: false, // réactive si une résiliation était programmée
+          metadata: { myta_plan: resolvedPlanId ?? '' },
+        })
+        // Mettre à jour le plan en base
+        await supabaseAdmin
+          .from('profiles')
+          .update({ plan: resolvedPlanId })
+          .eq('id', user.id)
+
+        return NextResponse.json({ redirect: `${process.env.NEXT_PUBLIC_APP_URL}/account?changed=true` })
+      }
+      // Pas d'abo actif → continuer vers checkout normal
+    }
+
     // Validation du code parrainage : doit exister, ne pas être le sien, et l'user ne doit pas déjà avoir été parrainé
     let validReferredBy = ''
     if (referredBy?.trim()) {

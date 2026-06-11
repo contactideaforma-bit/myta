@@ -232,7 +232,7 @@ export default function FamilyPage() {
           <p className="text-sm text-zinc-500 leading-relaxed max-w-xs">
             Ton forfait actuel est individuel. Passe à un forfait Couple ou Famille pour inviter des proches.
           </p>
-          <button onClick={() => router.push('/pricing')}
+          <button onClick={() => router.push('/pricing?change=true')}
             className="px-6 py-3 rounded-2xl text-white text-sm font-bold"
             style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
             Voir les forfaits

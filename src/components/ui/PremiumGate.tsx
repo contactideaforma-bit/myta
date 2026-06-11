@@ -61,7 +61,7 @@ export function PremiumGate({ children, mode = 'lock', label = 'Fonctionnalité 
             Disponible avec l'abonnement <span className="font-bold text-[#4B47A0]">Premium</span>.
           </p>
           <button
-            onClick={() => router.push('/pricing')}
+            onClick={() => router.push('/pricing?change=true')}
             className="w-full py-2.5 rounded-2xl text-white text-xs font-bold mt-1"
             style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}
           >
