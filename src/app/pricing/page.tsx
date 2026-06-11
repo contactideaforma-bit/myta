@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Check, Loader2, Crown, Shield, Star, Zap, Users, Baby, Info } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { PlanId } from '@/lib/stripe-plans'
@@ -275,11 +275,14 @@ function AiExplainer() {
 export default function PricingPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('solo')
   const [loading,   setLoading]   = useState<string | null>(null)
-  const router   = useRouter()
-  const supabase = createClient()
+  const router       = useRouter()
+  const searchParams = useSearchParams()
+  const isChanging   = searchParams.get('change') === 'true'
+  const supabase     = createClient()
 
-  // Rediriger vers /account si déjà abonné
+  // Rediriger vers /account si déjà abonné (sauf si on vient changer de forfait)
   useEffect(() => {
+    if (isChanging) return
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) return
       const { data: profile } = await supabase
@@ -291,7 +294,7 @@ export default function PricingPage() {
         router.replace('/account')
       }
     })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isChanging]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentTab = TABS.find(t => t.key === activeTab)!
 
@@ -307,9 +310,10 @@ export default function PricingPage() {
           'Content-Type':  'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ plan: planId }),
+        body: JSON.stringify({ plan: planId, changePlan: isChanging }),
       })
       const data = await res.json()
+      if (data.redirect) { window.location.href = data.redirect; return }
       if (data.url) window.location.href = data.url
       else { alert('Erreur : ' + (data.error ?? 'Impossible de créer la session')); setLoading(null) }
     } catch (err) {
