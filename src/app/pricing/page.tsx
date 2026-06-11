@@ -282,7 +282,9 @@ function PricingContent() {
 
   // Rediriger vers /account si déjà abonné (sauf si on vient changer de forfait)
   useEffect(() => {
-    if (isChanging) return
+    // Lire directement l'URL pour éviter les problèmes d'hydratation
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('change') === 'true') return
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) return
       const { data: profile } = await supabase
@@ -294,7 +296,7 @@ function PricingContent() {
         router.replace('/account')
       }
     })
-  }, [isChanging]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentTab = TABS.find(t => t.key === activeTab)!
 
