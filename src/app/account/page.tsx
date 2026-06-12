@@ -427,7 +427,8 @@ export default function AccountPage() {
             </div>
           </div>
 
-          {userPlan && getPlanPrice(userPlan) > 0 && (
+          {/* Prix masqué dans l'app iOS (aucune référence tarifaire — Apple 3.1.1) */}
+          {!iosApp && userPlan && getPlanPrice(userPlan) > 0 && (
             <p className="text-xs text-zinc-400">{getPlanPrice(userPlan).toFixed(2)} € / mois</p>
           )}
 
