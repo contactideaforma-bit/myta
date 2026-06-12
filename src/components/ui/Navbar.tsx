@@ -180,21 +180,19 @@ export function Navbar() {
         const groupIds = (memberRows ?? []).map((r: any) => r.group_id as string)
         if (!groupIds.length) return
 
-        // Cutoff = dernière visite ou 7 jours si jamais visité
-        const lastVisitRaw = localStorage.getItem('myta_friends_last_visit')
-        const lastVisit = lastVisitRaw ? parseInt(lastVisitRaw) : 0
-        const cutoff = lastVisit > 0
-          ? new Date(lastVisit).toISOString()
-          : new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
-
-        const { count } = await supabase
-          .from('group_messages')
-          .select('id', { count: 'exact', head: true })
-          .in('group_id', groupIds)
-          .gt('created_at', cutoff)
-          .neq('user_id', data.user.id)
-
-        if ((count ?? 0) > 0) setHasUnread(true)
+        // Un groupe est "non lu" tant que ses messages n'ont pas été VUS
+        // (marqueur de lecture par groupe, posé à l'ouverture du panneau messages)
+        for (const groupId of groupIds) {
+          const perGroupRead = parseInt(localStorage.getItem(`myta_group_last_read_${groupId}`) || '0')
+          const cutoffMs = perGroupRead || (Date.now() - 7 * 24 * 3600 * 1000)
+          const { count } = await supabase
+            .from('group_messages')
+            .select('id', { count: 'exact', head: true })
+            .eq('group_id', groupId)
+            .gt('created_at', new Date(cutoffMs).toISOString())
+            .neq('user_id', data.user.id)
+          if ((count ?? 0) > 0) { setHasUnread(true); break }
+        }
       } catch {}
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps

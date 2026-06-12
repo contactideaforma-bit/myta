@@ -248,7 +248,7 @@ export function VoiceMeal({ onConfirm, onCancel }: Props) {
       <Loader2 size={36} className="animate-spin text-nutri" />
       <div className="text-center">
         <p className="font-bold text-zinc-900">Analyse nutritionnelle…</p>
-        <p className="text-sm text-zinc-400 mt-1">Claude identifie les aliments et les macros</p>
+        <p className="text-sm text-zinc-400 mt-1">Waty identifie les aliments et les macros</p>
       </div>
     </div>
   )

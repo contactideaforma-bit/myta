@@ -105,7 +105,8 @@ function AcceptContent() {
 
 export default function FamilyAcceptPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 page-gradient">
+    <div className="min-h-screen flex items-center justify-center px-4"
+      style={{ background: 'linear-gradient(160deg, #f0f0ff 0%, #e8fbf8 60%, #f0fdf4 100%)' }}>
       <div className="w-full max-w-sm">
         <Suspense fallback={
           <div className="flex justify-center py-16">

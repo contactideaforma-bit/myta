@@ -236,7 +236,6 @@ export default function DashboardPage() {
     const dateTo = period === 'semaine'
       ? format(endOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd')
       : format(endOfMonth(now), 'yyyy-MM-dd')
-    const from90  = format(subDays(now, 90), 'yyyy-MM-dd')
 
     const [
       { data: prof },
@@ -250,7 +249,8 @@ export default function DashboardPage() {
       supabase.from('journal_entries').select('cal').eq('user_id', user.id).eq('date', today),
       supabase.from('journal_entries').select('cal,prot').eq('user_id', user.id).gte('date', dateFrom).lte('date', dateTo),
       supabase.from('sessions').select('*').eq('user_id', user.id).gte('session_date', dateFrom).lte('session_date', dateTo),
-      supabase.from('journal_entries').select('date').eq('user_id', user.id).gte('date', from90),
+      // Toutes les dates loggées — la série est cumulative (badges jusqu'à 150 j)
+      supabase.from('journal_entries').select('date').eq('user_id', user.id),
       supabase.from('challenge_completions').select('challenge_key').eq('user_id', user.id).eq('completed_date', today),
     ])
 

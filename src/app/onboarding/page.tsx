@@ -95,8 +95,7 @@ export default function OnboardingPage() {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-between px-5 py-10"
-      style={{ background: 'linear-gradient(160deg, #f0f0ff 0%, #e8fbf8 50%, #f0fdf4 100%)' }}
+      className="min-h-screen flex flex-col items-center justify-between px-5 py-10 page-gradient"
     >
       <div className="w-full max-w-sm flex flex-col gap-6 flex-1">
 

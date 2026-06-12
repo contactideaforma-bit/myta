@@ -17,41 +17,26 @@ function generateInviteCode(): string {
   return code
 }
 
-// Score journalier : progression d'aujourd'hui uniquement (pour la lava)
-// localDate = date locale du client (yyyy-MM-dd) pour éviter le décalage UTC
+// Score journalier "Sauver Waty" : repart à 0 chaque jour à minuit (heure
+// locale du client via localDate). Un membre "gagne" sa journée quand il a
+// rempli son journal alimentaire ET atteint au moins 70 % de son objectif
+// calorique personnalisé. Le score (0-100) reflète sa progression vers ce but.
 async function calcDayScore(userId: string, localDate: string): Promise<number> {
-  const [
-    { data: journal },
-    { data: sessions },
-    { data: completions },
-    { data: profile },
-  ] = await Promise.all([
+  const [{ data: journal }, { data: profile }] = await Promise.all([
     supabaseAdmin.from('journal_entries').select('cal').eq('user_id', userId).eq('date', localDate),
-    supabaseAdmin.from('sessions').select('id').eq('user_id', userId).eq('session_date', localDate),
-    supabaseAdmin.from('challenge_completions').select('id').eq('user_id', userId).eq('completed_date', localDate),
     supabaseAdmin.from('profiles').select('calorie_target').eq('id', userId).single(),
   ])
 
-  let score = 0
+  // Rien de noté aujourd'hui → 0
+  if (!(journal ?? []).length) return 0
 
-  // Journal loggé : 40 pts
-  const hasNutri = (journal ?? []).length > 0
-  if (hasNutri) score += 40
-
-  // Objectif calorique atteint (≥ 80%) : +20 pts
   const calorieTarget = (profile as any)?.calorie_target ?? 0
-  if (hasNutri && calorieTarget > 0) {
-    const totalCal = (journal ?? []).reduce((s: number, e: any) => s + (e.cal ?? 0), 0)
-    if (totalCal >= calorieTarget * 0.8) score += 20
-  }
+  // Pas d'objectif défini → journal rempli = journée gagnée
+  if (calorieTarget <= 0) return 100
 
-  // Séance sport : 20 pts
-  if ((sessions ?? []).length > 0) score += 20
-
-  // Au moins 1 challenge complété : 20 pts
-  if ((completions ?? []).length > 0) score += 20
-
-  return score
+  const totalCal = (journal ?? []).reduce((s: number, e: any) => s + (e.cal ?? 0), 0)
+  // Progression vers 70 % de l'objectif personnalisé (plafonnée à 100)
+  return Math.min(100, Math.round((totalCal / (calorieTarget * 0.7)) * 100))
 }
 
 async function calcWeekScore(userId: string, joinedAt: string): Promise<number> {
@@ -181,26 +166,10 @@ export async function GET(req: NextRequest) {
 
       let streak = null
       if (m.privacy_level === 'standard' || isMe) {
+        // Série cumulative : nombre total de jours loggés (jamais de reset)
         const { data: jDates } = await supabaseAdmin
           .from('journal_entries').select('date').eq('user_id', m.user_id)
-          .gte('date', format(new Date(Date.now() - 90 * 86400000), 'yyyy-MM-dd'))
-        const uniqueDates = [...new Set((jDates ?? []).map((r: any) => r.date))]
-          .sort((a: any, b: any) => b.localeCompare(a)) as string[]
-        // Calculer "hier" local à partir de la date locale transmise par le client
-        const yestDate = new Date(localDate + 'T12:00:00')
-        yestDate.setDate(yestDate.getDate() - 1)
-        const yest = yestDate.toISOString().split('T')[0]
-        if (uniqueDates[0] === localDate || uniqueDates[0] === yest) {
-          let s = 0; let cur = uniqueDates[0]
-          for (const d of uniqueDates) {
-            if (d === cur) {
-              s++
-              const dt = new Date(cur + 'T12:00:00'); dt.setDate(dt.getDate() - 1)
-              cur = dt.toISOString().split('T')[0]
-            } else break
-          }
-          streak = s
-        } else streak = 0
+        streak = new Set((jDates ?? []).map((r: any) => r.date)).size
       }
 
       return {

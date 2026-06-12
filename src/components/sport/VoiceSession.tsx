@@ -177,7 +177,7 @@ export function VoiceSession({ onConfirm, onCancel, allowDatePick = false }: Pro
       <Loader2 size={40} className="animate-spin text-tta-mid" />
       <div className="text-center">
         <p className="font-bold text-zinc-900">Analyse en cours…</p>
-        <p className="text-sm text-zinc-400 mt-1">Whisper transcrit · Claude extrait les données</p>
+        <p className="text-sm text-zinc-400 mt-1">Waty analyse ta séance 🎙️</p>
       </div>
     </div>
   )

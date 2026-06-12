@@ -1,5 +1,8 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  // Le thème suit le toggle de l'app (.dark sur <html>), jamais l'OS seul —
+  // évite les mélanges clair/sombre (champ sombre dans un modal blanc, etc.)
+  darkMode: 'class',
   content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
   theme: {
     extend: {

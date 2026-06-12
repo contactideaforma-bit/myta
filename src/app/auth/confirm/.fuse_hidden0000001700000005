@@ -57,7 +57,8 @@ export default function ConfirmPage() {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center px-5 py-12 page-gradient"
+      className="min-h-screen flex flex-col items-center justify-center px-5 py-12"
+      style={{ background: 'linear-gradient(160deg, #f0f0ff 0%, #e8fbf8 50%, #f0fdf4 100%)' }}
     >
       <div className="w-full max-w-sm flex flex-col items-center gap-8">
 

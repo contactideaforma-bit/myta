@@ -7,7 +7,7 @@ import { fr } from 'date-fns/locale'
 import {
   ChevronLeft, ChevronRight, Flame,
   Search, X, Trash2, Loader2,
-  Scale, BarChart3, Mic, Camera,
+  Scale, BarChart3, Mic, Camera, Pencil,
 } from 'lucide-react'
 import { getSmokingWatyMessage } from '@/lib/gamification'
 import { todayISO, round1 } from '@/lib/utils'
@@ -169,6 +169,54 @@ function AddFoodModal({ food, onConfirm, onClose }: {
   )
 }
 
+// ─── Composant modal modification quantité ─────────────────────────────────
+function EditQtyModal({ entry, onConfirm, onClose }: {
+  entry: JournalEntry
+  onConfirm: (qty: number) => void
+  onClose: () => void
+}) {
+  const oldQty = Number(entry.quantity) || 100
+  const [qty, setQty] = useState(oldQty)
+  const r = qty / oldQty
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+        <h3 className="font-bold text-zinc-900 mb-1">✏️ Modifier la quantité</h3>
+        <p className="text-sm text-nutri-dark font-semibold mb-4 truncate">{entry.food_name}</p>
+
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          {[
+            { val: Math.round(Number(entry.cal) * r), lbl: 'kcal', color: 'text-orange-500' },
+            { val: round1(Number(entry.prot) * r),    lbl: 'Prot.', color: 'text-blue-500' },
+            { val: round1(Number(entry.carb) * r),    lbl: 'Gluc.', color: 'text-yellow-500' },
+            { val: round1(Number(entry.fat) * r),     lbl: 'Lip.',  color: 'text-purple-500' },
+          ].map(({ val, lbl, color }) => (
+            <div key={lbl} className="text-center bg-zinc-50 rounded-xl p-2">
+              <div className={`text-base font-black ${color}`}>{val}</div>
+              <div className="text-xs text-zinc-400 uppercase">{lbl}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-3 mb-4">
+          <input
+            type="number" min={1} max={5000} value={qty}
+            onChange={e => setQty(Number(e.target.value))}
+            className="input flex-1 text-center font-mono text-lg font-bold"
+            autoFocus
+          />
+          <span className="text-sm text-zinc-400 font-semibold">grammes</span>
+        </div>
+
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-zinc-200 text-sm font-medium text-zinc-600 hover:bg-zinc-50">Annuler</button>
+          <button onClick={() => qty > 0 && onConfirm(qty)} className="flex-1 py-2.5 rounded-xl bg-nutri text-white text-sm font-bold hover:bg-nutri-dark">Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Page principale ───────────────────────────────────────────────────────
 export default function JournalPage() {
   const supabase = createClient()
@@ -195,6 +243,7 @@ export default function JournalPage() {
 
   const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null)
   const [nutriModal, setNutriModal] = useState<{ title: string; color: string; entries: NutrientEntry[] } | null>(null)
+  const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null)
 
   // ── Photo analyse ──────────────────────────────────────────
   const photoInputRef = useRef<HTMLInputElement>(null)
@@ -581,6 +630,38 @@ export default function JournalPage() {
     setPhotoAnalyzing(false)
   }
 
+  async function updateEntryQty(entry: JournalEntry, newQty: number) {
+    const oldQty = Number(entry.quantity) || 100
+    const r = newQty / oldQty
+    const patch = {
+      quantity: newQty,
+      cal:  Math.round(Number(entry.cal) * r),
+      prot: round1(Number(entry.prot) * r),
+      carb: round1(Number(entry.carb) * r),
+      fat:  round1(Number(entry.fat) * r),
+    }
+    const ap = getActiveProfile()
+    if (ap.isChild && ap.childId) {
+      const token = await getToken()
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      }
+      await fetch('/api/child-journal', {
+        method: 'PUT', headers,
+        body: JSON.stringify({ id: entry.id, child_id: ap.childId, ...patch }),
+      })
+    } else {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      await supabase.from('journal_entries').update(patch)
+        .eq('id', entry.id).eq('user_id', user.id)
+    }
+    setEditingEntry(null)
+    await loadDay(currentDate)
+    showToast('Quantité mise à jour ✓', 'ok')
+  }
+
   async function deleteEntry(id: string) {
     const ap = getActiveProfile()
     if (ap.isChild && ap.childId) {
@@ -648,6 +729,10 @@ export default function JournalPage() {
 
       {selectedFood && (
         <AddFoodModal food={selectedFood} onConfirm={confirmAdd} onClose={() => setSelectedFood(null)} />
+      )}
+
+      {editingEntry && (
+        <EditQtyModal entry={editingEntry} onConfirm={qty => updateEntryQty(editingEntry, qty)} onClose={() => setEditingEntry(null)} />
       )}
 
       {/* Header + navigation date */}
@@ -1000,6 +1085,9 @@ export default function JournalPage() {
                   <p className="text-xs text-zinc-400">{e.quantity}g · P:{e.prot}g · G:{e.carb}g · L:{e.fat}g</p>
                 </div>
                 <span className="text-sm font-bold text-orange-500 flex-shrink-0">{e.cal} kcal</span>
+                <button onClick={() => setEditingEntry(e)} className="p-1.5 rounded-lg hover:bg-blue-50 text-zinc-300 hover:text-blue-500 transition-colors">
+                  <Pencil size={14} />
+                </button>
                 <button onClick={() => deleteEntry(e.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-zinc-300 hover:text-red-500 transition-colors">
                   <Trash2 size={14} />
                 </button>

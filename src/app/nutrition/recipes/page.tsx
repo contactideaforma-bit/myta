@@ -480,7 +480,7 @@ export default function RecipesPage() {
         <div className="card text-center py-12 text-zinc-400">
           <ChefHat size={40} className="mx-auto mb-3 text-zinc-300" />
           <p className="text-sm font-medium">Choisis une catégorie</p>
-          <p className="text-xs mt-1">Claude va générer 4 recettes personnalisées</p>
+          <p className="text-xs mt-1">Waty va te concocter 4 recettes personnalisées</p>
         </div>
       )}
 
@@ -489,7 +489,7 @@ export default function RecipesPage() {
         <div className="card text-center py-14">
           <Loader2 size={32} className="animate-spin text-nutri mx-auto mb-3" />
           <p className="text-sm font-medium text-zinc-700">Génération des recettes…</p>
-          <p className="text-xs text-zinc-400 mt-1">Claude prépare 4 recettes pour toi ✨</p>
+          <p className="text-xs text-zinc-400 mt-1">Waty prépare 4 recettes pour toi ✨</p>
         </div>
       )}
 

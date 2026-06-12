@@ -19,6 +19,9 @@ export interface DailyChallenge {
   label:       string
   emoji:       string
   watyMessage: string
+  /** Si défini, le défi est sportif : son accomplissement crée une séance
+   *  de cette durée (en min) dans l'historique sport. */
+  sportDuration?: number
 }
 
 export interface SmokingDay {
@@ -93,37 +96,12 @@ export function getNextBadge(streak: number): BadgeLevel | null {
 }
 
 // ── Calcul de la série (streak) ──────────────────────────────
-// Reçoit un tableau de dates ISO "yyyy-MM-dd" (dates avec au moins 1 entrée)
+// Reçoit un tableau de dates ISO "yyyy-MM-dd" (dates avec au moins 1 entrée).
+// Série CUMULATIVE : chaque jour loggé compte +1. Un jour manqué met la série
+// en pause (elle ne retombe JAMAIS à zéro) et la progression reprend
+// au prochain jour loggé.
 export function calcStreak(dates: string[]): number {
-  if (!dates.length) return 0
-
-  const unique = [...new Set(dates)].sort((a, b) => b.localeCompare(a)) // desc
-  const today  = new Date().toISOString().split('T')[0]
-  const yesterday = (() => {
-    const d = new Date()
-    d.setDate(d.getDate() - 1)
-    return d.toISOString().split('T')[0]
-  })()
-
-  // La série doit commencer aujourd'hui ou hier
-  if (unique[0] !== today && unique[0] !== yesterday) return 0
-
-  let streak = 0
-  let current = unique[0]
-
-  for (const date of unique) {
-    if (date === current) {
-      streak++
-      // Recule d'un jour
-      const d = new Date(current + 'T12:00:00')
-      d.setDate(d.getDate() - 1)
-      current = d.toISOString().split('T')[0]
-    } else {
-      break
-    }
-  }
-
-  return streak
+  return new Set(dates).size
 }
 
 // ── Pool de challenges du jour ───────────────────────────────
@@ -145,6 +123,7 @@ const CHALLENGE_POOL: DailyChallenge[] = [
     label:       'Faire 10 min de marche',
     emoji:       '🚶',
     watyMessage: '10 minutes, c\'est accessible pour tout le monde. Même toi 😉',
+    sportDuration: 10,
   },
   {
     key:         'fruit',
@@ -175,6 +154,7 @@ const CHALLENGE_POOL: DailyChallenge[] = [
     label:       '5 min d\'étirements',
     emoji:       '🧘',
     watyMessage: 'Prendre soin de son corps c\'est aussi savoir se détendre.',
+    sportDuration: 5,
   },
   {
     key:         'sleep_early',

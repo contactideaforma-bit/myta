@@ -12,6 +12,8 @@ interface CustomChallenge {
   id: string
   label: string
   emoji: string
+  isSport?:  boolean
+  duration?: number   // minutes (si sportif)
 }
 
 interface ChallengeCardProps {
@@ -28,6 +30,8 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
   const [customChallenges, setCustomChallenges] = useState<CustomChallenge[]>([])
   const [newLabel, setNewLabel] = useState('')
   const [newEmoji, setNewEmoji] = useState('💪')
+  const [newIsSport, setNewIsSport]     = useState(false)
+  const [newDuration, setNewDuration]   = useState(15)
   const supabase = createClient()
 
   useEffect(() => {
@@ -43,6 +47,8 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
       id: `custom_${Date.now()}`,
       label: newLabel.trim(),
       emoji: newEmoji,
+      isSport:  newIsSport,
+      duration: newIsSport ? Math.max(1, newDuration) : undefined,
     }
     const updated = [...customChallenges, c]
     localStorage.setItem(CUSTOM_CHALLENGE_KEY, JSON.stringify(updated))
@@ -50,6 +56,8 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
     setShowCreateModal(false)
     setNewLabel('')
     setNewEmoji('💪')
+    setNewIsSport(false)
+    setNewDuration(15)
   }
 
   function deleteCustomChallenge(id: string) {
@@ -65,6 +73,7 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
       label: c.label,
       emoji: c.emoji,
       watyMessage: 'Challenge perso complété ! Tu te connais mieux que personne.',
+      sportDuration: c.isSport ? (c.duration ?? 15) : undefined,
     })),
   ]
 
@@ -78,6 +87,21 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
         await supabase.from('challenge_completions').insert(
           { user_id: user.id, challenge_key: challenge.key, completed_date: todayISO() }
         )
+
+        // Défi sportif → s'ajoute comme séance du jour dans l'historique sport
+        if (challenge.sportDuration) {
+          const { data: w } = await supabase
+            .from('weight_log').select('weight_kg').eq('user_id', user.id)
+            .order('date', { ascending: false }).limit(1)
+          const weight = Number(w?.[0]?.weight_kg) || 70
+          await supabase.from('sessions').insert({
+            user_id:         user.id,
+            session_date:    todayISO(),
+            duration_min:    challenge.sportDuration,
+            calories_burned: Math.round(5 * weight * (challenge.sportDuration / 60)),
+            notes:           `🎯 Défi du jour : ${challenge.label}`,
+          })
+        }
       } catch { /* ignore */ }
     }
     onComplete(challenge.key)
@@ -208,6 +232,25 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
                   onKeyDown={e => e.key === 'Enter' && saveCustomChallenge()}
                 />
                 <p className="text-[10px] text-zinc-400 mt-1 text-right">{newLabel.length}/60</p>
+              </div>
+              {/* Objectif sportif */}
+              <div className="bg-zinc-50 rounded-2xl p-3 flex flex-col gap-2">
+                <button onClick={() => setNewIsSport(v => !v)} className="flex items-center justify-between w-full">
+                  <span className="text-xs font-bold text-zinc-600">🏋️ Objectif sportif</span>
+                  <span className={`w-10 h-6 rounded-full p-0.5 transition-colors ${newIsSport ? 'bg-violet-500' : 'bg-zinc-300'}`}>
+                    <span className={`block w-5 h-5 bg-white rounded-full shadow transition-transform ${newIsSport ? 'translate-x-4' : ''}`} />
+                  </span>
+                </button>
+                {newIsSport && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number" min={1} max={300} value={newDuration}
+                      onChange={e => setNewDuration(Number(e.target.value))}
+                      className="input w-20 text-center font-bold"
+                    />
+                    <span className="text-xs text-zinc-500">min — une fois accompli, le défi s'ajoutera à ton historique sport comme une séance</span>
+                  </div>
+                )}
               </div>
               <button
                 onClick={saveCustomChallenge}

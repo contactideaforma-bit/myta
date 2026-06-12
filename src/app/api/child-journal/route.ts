@@ -123,6 +123,33 @@ export async function POST(req: NextRequest) {
 }
 
 /**
+ * PUT /api/child-journal
+ * Body : { id, child_id, quantity, cal, prot, carb, fat }
+ * Met à jour la quantité (et macros recalculées) d'une entrée.
+ */
+export async function PUT(req: NextRequest) {
+  const user = await getUser(req)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const body = await req.json().catch(() => ({}))
+  const { id, child_id, quantity, cal, prot, carb, fat } = body
+
+  if (!id || !child_id) return NextResponse.json({ error: 'Paramètres manquants' }, { status: 400 })
+
+  const ok = await verifyOwnership(child_id, user.id)
+  if (!ok) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const { error } = await supabaseAdmin
+    .from('journal_entries')
+    .update({ quantity, cal, prot, carb, fat })
+    .eq('id', id)
+    .eq('child_profile_id', child_id)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ success: true })
+}
+
+/**
  * DELETE /api/child-journal?id=UUID&child_id=UUID
  */
 export async function DELETE(req: NextRequest) {

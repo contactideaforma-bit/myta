@@ -89,20 +89,20 @@ function WatyRulesCard() {
       {open && (
         <div className="px-4 pb-4 flex flex-col gap-2.5 text-sm text-zinc-600 leading-relaxed border-t border-violet-100 pt-3">
           <div className="flex items-start gap-2">
-            <span className="text-base flex-shrink-0">🔄</span>
-            <p><strong>Chaque jour repart à zéro.</strong> Waty démarre en bas de la lave au lever du soleil. C'est une ardoise vierge chaque matin.</p>
+            <span className="text-base flex-shrink-0">🕛</span>
+            <p><strong>Chaque jour repart à zéro à minuit</strong> (ton heure locale) : compteurs à zéro, Waty au niveau zéro, en bas de la lave.</p>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-base flex-shrink-0">🥗</span>
-            <p><strong>Note un repas</strong> → Waty monte. <strong>Ajoute une séance sport</strong> → Waty monte encore plus haut. <strong>Coche tes challenges</strong> → Waty s'envole !</p>
+            <p><strong>Remplis ton journal alimentaire</strong> et atteins <strong>au moins 70 % de ton objectif personnalisé</strong> → tu gagnes ta journée et tu fais monter Waty.</p>
           </div>
           <div className="flex items-start gap-2">
-            <span className="text-base flex-shrink-0">🤝</span>
-            <p><strong>L'équipe joue ensemble.</strong> Plus vos membres sont actifs aujourd'hui, plus Waty s'élève dans la journée.</p>
+            <span className="text-base flex-shrink-0">🪜</span>
+            <p><strong>6 étapes jusqu'à la coupe.</strong> Waty progresse au fil de la journée en fonction des résultats de chaque membre du groupe.</p>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-base flex-shrink-0">🏆</span>
-            <p><strong>Score hebdo ≥ 70%</strong> = Waty sauvé ! L'équipe gagne une <strong>Coupe</strong> comptabilisée au classement global.</p>
+            <p><strong>Tous les membres au top</strong> = Waty sauvé ! Et avec un score hebdo d'équipe ≥ 70 %, vous remportez une <strong>Coupe</strong> au classement global.</p>
           </div>
           <div className="bg-violet-50 rounded-2xl px-3 py-2.5 mt-1">
             <p className="text-xs text-violet-700 italic">💬 "Chaque repas noté, chaque séance ajoutée me sauve un peu plus. Vous êtes ma force !" — Waty</p>
@@ -124,14 +124,15 @@ const LAVA_STAGES = [
   { img: '/lava-win.png', label: "Bravo l'équipe des Champions ! Waty est sauvé 🏆" },
 ]
 
-// Lava basé sur le score JOURNALIER (repart à 0 chaque jour)
+// Lava basé sur le score JOURNALIER (repart à 0 chaque jour à minuit, heure locale)
+// 6 étapes (lava-0 → lava-5) puis la coupe (lava-win) à 100 %
 function getLavaStage(dayScore: number): number {
-  if (dayScore >= 90) return 6
-  if (dayScore >= 70) return 5
-  if (dayScore >= 50) return 4
-  if (dayScore >= 35) return 3
-  if (dayScore >= 20) return 2
-  if (dayScore >= 1)  return 1
+  if (dayScore >= 100) return 6
+  if (dayScore >= 84)  return 5
+  if (dayScore >= 67)  return 4
+  if (dayScore >= 50)  return 3
+  if (dayScore >= 34)  return 2
+  if (dayScore >= 17)  return 1
   return 0
 }
 
@@ -505,20 +506,22 @@ export default function FriendsPage() {
         localStorage.setItem('myta_group_ids', JSON.stringify(loadedGroups.map((g: Group) => g.id)))
       } catch {}
       // Vérifier les non-lus par groupe
-      if (oldLastVisit > 0 && loadedGroups.length > 0) {
-        checkUnreadByGroup(loadedGroups.map((g: Group) => g.id), user.id, oldLastVisit)
+      if (loadedGroups.length > 0) {
+        checkUnreadByGroup(loadedGroups.map((g: Group) => g.id), user.id)
       }
     }
     setLoading(false)
   }
 
-  async function checkUnreadByGroup(groupIds: string[], userId: string, globalLastVisit: number) {
+  async function checkUnreadByGroup(groupIds: string[], userId: string) {
     const newUnread = new Set<string>()
     for (const groupId of groupIds) {
       try {
+        // La pastille ne disparaît que quand les messages du groupe ont été VUS
+        // (ouverture du panneau messages → myta_group_last_read_<id>).
+        // Jamais lu → fenêtre de 7 jours (les messages sont purgés à 24 h côté API).
         const perGroupRead = parseInt(localStorage.getItem(`myta_group_last_read_${groupId}`) || '0')
-        const cutoffMs = Math.max(globalLastVisit, perGroupRead)
-        if (!cutoffMs) continue
+        const cutoffMs = perGroupRead || (Date.now() - 7 * 24 * 3600 * 1000)
         const cutoff = new Date(cutoffMs).toISOString()
         const { count } = await supabase
           .from('group_messages')
