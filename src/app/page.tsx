@@ -265,6 +265,14 @@ export default function HomePage() {
               <span>✓ Sans engagement</span>
               <span>✓ Hébergé en Europe</span>
             </div>
+            <div className="mt-4 inline-flex items-start gap-2.5 bg-white/10 border border-white/20 backdrop-blur rounded-2xl px-4 py-3 text-left max-w-md">
+              <span className="text-base flex-shrink-0">💳</span>
+              <p className="text-xs text-white/85 leading-relaxed">
+                Une carte bancaire est demandée pour activer l&apos;essai gratuit, mais{' '}
+                <strong className="text-white">aucun prélèvement pendant les 3 jours</strong>.
+                Paiement sécurisé par Stripe, résiliable en 1 clic à tout moment.
+              </p>
+            </div>
           </div>
 
           {/* Mockup téléphone + Waty */}
@@ -515,9 +523,15 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-          <p className="text-center text-xs text-zinc-400 mt-6">
-            Sans engagement · Annulation en 1 clic depuis Mon compte
-          </p>
+          <div className="max-w-lg mx-auto mt-6 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 flex items-start gap-2.5">
+            <span className="text-base flex-shrink-0">🔒</span>
+            <p className="text-xs text-blue-900 leading-relaxed">
+              <strong>Bon à savoir :</strong> une carte bancaire est demandée pour démarrer
+              l&apos;essai gratuit — c&apos;est sécurisé par <strong>Stripe</strong>, et{' '}
+              <strong>rien n&apos;est prélevé pendant la période d&apos;essai</strong>.
+              Tu peux résilier à tout moment, en 1 clic, depuis Mon compte.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -552,6 +566,10 @@ export default function HomePage() {
         <h2 className="text-xl md:text-2xl font-black text-zinc-900 mb-6 text-center tracking-tight">Questions fréquentes</h2>
         <div className="space-y-3">
           {[
+            {
+              q: "Pourquoi demander ma carte bancaire pour un essai gratuit ?",
+              a: "La carte sert uniquement à activer ton abonnement à la fin de l'essai si tu décides de rester. Rien n'est prélevé pendant les 3 jours d'essai. Le paiement est entièrement géré par Stripe (MYTA ne voit ni ne stocke jamais ta carte), et tu peux annuler en 1 clic avant la fin de l'essai — tu ne paieras alors rien du tout.",
+            },
             {
               q: 'Puis-je changer de forfait ?',
               a: 'Oui, à tout moment depuis Mon compte. Le changement est immédiat, avec un calcul au prorata.',
