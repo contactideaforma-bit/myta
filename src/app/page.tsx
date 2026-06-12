@@ -132,38 +132,40 @@ const SCREENSHOTS = [
 // ─── Features ─────────────────────────────────────────────────────────────────
 const FEATURES = [
   {
-    emoji: '📸', title: 'Photo de votre assiette',
-    desc: "Prenez votre assiette en photo. L'IA détecte les aliments, estime les calories et les macros instantanément.",
+    emoji: '📸', title: 'Photo de ton assiette',
+    desc: "Prends ton assiette en photo. Waty détecte les aliments, estime les calories et les macros instantanément.",
     color: 'from-orange-50 to-yellow-50 border-orange-100',
   },
   {
     emoji: '🎙️', title: 'Vocal sport & nutrition',
-    desc: '"J\'ai fait 30 min de vélo et mangé une salade composée" — l\'IA transcrit et logue tout automatiquement.',
+    desc: '"J\'ai fait 30 min de vélo et mangé une salade composée" — Waty transcrit et logue tout automatiquement.',
     color: 'from-blue-50 to-sky-50 border-blue-100',
   },
   {
     emoji: '🌙', title: 'Suivi du sommeil',
-    desc: "Heure de coucher, de réveil, qualité ressentie. Analysez l'impact de votre sommeil sur votre forme.",
+    desc: "Heure de coucher, de réveil, qualité ressentie. Analyse l'impact de ton sommeil sur ta forme.",
     color: 'from-purple-50 to-violet-50 border-purple-100',
   },
   {
     emoji: '📊', title: 'Rapport santé IA 7j',
-    desc: 'Waty votre coach IA analyse vos 7 derniers jours et vous donne des conseils personnalisés concrets.',
+    desc: 'Waty analyse tes 7 derniers jours et te donne des conseils personnalisés concrets, chaque semaine.',
     color: 'from-green-50 to-emerald-50 border-green-100', premium: true,
   },
   {
     emoji: '🍽️', title: 'Recettes personnalisées',
-    desc: "L'IA génère des recettes adaptées à vos objectifs caloriques, vos goûts et vos conditions de santé.",
+    desc: "Des recettes générées selon tes objectifs caloriques, tes goûts et tes conditions de santé.",
     color: 'from-rose-50 to-pink-50 border-rose-100', premium: true,
   },
   {
-    emoji: '🏆', title: "Défis entre amis",
-    desc: "Créez des groupes, lancez des défis nutrition ou sport, suivez le classement en temps réel.",
+    emoji: '🔥', title: 'Série & badges',
+    desc: "Chaque jour noté fait grandir ta série — elle ne retombe jamais à zéro. Débloque 5 badges jusqu'à la Légende.",
     color: 'from-amber-50 to-orange-50 border-amber-100',
   },
 ]
 
 type TabKey = 'solo' | 'couple' | 'famille'
+
+const BRAND_GRADIENT = 'linear-gradient(90deg, #4B47A0 0%, #2BA8B0 100%)'
 
 export default function HomePage() {
   const [tab, setTab] = useState<TabKey>('solo')
@@ -185,218 +187,283 @@ export default function HomePage() {
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Carrousel auto du mockup ───────────────────────────────────────────────
+  useEffect(() => {
+    const id = setInterval(() => setScreenIdx(i => (i + 1) % SCREENSHOTS.length), 4000)
+    return () => clearInterval(id)
+  }, [])
+
   const plans = PLANS[tab]
 
   return (
     <div className="min-h-screen bg-white font-sans">
 
       {/* NAV */}
-      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-100">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-zinc-100">
+        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Image src="/logo_my_twin_app.png" alt="MYTA" width={28} height={28} className="rounded-lg" />
-            <span className="font-bold text-gray-900 text-lg">MyTwinApp</span>
+            <Image src="/logo_my_twin_app.png" alt="MYTA" width={110} height={28} className="object-contain" />
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/auth" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
+            <Link href="/auth" className="text-sm font-semibold text-zinc-500 hover:text-zinc-900 transition-colors">
               Connexion
             </Link>
             <Link
               href="/auth?mode=signup"
-              className="text-sm bg-teal-600 text-white px-4 py-2 rounded-full font-medium hover:bg-teal-700 transition-colors"
+              className="text-sm text-white px-5 py-2.5 rounded-full font-bold shadow-md hover:shadow-lg hover:scale-[1.03] transition-all"
+              style={{ background: BRAND_GRADIENT }}
             >
-              S&apos;inscrire
+              Essai gratuit
             </Link>
           </div>
         </div>
       </nav>
 
       {/* HERO */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-teal-600 via-teal-500 to-emerald-400 text-white">
-        <div className="max-w-5xl mx-auto px-4 py-16 md:py-24 flex flex-col md:flex-row items-center gap-10">
+      <section className="relative overflow-hidden text-white"
+        style={{ background: 'linear-gradient(135deg, #2D2A5E 0%, #4B47A0 45%, #2BA8B0 100%)' }}>
+        {/* Blobs lumineux */}
+        <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full opacity-20 animate-myta-blob"
+          style={{ background: 'radial-gradient(circle, #7BCB8E, transparent 70%)' }} />
+        <div className="absolute -bottom-32 -right-16 w-[28rem] h-[28rem] rounded-full opacity-20 animate-myta-blob"
+          style={{ background: 'radial-gradient(circle, #a78bfa, transparent 70%)', animationDelay: '2s' }} />
+
+        <div className="relative max-w-5xl mx-auto px-4 pt-16 pb-20 md:pt-24 md:pb-28 flex flex-col md:flex-row items-center gap-12">
 
           {/* Texte */}
-          <div className="flex-1 text-center md:text-left">
-            <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-1.5 text-sm mb-6">
-              <span>🥗</span>
+          <div className="flex-1 text-center md:text-left animate-myta-fadeup">
+            <div className="inline-flex items-center gap-2 bg-white/15 border border-white/20 backdrop-blur rounded-full px-4 py-1.5 text-sm mb-6">
+              <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
               <span className="font-medium">Nutrition · Sport · Sommeil · IA</span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-extrabold leading-tight mb-4">
-              Votre coach santé<br />
-              <span className="text-yellow-300">dans la poche</span>
+            <h1 className="text-4xl md:text-6xl font-black leading-[1.08] tracking-tight mb-5">
+              Ton coach santé,<br />
+              <span className="bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-200 bg-clip-text text-transparent">
+                propulsé par l&apos;IA
+              </span>
             </h1>
-            <p className="text-white/90 text-lg md:text-xl mb-8 max-w-lg">
-              Prenez votre assiette en photo, décrivez votre sport à la voix, suivez votre sommeil.
-              MYTA analyse tout et vous guide vers vos objectifs.
+            <p className="text-white/85 text-lg md:text-xl mb-8 max-w-lg mx-auto md:mx-0 leading-relaxed">
+              Photographie ton assiette, dicte ta séance de sport, suis ton sommeil.
+              <strong className="text-white"> Waty</strong> analyse tout et te guide chaque jour vers tes objectifs.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
               <Link
                 href="/auth?mode=signup"
-                className="bg-white text-teal-700 font-bold px-8 py-3.5 rounded-full text-base hover:bg-yellow-50 transition-colors shadow-lg"
+                className="bg-white text-[#2D2A5E] font-extrabold px-8 py-4 rounded-full text-base shadow-2xl hover:scale-[1.04] active:scale-[0.98] transition-transform"
               >
-                Démarrer gratuitement →
+                Démarrer — 3 jours gratuits →
               </Link>
               <a
                 href="#screenshots"
-                className="border border-white/40 text-white px-6 py-3.5 rounded-full text-base hover:bg-white/10 transition-colors"
+                className="border-2 border-white/30 text-white px-6 py-4 rounded-full text-base font-semibold hover:bg-white/10 transition-colors"
               >
-                Voir l&apos;app ↓
+                Découvrir l&apos;app ↓
               </a>
             </div>
-            <p className="mt-4 text-white/70 text-sm">Dès 2,99 €/mois · Sans engagement · Annulation à tout moment</p>
+            <div className="mt-5 flex items-center gap-4 justify-center md:justify-start text-white/70 text-sm">
+              <span>✓ Dès 2,99 €/mois</span>
+              <span>✓ Sans engagement</span>
+              <span>✓ Hébergé en Europe</span>
+            </div>
           </div>
 
-          {/* Mockup téléphone */}
-          <div className="flex-shrink-0 relative">
-            <div className="w-52 md:w-60 h-[440px] md:h-[500px] bg-white/10 rounded-[2.5rem] border-2 border-white/30 shadow-2xl overflow-hidden relative">
-              {SCREENSHOTS.map((s, i) => (
-                <div
-                  key={i}
-                  className={`absolute inset-0 transition-opacity duration-500 ${i === screenIdx ? 'opacity-100' : 'opacity-0'}`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={s.src} alt={s.label} className="w-full h-full object-cover" />
+          {/* Mockup téléphone + Waty */}
+          <div className="flex-shrink-0 relative animate-myta-fadeup" style={{ animationDelay: '0.2s' }}>
+            <div className="animate-myta-float">
+              <div className="w-56 md:w-64 h-[460px] md:h-[520px] bg-zinc-900 rounded-[2.8rem] border-[6px] border-zinc-800 shadow-2xl overflow-hidden relative ring-1 ring-white/20">
+                {SCREENSHOTS.map((s, i) => (
+                  <div
+                    key={i}
+                    className={`absolute inset-0 transition-opacity duration-700 ${i === screenIdx ? 'opacity-100' : 'opacity-0'}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={s.src} alt={s.label} className="w-full h-full object-cover" />
+                  </div>
+                ))}
+                <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute bottom-3 left-0 right-0 text-center text-white text-xs font-semibold">
+                  {SCREENSHOTS[screenIdx].label}
                 </div>
-              ))}
-              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/50 to-transparent" />
-              <div className="absolute bottom-3 left-0 right-0 text-center text-white text-xs font-medium">
-                {SCREENSHOTS[screenIdx].label}
               </div>
             </div>
+            {/* Waty qui regarde le téléphone */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/waty-sport.png" alt="Waty"
+              className="absolute -bottom-6 -left-16 w-28 md:w-32 drop-shadow-2xl animate-myta-float"
+              style={{ animationDelay: '1s' }} />
             {/* Dots */}
-            <div className="flex gap-1.5 justify-center mt-3">
+            <div className="flex gap-1.5 justify-center mt-5">
               {SCREENSHOTS.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => setScreenIdx(i)}
-                  className={`h-2 rounded-full transition-all ${i === screenIdx ? 'bg-white w-5' : 'bg-white/40 w-2'}`}
+                  className={`h-2 rounded-full transition-all ${i === screenIdx ? 'bg-white w-6' : 'bg-white/40 w-2'}`}
                 />
               ))}
             </div>
           </div>
         </div>
+
+        {/* Vague de transition */}
+        <svg className="absolute bottom-0 left-0 right-0 w-full" viewBox="0 0 1440 60" fill="none" preserveAspectRatio="none" style={{ height: 40 }}>
+          <path d="M0 60 C 360 0, 1080 0, 1440 60 L 1440 60 L 0 60 Z" fill="white" />
+        </svg>
       </section>
 
       {/* STATS */}
-      <section className="bg-gray-50 border-b border-gray-100">
-        <div className="max-w-5xl mx-auto px-4 py-6 grid grid-cols-3 gap-4 text-center">
-          {[
-            { v: 'Dès 2,99€', l: 'par mois' },
-            { v: '6 formules', l: 'Solo · Couple · Famille' },
-            { v: 'IA intégrée', l: 'Claude + Whisper' },
-          ].map((s) => (
-            <div key={s.v}>
-              <p className="text-lg md:text-2xl font-extrabold text-teal-600">{s.v}</p>
-              <p className="text-xs md:text-sm text-gray-500">{s.l}</p>
-            </div>
-          ))}
-        </div>
+      <section className="max-w-5xl mx-auto px-4 py-8 grid grid-cols-3 gap-4 text-center">
+        {[
+          { v: 'Dès 2,99 €', l: 'par mois, sans engagement' },
+          { v: '6 formules', l: 'Solo · Couple · Famille' },
+          { v: 'IA Waty', l: 'photo, voix, recettes, rapport' },
+        ].map((s) => (
+          <div key={s.v} className="py-3">
+            <p className="text-lg md:text-2xl font-black bg-clip-text text-transparent"
+              style={{ backgroundImage: BRAND_GRADIENT }}>{s.v}</p>
+            <p className="text-xs md:text-sm text-zinc-500">{s.l}</p>
+          </div>
+        ))}
       </section>
 
       {/* SCREENSHOTS */}
-      <section id="screenshots" className="py-16 px-4 max-w-5xl mx-auto">
-        <h2 className="text-2xl md:text-3xl font-extrabold text-center text-gray-900 mb-2">
+      <section id="screenshots" className="py-14 px-4 max-w-5xl mx-auto">
+        <h2 className="text-2xl md:text-4xl font-black text-center text-zinc-900 mb-2 tracking-tight">
           L&apos;app en action
         </h2>
-        <p className="text-gray-500 text-center mb-10">Aperçu des écrans principaux</p>
+        <p className="text-zinc-500 text-center mb-10">Simple, rapide, motivante — au quotidien</p>
         <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory" style={{ scrollbarWidth: 'none' }}>
           {SCREENSHOTS.map((s, i) => (
             <div
               key={i}
               onClick={() => setScreenIdx(i)}
-              className={`flex-shrink-0 w-40 snap-center cursor-pointer transition-transform ${screenIdx === i ? 'scale-105' : ''}`}
+              className={`flex-shrink-0 w-44 snap-center cursor-pointer transition-transform hover:-translate-y-1 ${screenIdx === i ? 'scale-105' : ''}`}
             >
-              <div className={`w-40 h-72 rounded-2xl overflow-hidden border-2 shadow-md transition-all ${
-                screenIdx === i ? 'border-teal-500 shadow-teal-200' : 'border-gray-200'
+              <div className={`w-44 h-80 rounded-3xl overflow-hidden border-2 shadow-lg transition-all ${
+                screenIdx === i ? 'border-[#4B47A0] shadow-indigo-200' : 'border-zinc-200'
               }`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={s.src} alt={s.label} className="w-full h-full object-cover" />
               </div>
-              <p className="text-center text-xs font-medium text-gray-700 mt-2">{s.label}</p>
-              <p className="text-center text-xs text-gray-400">{s.desc}</p>
+              <p className="text-center text-xs font-bold text-zinc-700 mt-2">{s.label}</p>
+              <p className="text-center text-xs text-zinc-400">{s.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* FEATURES */}
-      <section className="py-16 px-4 bg-gray-50">
+      <section className="py-16 px-4 bg-zinc-50">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-extrabold text-center text-gray-900 mb-2">
-            Tout ce dont vous avez besoin
+          <h2 className="text-2xl md:text-4xl font-black text-center text-zinc-900 mb-2 tracking-tight">
+            Tout ce qu&apos;il te faut
           </h2>
-          <p className="text-gray-500 text-center mb-10">Conçu pour être simple et puissant au quotidien</p>
+          <p className="text-zinc-500 text-center mb-10">Conçu pour être simple et puissant au quotidien</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {FEATURES.map((f) => (
-              <div key={f.title} className={`relative bg-gradient-to-br ${f.color} border rounded-2xl p-5`}>
+              <div key={f.title}
+                className={`relative bg-gradient-to-br ${f.color} border rounded-3xl p-6 transition-all hover:-translate-y-1 hover:shadow-lg`}>
                 {f.premium && (
-                  <span className="absolute top-3 right-3 text-xs bg-teal-600 text-white px-2 py-0.5 rounded-full font-medium">
-                    Premium
+                  <span className="absolute top-4 right-4 text-[10px] text-white px-2.5 py-1 rounded-full font-bold"
+                    style={{ background: BRAND_GRADIENT }}>
+                    PREMIUM
                   </span>
                 )}
-                <div className="text-3xl mb-3">{f.emoji}</div>
-                <h3 className="font-bold text-gray-900 mb-1">{f.title}</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">{f.desc}</p>
+                <div className="text-4xl mb-3">{f.emoji}</div>
+                <h3 className="font-extrabold text-zinc-900 mb-1.5">{f.title}</h3>
+                <p className="text-sm text-zinc-600 leading-relaxed">{f.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* COMMENT ÇA MARCHE */}
+      {/* SAUVER WATY — gamification */}
       <section className="py-16 px-4 max-w-5xl mx-auto">
-        <h2 className="text-2xl md:text-3xl font-extrabold text-center text-gray-900 mb-10">
-          Démarrer en 3 étapes
+        <div className="rounded-[2rem] overflow-hidden text-white relative"
+          style={{ background: 'linear-gradient(135deg, #4C1D95 0%, #7c3aed 55%, #db2777 100%)' }}>
+          <div className="flex flex-col md:flex-row items-center gap-8 p-8 md:p-12">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/lava-3.png" alt="Sauver Waty"
+              className="w-56 md:w-72 rounded-3xl shadow-2xl ring-4 ring-white/20 animate-myta-float" />
+            <div className="flex-1 text-center md:text-left">
+              <p className="text-xs font-black uppercase tracking-widest text-pink-200 mb-2">Jouez en équipe</p>
+              <h2 className="text-2xl md:text-4xl font-black mb-4 tracking-tight">
+                Sauvez Waty de la lave 🌋
+              </h2>
+              <p className="text-white/85 leading-relaxed mb-6">
+                Créez un groupe avec vos amis ou votre famille. Chaque jour à minuit, Waty retombe
+                en bas de la lave — remplissez vos journaux et atteignez vos objectifs pour le faire
+                grimper les <strong>6 étapes</strong> jusqu&apos;à la coupe. Défis, messages de groupe,
+                classement : la santé devient un jeu d&apos;équipe.
+              </p>
+              <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+                {['🤝 Jusqu\'à 10 amis', '🏆 Coupes hebdomadaires', '💬 Messages de groupe', '🔥 Séries & badges'].map(t => (
+                  <span key={t} className="bg-white/15 border border-white/20 rounded-full px-3.5 py-1.5 text-xs font-bold">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* COMMENT ÇA MARCHE */}
+      <section className="py-14 px-4 max-w-5xl mx-auto">
+        <h2 className="text-2xl md:text-4xl font-black text-center text-zinc-900 mb-12 tracking-tight">
+          Démarre en 3 étapes
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
             {
               step: '1', icon: '📝',
-              title: 'Créez votre profil',
-              desc: "Renseignez votre objectif (perte de poids, maintien, prise de masse) et vos éventuelles conditions de santé.",
+              title: 'Crée ton profil',
+              desc: "Ton objectif (perte de poids, maintien, prise de masse), tes mensurations — MYTA calcule tes besoins.",
             },
             {
               step: '2', icon: '📸',
-              title: 'Loggez sans effort',
-              desc: "Photo de votre assiette, message vocal pour votre sport ou sommeil — MYTA se charge du reste.",
+              title: 'Logue sans effort',
+              desc: "Photo de ton assiette, message vocal pour ton sport ou ton sommeil — Waty se charge du reste.",
             },
             {
-              step: '3', icon: '📊',
-              title: "Progressez avec l'IA",
-              desc: "Recettes adaptées, rapport hebdomadaire Waty, défis entre amis pour rester motivé.",
+              step: '3', icon: '🚀',
+              title: "Progresse avec Waty",
+              desc: "Recettes adaptées, rapport hebdo, défis entre amis et badges pour rester motivé jour après jour.",
             },
           ].map((s) => (
-            <div key={s.step} className="text-center">
-              <div className="w-12 h-12 bg-teal-600 text-white rounded-full flex items-center justify-center font-extrabold text-xl mx-auto mb-4">
+            <div key={s.step} className="text-center group">
+              <div className="w-14 h-14 text-white rounded-2xl flex items-center justify-center font-black text-xl mx-auto mb-4 shadow-lg group-hover:scale-110 transition-transform"
+                style={{ background: BRAND_GRADIENT }}>
                 {s.step}
               </div>
               <div className="text-4xl mb-3">{s.icon}</div>
-              <h3 className="font-bold text-gray-900 text-lg mb-2">{s.title}</h3>
-              <p className="text-gray-500 text-sm leading-relaxed">{s.desc}</p>
+              <h3 className="font-extrabold text-zinc-900 text-lg mb-2">{s.title}</h3>
+              <p className="text-zinc-500 text-sm leading-relaxed">{s.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* PRICING */}
-      <section id="pricing" className="py-16 px-4 bg-gray-50">
+      <section id="pricing" className="py-16 px-4 bg-zinc-50">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-extrabold text-center text-gray-900 mb-2">
-            Choisissez votre formule
+          <h2 className="text-2xl md:text-4xl font-black text-center text-zinc-900 mb-2 tracking-tight">
+            Choisis ta formule
           </h2>
-          <p className="text-gray-500 text-center mb-8">
-            Tous les forfaits incluent le journal, le sport et le suivi sommeil
+          <p className="text-zinc-500 text-center mb-8">
+            Journal, sport et sommeil inclus partout · 3 jours d&apos;essai gratuit
           </p>
 
           {/* Tabs */}
-          <div className="flex bg-gray-200 rounded-full p-1 max-w-xs mx-auto mb-8">
+          <div className="flex bg-zinc-200/70 rounded-full p-1 max-w-xs mx-auto mb-10">
             {(['solo', 'couple', 'famille'] as TabKey[]).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
-                className={`flex-1 py-2 rounded-full text-sm font-semibold transition-all ${
-                  tab === t ? 'bg-white text-teal-600 shadow' : 'text-gray-500 hover:text-gray-700'
+                className={`flex-1 py-2.5 rounded-full text-sm font-bold transition-all ${
+                  tab === t ? 'text-white shadow-md' : 'text-zinc-500 hover:text-zinc-700'
                 }`}
+                style={tab === t ? { background: BRAND_GRADIENT } : {}}
               >
                 {t === 'solo' ? 'Solo' : t === 'couple' ? 'Couple' : 'Famille'}
               </button>
@@ -408,27 +475,29 @@ export default function HomePage() {
             {plans.map((plan) => (
               <div
                 key={plan.id}
-                className={`relative rounded-2xl border-2 p-6 transition-all ${
+                className={`relative rounded-3xl border-2 p-7 bg-white transition-all hover:-translate-y-1 ${
                   plan.highlight
-                    ? 'border-teal-500 bg-white shadow-xl shadow-teal-100'
-                    : 'border-gray-200 bg-white shadow-md'
+                    ? 'border-[#4B47A0] shadow-xl shadow-indigo-100'
+                    : 'border-zinc-200 shadow-md'
                 }`}
               >
                 {'badge' in plan && plan.badge && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-teal-600 text-white text-xs font-bold px-4 py-1 rounded-full whitespace-nowrap">
+                  <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-white text-xs font-black px-4 py-1.5 rounded-full whitespace-nowrap shadow-md"
+                    style={{ background: BRAND_GRADIENT }}>
                     {plan.badge}
                   </span>
                 )}
-                <h3 className="font-extrabold text-gray-900 text-xl mb-1">{plan.label}</h3>
+                <h3 className="font-extrabold text-zinc-900 text-xl mb-1">{plan.label}</h3>
                 <div className="flex items-baseline gap-1 mb-5">
-                  <span className="text-4xl font-extrabold text-teal-600">
+                  <span className="text-4xl font-black bg-clip-text text-transparent"
+                    style={{ backgroundImage: BRAND_GRADIENT }}>
                     {plan.price.toFixed(2).replace('.', ',')}€
                   </span>
-                  <span className="text-gray-400 text-sm">/mois</span>
+                  <span className="text-zinc-400 text-sm">/mois</span>
                 </div>
                 <ul className="space-y-2 mb-6">
                   {plan.features.map((f) => (
-                    <li key={f} className={`text-sm flex items-start gap-2 ${f.startsWith('❌') ? 'text-gray-300' : 'text-gray-700'}`}>
+                    <li key={f} className={`text-sm flex items-start gap-2 ${f.startsWith('❌') ? 'text-zinc-300' : 'text-zinc-700'}`}>
                       <span className="flex-shrink-0 text-base leading-none mt-0.5">{f.slice(0, 2)}</span>
                       <span>{f.slice(2).trim()}</span>
                     </li>
@@ -436,42 +505,42 @@ export default function HomePage() {
                 </ul>
                 <Link
                   href={plan.href}
-                  className={`block w-full py-3 rounded-xl font-bold text-center transition-colors ${
-                    plan.highlight
-                      ? 'bg-teal-600 text-white hover:bg-teal-700'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  className={`block w-full py-3.5 rounded-2xl font-bold text-center transition-all active:scale-[0.98] ${
+                    plan.highlight ? 'text-white shadow-lg hover:shadow-xl' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
                   }`}
+                  style={plan.highlight ? { background: BRAND_GRADIENT } : {}}
                 >
                   {plan.cta}
                 </Link>
               </div>
             ))}
           </div>
-          <p className="text-center text-xs text-gray-400 mt-6">
-            Sans engagement · Résiliable à tout moment depuis les réglages
+          <p className="text-center text-xs text-zinc-400 mt-6">
+            Sans engagement · Annulation en 1 clic depuis Mon compte
           </p>
         </div>
       </section>
 
       {/* PWA INSTALL */}
       <section className="py-16 px-4 max-w-5xl mx-auto">
-        <div className="bg-gradient-to-br from-teal-600 to-emerald-500 rounded-2xl p-8 text-white text-center">
+        <div className="rounded-[2rem] p-8 md:p-10 text-white text-center relative overflow-hidden"
+          style={{ background: BRAND_GRADIENT }}>
           <div className="text-5xl mb-4">📱</div>
-          <h2 className="text-2xl font-extrabold mb-2">Installez l&apos;app sur votre téléphone</h2>
-          <p className="text-white/80 mb-6 max-w-md mx-auto">
-            MYTA fonctionne comme une vraie appli — installez-la sur votre écran d&apos;accueil sans passer par l&apos;App Store.
+          <h2 className="text-2xl md:text-3xl font-black mb-2 tracking-tight">Installe MYTA sur ton téléphone</h2>
+          <p className="text-white/85 mb-7 max-w-md mx-auto">
+            MYTA fonctionne comme une vraie appli — ajoute-la à ton écran d&apos;accueil en 10 secondes.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto text-left">
-            <div className="bg-white/15 rounded-xl p-4">
+            <div className="bg-white/15 border border-white/20 backdrop-blur rounded-2xl p-4">
               <p className="font-bold mb-1">🍎 iPhone / Safari</p>
-              <p className="text-sm text-white/80">
-                Ouvrez mytwinapp.fr → <strong>Partager</strong> (↑) → <strong>&quot;Sur l&apos;écran d&apos;accueil&quot;</strong>
+              <p className="text-sm text-white/85">
+                mytwinapp.fr → <strong>Partager</strong> (↑) → <strong>&quot;Sur l&apos;écran d&apos;accueil&quot;</strong>
               </p>
             </div>
-            <div className="bg-white/15 rounded-xl p-4">
+            <div className="bg-white/15 border border-white/20 backdrop-blur rounded-2xl p-4">
               <p className="font-bold mb-1">🤖 Android / Chrome</p>
-              <p className="text-sm text-white/80">
-                Ouvrez mytwinapp.fr → Menu (⋮) → <strong>&quot;Ajouter à l&apos;écran d&apos;accueil&quot;</strong>
+              <p className="text-sm text-white/85">
+                mytwinapp.fr → Menu (⋮) → <strong>&quot;Ajouter à l&apos;écran d&apos;accueil&quot;</strong>
               </p>
             </div>
           </div>
@@ -480,12 +549,12 @@ export default function HomePage() {
 
       {/* FAQ */}
       <section className="py-8 px-4 max-w-2xl mx-auto pb-16">
-        <h2 className="text-xl font-extrabold text-gray-900 mb-6 text-center">Questions fréquentes</h2>
+        <h2 className="text-xl md:text-2xl font-black text-zinc-900 mb-6 text-center tracking-tight">Questions fréquentes</h2>
         <div className="space-y-3">
           {[
             {
               q: 'Puis-je changer de forfait ?',
-              a: 'Oui, à tout moment depuis vos réglages. Le changement est immédiat.',
+              a: 'Oui, à tout moment depuis Mon compte. Le changement est immédiat, avec un calcul au prorata.',
             },
             {
               q: "L'IA a-t-elle des limites en formule Essentiel ?",
@@ -497,44 +566,50 @@ export default function HomePage() {
             },
             {
               q: 'Mes données sont-elles sécurisées ?',
-              a: "Vos données sont stockées sur Supabase (infrastructure européenne) et ne sont jamais revendues.",
+              a: "Tes données sont chiffrées et hébergées en Europe (Supabase). Elles ne sont jamais revendues, et tu peux supprimer ton compte et toutes tes données en 1 clic.",
             },
           ].map((faq) => (
-            <details key={faq.q} className="bg-gray-50 rounded-xl border border-gray-200 group">
-              <summary className="px-5 py-4 font-semibold text-gray-900 cursor-pointer list-none flex items-center justify-between">
+            <details key={faq.q} className="bg-zinc-50 rounded-2xl border border-zinc-200 group">
+              <summary className="px-5 py-4 font-bold text-zinc-900 cursor-pointer list-none flex items-center justify-between text-sm md:text-base">
                 {faq.q}
-                <span className="text-gray-400 group-open:rotate-180 transition-transform">▾</span>
+                <span className="text-zinc-400 group-open:rotate-180 transition-transform">▾</span>
               </summary>
-              <p className="px-5 pb-4 text-sm text-gray-600 leading-relaxed">{faq.a}</p>
+              <p className="px-5 pb-4 text-sm text-zinc-600 leading-relaxed">{faq.a}</p>
             </details>
           ))}
         </div>
       </section>
 
       {/* CTA FINAL */}
-      <section className="bg-teal-600 text-white text-center py-16 px-4">
-        <h2 className="text-2xl md:text-3xl font-extrabold mb-3">
-          Prêt à transformer votre quotidien santé ?
+      <section className="relative overflow-hidden text-white text-center py-20 px-4"
+        style={{ background: 'linear-gradient(135deg, #2D2A5E 0%, #4B47A0 50%, #2BA8B0 100%)' }}>
+        <div className="absolute -top-20 left-1/4 w-72 h-72 rounded-full opacity-20 animate-myta-blob"
+          style={{ background: 'radial-gradient(circle, #7BCB8E, transparent 70%)' }} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/waty-rapport.png" alt="Waty" className="w-24 mx-auto mb-5 drop-shadow-xl animate-myta-float" />
+        <h2 className="text-2xl md:text-4xl font-black mb-3 tracking-tight relative">
+          Prêt à transformer ton quotidien ?
         </h2>
-        <p className="text-white/80 mb-8 text-lg">Rejoignez MYTA dès aujourd&apos;hui</p>
+        <p className="text-white/80 mb-8 text-lg relative">Waty t&apos;attend. 3 jours gratuits, sans engagement.</p>
         <Link
           href="/auth?mode=signup"
-          className="inline-block bg-white text-teal-700 font-bold px-10 py-4 rounded-full text-lg hover:bg-yellow-50 transition-colors shadow-xl"
+          className="relative inline-block bg-white text-[#2D2A5E] font-black px-10 py-4 rounded-full text-lg hover:scale-[1.04] active:scale-[0.98] transition-transform shadow-2xl"
         >
-          Commencer — dès 2,99 €/mois →
+          Commencer gratuitement →
         </Link>
-        <p className="mt-4 text-white/60 text-sm">Pas de carte bancaire requise pour découvrir</p>
+        <p className="mt-4 text-white/60 text-sm relative">Dès 2,99 €/mois ensuite · Annulable à tout moment</p>
       </section>
 
       {/* FOOTER */}
-      <footer className="bg-gray-900 text-gray-400 py-8 px-4">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
+      <footer className="bg-[#1a1825] text-zinc-400 py-10 px-4">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm">
           <div className="flex items-center gap-2">
-            <Image src="/logo_my_twin_app.png" alt="MYTA" width={20} height={20} className="rounded opacity-60" />
-            <span>© 2025 MyTwinApp · Fait avec ❤️ en France</span>
+            <Image src="/logo_my_twin_app.png" alt="MYTA" width={90} height={22} className="object-contain opacity-70" />
+            <span>© 2026 · Fait avec ❤️ en France</span>
           </div>
           <div className="flex gap-4">
             <Link href="/legal" className="hover:text-white transition-colors">Mentions légales</Link>
+            <Link href="/privacy" className="hover:text-white transition-colors">Confidentialité</Link>
             <Link href="/pricing" className="hover:text-white transition-colors">Tarifs</Link>
             <Link href="/auth" className="hover:text-white transition-colors">Connexion</Link>
           </div>
