@@ -6,18 +6,21 @@ node_modules/
 
 # Projet Android TWA (Bubblewrap) — local uniquement, jamais sur Vercel
 # (un dossier app/ à la racine remplacerait src/app dans Next.js !)
-app/
-build/
+/app/
+/build/
 .gradle/
-gradle/
-gradlew
+/gradle/
+/gradlew
 gradlew.bat
-build.gradle
-settings.gradle
-gradle.properties
+/build.gradle
+/settings.gradle
+/gradle.properties
 android.keystore
 *.aab
 *.apk
 *.apk.idsig
 manifest-checksum.txt
 .fuse_hidden*
+
+# Projet iOS Capacitor — local uniquement (comme le projet Android)
+/ios/

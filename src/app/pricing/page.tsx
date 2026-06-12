@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check, Loader2, Crown, Shield, Star, Zap, Users, Baby, Info } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { isIosApp } from '@/lib/app-platform'
 import type { PlanId } from '@/lib/stripe-plans'
 
 // ─── Données des plans ────────────────────────────────────────────────────────
@@ -275,8 +276,12 @@ function AiExplainer() {
 function PricingContent() {
   const [activeTab, setActiveTab] = useState<TabKey>('solo')
   const [loading,   setLoading]   = useState<string | null>(null)
+  const [iosApp,    setIosApp]    = useState(false)
   const router   = useRouter()
   const supabase = createClient()
+
+  // App iOS : aucune UI d'achat (exigence Apple 3.1.1)
+  useEffect(() => { setIosApp(isIosApp()) }, [])
 
   // Rediriger vers /account si déjà abonné (sauf si on vient changer de forfait)
   useEffect(() => {
@@ -301,6 +306,31 @@ function PricingContent() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const currentTab = TABS.find(t => t.key === activeTab)!
+
+  // ── App iOS : écran informatif sans aucun bouton d'achat ──────────────────
+  if (iosApp) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-5 py-12 page-gradient">
+        <div className="w-full max-w-sm flex flex-col gap-6 items-center text-center">
+          <img src="/logo_my_twin_app.png" alt="MYTA" className="w-44 object-contain" />
+          <div className="bg-white rounded-3xl p-6 shadow-lg border border-zinc-100 flex flex-col gap-3">
+            <p className="text-3xl">🔒</p>
+            <h1 className="text-lg font-extrabold text-zinc-900">Abonnement requis</h1>
+            <p className="text-sm text-zinc-500 leading-relaxed">
+              Les abonnements MYTA ne peuvent pas être souscrits depuis cette application.
+              Si tu disposes déjà d&apos;un compte avec un abonnement actif, connecte-toi
+              simplement pour accéder à ton espace.
+            </p>
+            <button onClick={() => router.push('/auth')}
+              className="w-full py-3 rounded-2xl text-white text-sm font-bold mt-2"
+              style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
+              Se connecter
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   async function handleSubscribe(planId: PlanId) {
     setLoading(planId)

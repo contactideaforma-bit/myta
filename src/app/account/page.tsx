@@ -11,6 +11,7 @@ import {
   AlertCircle, CheckCircle2, ExternalLink, Crown, Users, Trash2,
 } from 'lucide-react'
 import { getPlanLabel, getPlanPrice, hasFamilySwitch, isPremium } from '@/lib/plan-utils'
+import { isIosApp } from '@/lib/app-platform'
 
 /* ─── helpers ── */
 function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
@@ -50,6 +51,10 @@ export default function AccountPage() {
 
   const [loading, setLoading] = useState(true)
   const [token, setToken]     = useState('')
+  const [iosApp, setIosApp]   = useState(false)
+
+  // App iOS : masquer la gestion d'abonnement/paiement (exigence Apple 3.1.1)
+  useEffect(() => { setIosApp(isIosApp()) }, [])
 
   // ── Profil ──
   const [fullName, setFullName]   = useState('')
@@ -364,7 +369,7 @@ export default function AccountPage() {
       </Section>
 
       {/* ── Mode de paiement ── */}
-      {['active', 'trialing', 'past_due'].includes(subStatus) && (
+      {!iosApp && ['active', 'trialing', 'past_due'].includes(subStatus) && (
         <Section title="Mode de paiement" icon={<CreditCard size={16} />}>
           <div className="flex flex-col gap-3">
             {cardFb && <FeedbackBanner type={cardFb.type} msg={cardFb.msg} />}
@@ -439,7 +444,13 @@ export default function AccountPage() {
             </div>
           )}
 
-          {['active', 'trialing', 'past_due'].includes(subStatus) && (
+          {iosApp && (
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              La gestion de l&apos;abonnement n&apos;est pas disponible dans cette application.
+            </p>
+          )}
+
+          {!iosApp && ['active', 'trialing', 'past_due'].includes(subStatus) && (
             <>
               <button onClick={() => router.push('/pricing?change=true')}
                 className="w-full flex items-center justify-between py-3 px-4 rounded-2xl border-2 border-zinc-200 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-all">
@@ -460,7 +471,7 @@ export default function AccountPage() {
             </>
           )}
 
-          {subStatus === 'free' && (
+          {!iosApp && subStatus === 'free' && (
             <button onClick={() => router.push('/pricing')}
               className="w-full py-3.5 rounded-2xl text-white font-bold text-sm"
               style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
@@ -468,7 +479,7 @@ export default function AccountPage() {
             </button>
           )}
 
-          {subStatus === 'canceled' && (
+          {!iosApp && subStatus === 'canceled' && (
             <button onClick={() => router.push('/pricing')}
               className="w-full py-3.5 rounded-2xl text-white font-bold text-sm"
               style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>

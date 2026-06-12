@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Lock } from 'lucide-react'
 import { isPremium } from '@/lib/plan-utils'
+import { isIosApp } from '@/lib/app-platform'
 
 interface Props {
   children:    React.ReactNode
@@ -26,10 +27,12 @@ interface Props {
 export function PremiumGate({ children, mode = 'lock', label = 'Fonctionnalité Premium' }: Props) {
   const router = useRouter()
   const [isUserPremium, setIsUserPremium] = useState<boolean | null>(null)
+  const [iosApp, setIosApp] = useState(false)
 
   useEffect(() => {
     const plan = localStorage.getItem('myta_plan')
     setIsUserPremium(isPremium(plan))
+    setIosApp(isIosApp())
   }, [])
 
   // Pas encore chargé → on laisse passer (évite le flash)
@@ -60,13 +63,16 @@ export function PremiumGate({ children, mode = 'lock', label = 'Fonctionnalité 
           <p className="text-xs text-zinc-500 leading-relaxed">
             Disponible avec l'abonnement <span className="font-bold text-[#4B47A0]">Premium</span>.
           </p>
-          <button
-            onClick={() => router.push('/pricing?change=true')}
-            className="w-full py-2.5 rounded-2xl text-white text-xs font-bold mt-1"
-            style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}
-          >
-            Passer Premium →
-          </button>
+          {/* Pas de bouton d'achat dans l'app iOS (Apple 3.1.1) */}
+          {!iosApp && (
+            <button
+              onClick={() => router.push('/pricing?change=true')}
+              className="w-full py-2.5 rounded-2xl text-white text-xs font-bold mt-1"
+              style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}
+            >
+              Passer Premium →
+            </button>
+          )}
         </div>
       </div>
     </div>
