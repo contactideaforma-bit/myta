@@ -277,11 +277,34 @@ function PricingContent() {
   const [activeTab, setActiveTab] = useState<TabKey>('solo')
   const [loading,   setLoading]   = useState<string | null>(null)
   const [iosApp,    setIosApp]    = useState(false)
+  // États écran iOS : 'anon' (pas connecté) | 'sending' | 'sent' | 'error'
+  const [iosEmailState, setIosEmailState] = useState<'anon' | 'sending' | 'sent' | 'error'>('anon')
   const router   = useRouter()
   const supabase = createClient()
 
-  // App iOS : aucune UI d'achat (exigence Apple 3.1.1)
-  useEffect(() => { setIosApp(isIosApp()) }, [])
+  // App iOS : aucune UI d'achat (exigence Apple 3.1.1).
+  // Si l'utilisateur est connecté, on lui envoie automatiquement l'email
+  // avec le lien de souscription web — il n'a qu'à ouvrir sa boîte mail.
+  useEffect(() => {
+    if (!isIosApp()) return
+    setIosApp(true)
+    sendPricingEmail()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function sendPricingEmail() {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { setIosEmailState('anon'); return }
+    setIosEmailState('sending')
+    try {
+      const res = await fetch('/api/email-pricing-link', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      setIosEmailState(res.ok ? 'sent' : 'error')
+    } catch {
+      setIosEmailState('error')
+    }
+  }
 
   // Rediriger vers /account si déjà abonné (sauf si on vient changer de forfait)
   useEffect(() => {
@@ -307,25 +330,75 @@ function PricingContent() {
 
   const currentTab = TABS.find(t => t.key === activeTab)!
 
-  // ── App iOS : écran informatif sans aucun bouton d'achat ──────────────────
+  // ── App iOS : écran informatif sans aucun bouton d'achat (Apple 3.1.1) ────
+  // Parcours ultra-simple : on envoie un email avec le lien → l'utilisateur
+  // ouvre sa boîte mail → clique → s'abonne sur le web → revient dans l'app.
   if (iosApp) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-5 py-12 page-gradient">
         <div className="w-full max-w-sm flex flex-col gap-6 items-center text-center">
           <img src="/logo_my_twin_app.png" alt="MYTA" className="w-44 object-contain" />
-          <div className="bg-white rounded-3xl p-6 shadow-lg border border-zinc-100 flex flex-col gap-3">
-            <p className="text-3xl">🔒</p>
-            <h1 className="text-lg font-extrabold text-zinc-900">Abonnement requis</h1>
-            <p className="text-sm text-zinc-500 leading-relaxed">
-              Les abonnements MYTA ne peuvent pas être souscrits depuis cette application.
-              Si tu disposes déjà d&apos;un compte avec un abonnement actif, connecte-toi
-              simplement pour accéder à ton espace.
-            </p>
-            <button onClick={() => router.push('/auth')}
-              className="w-full py-3 rounded-2xl text-white text-sm font-bold mt-2"
-              style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
-              Se connecter
-            </button>
+          <div className="bg-white rounded-3xl p-6 shadow-lg border border-zinc-100 flex flex-col gap-3 w-full">
+
+            {iosEmailState === 'anon' && (
+              <>
+                <p className="text-3xl">👋</p>
+                <h1 className="text-lg font-extrabold text-zinc-900">Bienvenue sur MYTA</h1>
+                <p className="text-sm text-zinc-500 leading-relaxed">
+                  Connecte-toi ou crée ton compte pour commencer.
+                </p>
+                <button onClick={() => router.push('/auth')}
+                  className="w-full py-3 rounded-2xl text-white text-sm font-bold mt-2"
+                  style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
+                  Se connecter / Créer un compte
+                </button>
+              </>
+            )}
+
+            {iosEmailState === 'sending' && (
+              <>
+                <Loader2 size={28} className="animate-spin text-[#4B47A0] mx-auto" />
+                <p className="text-sm text-zinc-500">Un instant…</p>
+              </>
+            )}
+
+            {iosEmailState === 'sent' && (
+              <>
+                <p className="text-4xl">📬</p>
+                <h1 className="text-lg font-extrabold text-zinc-900">On t&apos;a envoyé un email !</h1>
+                <p className="text-sm text-zinc-500 leading-relaxed">
+                  Ouvre ta boîte mail et clique sur le bouton pour activer
+                  ton <strong>essai gratuit de 3 jours</strong>.
+                  Ensuite, reviens ici — tout sera prêt ✨
+                </p>
+                <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 mt-1">
+                  <p className="text-xs text-blue-800">
+                    Tu ne vois rien ? Vérifie tes spams, ou&nbsp;
+                    <button onClick={sendPricingEmail} className="font-bold underline">renvoie l&apos;email</button>.
+                  </p>
+                </div>
+                <button onClick={() => window.location.href = '/dashboard'}
+                  className="w-full py-3 rounded-2xl text-white text-sm font-bold mt-1"
+                  style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
+                  C&apos;est fait, continuer →
+                </button>
+              </>
+            )}
+
+            {iosEmailState === 'error' && (
+              <>
+                <p className="text-3xl">😕</p>
+                <h1 className="text-lg font-extrabold text-zinc-900">Petit souci d&apos;envoi</h1>
+                <p className="text-sm text-zinc-500 leading-relaxed">
+                  L&apos;email n&apos;est pas parti. Réessaie dans un instant.
+                </p>
+                <button onClick={sendPricingEmail}
+                  className="w-full py-3 rounded-2xl text-white text-sm font-bold mt-2"
+                  style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
+                  Réessayer
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
