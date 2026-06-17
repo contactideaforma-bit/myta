@@ -36,6 +36,22 @@ async function getPurchases() {
 }
 
 /**
+ * Rejette si `p` ne se résout pas dans `ms`. Évite un spinner infini quand
+ * StoreKit reste bloqué (produits pas encore propagés côté Apple, réseau…).
+ */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`rc_timeout_${label}`)), ms)
+    ),
+  ])
+}
+
+/** Délai max d'attente d'une réponse StoreKit avant d'abandonner (ms). */
+const RC_TIMEOUT_MS = 12000
+
+/**
  * Initialise RevenueCat et associe l'utilisateur Supabase.
  * À appeler une fois, côté client, après connexion (dans un useEffect).
  */
@@ -49,10 +65,10 @@ export async function initRevenueCat(supabaseUserId: string): Promise<void> {
   try {
     const Purchases = await getPurchases()
     if (!configured) {
-      await Purchases.configure({ apiKey, appUserID: supabaseUserId })
+      await withTimeout(Purchases.configure({ apiKey, appUserID: supabaseUserId }), RC_TIMEOUT_MS, 'configure')
       configured = true
     } else {
-      await Purchases.logIn({ appUserID: supabaseUserId })
+      await withTimeout(Purchases.logIn({ appUserID: supabaseUserId }), RC_TIMEOUT_MS, 'login')
     }
   } catch (err) {
     console.error('[RevenueCat] init:', err)
@@ -77,7 +93,7 @@ export async function getRcProducts(): Promise<RcProduct[]> {
   if (!isIosApp()) return []
   try {
     const Purchases = await getPurchases()
-    const offerings = await Purchases.getOfferings()
+    const offerings = await withTimeout(Purchases.getOfferings(), RC_TIMEOUT_MS, 'getOfferings')
     const current = offerings.current
     if (!current) return []
 
