@@ -38,7 +38,16 @@ const supabase = createServerClient(url, key, {
 - `friend_groups` + `group_members` — feature Amis & Challenges (SQL : supabase-groups.sql)
 - `user_badges`, `challenge_completions`, `smoking_log`
 
-## Fait dans la dernière session
+## Fait dans la dernière session (déploiement iOS App Store)
+- ✅ Info.plist iOS : ajout NSMicrophone/NSCamera/NSPhotoLibrary(+Add)UsageDescription, ITSAppUsesNonExemptEncryption=false, region fr, armv7→arm64
+- ✅ Conformité review auditée : suppression compte ✅, pas de social login (Sign in Apple non requis) ✅
+- ✅ Décision 3.1.1 : remplacement du flux email (steering, rejet probable) par achats in-app RevenueCat
+- ✅ IAP RevenueCat solo (Essentiel/Premium) : src/lib/revenuecat.ts, écran achat iOS dans pricing/page.tsx (restore + mentions légales 3.1.2), webhook /api/webhook/revenuecat → profiles, gestion abo iOS dans account/page.tsx (App Store + restore)
+- ⏳ RESTE À FAIRE sur Mac : `npm install @revenuecat/purchases-capacitor`, npx cap sync, setup ASC+RevenueCat, archive/upload, soumission → voir IOS-IAP-DEPLOY.md
+- Product IDs IAP (codés en dur): fr.mytwinapp.app.essentiel.monthly / fr.mytwinapp.app.premium.monthly ; entitlements RC: essentiel/premium
+- Env à ajouter (Vercel): NEXT_PUBLIC_REVENUECAT_IOS_KEY, REVENUECAT_WEBHOOK_AUTH
+
+## Fait avant
 - ✅ Menu disparu sur /friends (Navbar manquante dans friends/layout.tsx)
 - ✅ Création de groupe (auth route via Bearer + cookies req.cookies)
 - ✅ Fix build TypeScript ChallengeCard (throwOnError supprimé)

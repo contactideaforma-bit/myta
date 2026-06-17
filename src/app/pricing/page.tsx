@@ -6,6 +6,10 @@ import { Check, Loader2, Crown, Shield, Star, Zap, Users, Baby, Info } from 'luc
 import { createClient } from '@/lib/supabase/client'
 import { isIosApp } from '@/lib/app-platform'
 import type { PlanId } from '@/lib/stripe-plans'
+import {
+  initRevenueCat, getRcProducts, purchaseRcPackage, restoreRcPurchases,
+  type RcProduct,
+} from '@/lib/revenuecat'
 
 // ─── Données des plans ────────────────────────────────────────────────────────
 
@@ -277,32 +281,51 @@ function PricingContent() {
   const [activeTab, setActiveTab] = useState<TabKey>('solo')
   const [loading,   setLoading]   = useState<string | null>(null)
   const [iosApp,    setIosApp]    = useState(false)
-  // États écran iOS : 'anon' (pas connecté) | 'sending' | 'sent' | 'error'
-  const [iosEmailState, setIosEmailState] = useState<'anon' | 'sending' | 'sent' | 'error'>('anon')
+  // Écran achat iOS (RevenueCat — achats in-app, exigence Apple 3.1.1)
+  const [rcProducts, setRcProducts] = useState<RcProduct[]>([])
+  const [rcLoading,  setRcLoading]  = useState(true)
+  const [rcBusy,     setRcBusy]     = useState<string | null>(null) // packageId / 'restore' en cours
+  const [rcMsg,      setRcMsg]      = useState<string | null>(null)
+  const [isAnon,     setIsAnon]     = useState(false)
   const router   = useRouter()
   const supabase = createClient()
 
-  // App iOS : aucune UI d'achat (exigence Apple 3.1.1).
-  // Si l'utilisateur est connecté, on lui envoie automatiquement l'email
-  // avec le lien de souscription web — il n'a qu'à ouvrir sa boîte mail.
+  // App iOS : achats in-app via RevenueCat (exigence Apple 3.1.1).
   useEffect(() => {
     if (!isIosApp()) return
     setIosApp(true)
-    sendPricingEmail()
+    ;(async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { setIsAnon(true); setRcLoading(false); return }
+      await initRevenueCat(session.user.id)
+      setRcProducts(await getRcProducts())
+      setRcLoading(false)
+    })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function sendPricingEmail() {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) { setIosEmailState('anon'); return }
-    setIosEmailState('sending')
-    try {
-      const res = await fetch('/api/email-pricing-link', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      })
-      setIosEmailState(res.ok ? 'sent' : 'error')
-    } catch {
-      setIosEmailState('error')
+  async function handleRcPurchase(pkgId: string) {
+    setRcMsg(null)
+    setRcBusy(pkgId)
+    const res = await purchaseRcPackage(pkgId)
+    setRcBusy(null)
+    if (res.ok) {
+      if (res.planId) localStorage.setItem('myta_plan', res.planId)
+      router.push('/dashboard')
+    } else if (!res.cancelled) {
+      setRcMsg("L'achat n'a pas abouti. Réessaie dans un instant.")
+    }
+  }
+
+  async function handleRcRestore() {
+    setRcMsg(null)
+    setRcBusy('restore')
+    const res = await restoreRcPurchases()
+    setRcBusy(null)
+    if (res.ok) {
+      if (res.planId) localStorage.setItem('myta_plan', res.planId)
+      router.push('/dashboard')
+    } else {
+      setRcMsg('Aucun achat à restaurer sur ce compte Apple.')
     }
   }
 
@@ -330,76 +353,113 @@ function PricingContent() {
 
   const currentTab = TABS.find(t => t.key === activeTab)!
 
-  // ── App iOS : écran informatif sans aucun bouton d'achat (Apple 3.1.1) ────
-  // Parcours ultra-simple : on envoie un email avec le lien → l'utilisateur
-  // ouvre sa boîte mail → clique → s'abonne sur le web → revient dans l'app.
+  // ── App iOS : achats in-app via l'App Store (RevenueCat — Apple 3.1.1) ────
   if (iosApp) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-5 py-12 page-gradient">
+      <div className="min-h-screen flex flex-col items-center px-5 py-12 page-gradient">
         <div className="w-full max-w-sm flex flex-col gap-6 items-center text-center">
-          <img src="/logo_my_twin_app.png" alt="MYTA" className="w-44 object-contain" />
-          <div className="bg-white rounded-3xl p-6 shadow-lg border border-zinc-100 flex flex-col gap-3 w-full">
+          <img src="/logo_my_twin_app.png" alt="MYTA" className="w-40 object-contain" />
 
-            {iosEmailState === 'anon' && (
-              <>
-                <p className="text-3xl">👋</p>
-                <h1 className="text-lg font-extrabold text-zinc-900">Bienvenue sur MYTA</h1>
-                <p className="text-sm text-zinc-500 leading-relaxed">
-                  Connecte-toi ou crée ton compte pour commencer.
-                </p>
-                <button onClick={() => router.push('/auth')}
-                  className="w-full py-3 rounded-2xl text-white text-sm font-bold mt-2"
-                  style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
-                  Se connecter / Créer un compte
-                </button>
-              </>
-            )}
+          {/* Pas connecté */}
+          {isAnon && (
+            <div className="bg-white rounded-3xl p-6 shadow-lg border border-zinc-100 flex flex-col gap-3 w-full">
+              <p className="text-3xl">👋</p>
+              <h1 className="text-lg font-extrabold text-zinc-900">Bienvenue sur MYTA</h1>
+              <p className="text-sm text-zinc-500 leading-relaxed">
+                Connecte-toi ou crée ton compte pour commencer.
+              </p>
+              <button onClick={() => router.push('/auth')}
+                className="w-full py-3 rounded-2xl text-white text-sm font-bold mt-2"
+                style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
+                Se connecter / Créer un compte
+              </button>
+            </div>
+          )}
 
-            {iosEmailState === 'sending' && (
-              <>
-                <Loader2 size={28} className="animate-spin text-[#4B47A0] mx-auto" />
-                <p className="text-sm text-zinc-500">Un instant…</p>
-              </>
-            )}
+          {/* Chargement des produits */}
+          {!isAnon && rcLoading && (
+            <div className="bg-white rounded-3xl p-8 shadow-lg border border-zinc-100 w-full">
+              <Loader2 size={28} className="animate-spin text-[#4B47A0] mx-auto" />
+              <p className="text-sm text-zinc-500 mt-3">Chargement des offres…</p>
+            </div>
+          )}
 
-            {iosEmailState === 'sent' && (
-              <>
-                <p className="text-4xl">📬</p>
-                <h1 className="text-lg font-extrabold text-zinc-900">On t&apos;a envoyé un email !</h1>
-                <p className="text-sm text-zinc-500 leading-relaxed">
-                  Ouvre ta boîte mail et clique sur le bouton pour activer
-                  ton <strong>essai gratuit de 3 jours</strong>.
-                  Ensuite, reviens ici — tout sera prêt ✨
-                </p>
-                <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 mt-1">
-                  <p className="text-xs text-blue-800">
-                    Tu ne vois rien ? Vérifie tes spams, ou&nbsp;
-                    <button onClick={sendPricingEmail} className="font-bold underline">renvoie l&apos;email</button>.
-                  </p>
-                </div>
-                <button onClick={() => window.location.href = '/dashboard'}
-                  className="w-full py-3 rounded-2xl text-white text-sm font-bold mt-1"
-                  style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
-                  C&apos;est fait, continuer →
-                </button>
-              </>
-            )}
+          {/* Produits indisponibles */}
+          {!isAnon && !rcLoading && rcProducts.length === 0 && (
+            <div className="bg-white rounded-3xl p-6 shadow-lg border border-zinc-100 w-full flex flex-col gap-3">
+              <p className="text-3xl">😕</p>
+              <p className="text-sm text-zinc-500">
+                Les offres ne sont pas disponibles pour le moment. Réessaie plus tard.
+              </p>
+              <button onClick={handleRcRestore} disabled={rcBusy === 'restore'}
+                className="text-xs font-bold text-[#4B47A0] underline">
+                Restaurer mes achats
+              </button>
+            </div>
+          )}
 
-            {iosEmailState === 'error' && (
-              <>
-                <p className="text-3xl">😕</p>
-                <h1 className="text-lg font-extrabold text-zinc-900">Petit souci d&apos;envoi</h1>
-                <p className="text-sm text-zinc-500 leading-relaxed">
-                  L&apos;email n&apos;est pas parti. Réessaie dans un instant.
-                </p>
-                <button onClick={sendPricingEmail}
-                  className="w-full py-3 rounded-2xl text-white text-sm font-bold mt-2"
-                  style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
-                  Réessayer
-                </button>
-              </>
-            )}
-          </div>
+          {/* Liste des abonnements */}
+          {!isAnon && !rcLoading && rcProducts.length > 0 && (
+            <>
+              <h1 className="text-xl font-extrabold text-zinc-900">Passe au niveau supérieur</h1>
+              <div className="flex flex-col gap-3 w-full">
+                {rcProducts.map(p => {
+                  const isPrem = p.planId === 'premium'
+                  return (
+                    <button
+                      key={p.packageId}
+                      onClick={() => handleRcPurchase(p.packageId)}
+                      disabled={!!rcBusy}
+                      className="w-full rounded-3xl p-5 text-left shadow-lg border transition disabled:opacity-60"
+                      style={isPrem
+                        ? { background: 'linear-gradient(135deg, #4B47A0, #2BA8B0)', borderColor: 'transparent' }
+                        : { background: '#fff', borderColor: '#e4e4e7' }}>
+                      <div className="flex items-center justify-between">
+                        <span className={`font-extrabold ${isPrem ? 'text-white' : 'text-zinc-900'}`}>
+                          {isPrem ? 'Premium' : 'Essentiel'}
+                        </span>
+                        <span className={`text-sm font-bold ${isPrem ? 'text-white' : 'text-zinc-900'}`}>
+                          {p.priceString} / mois
+                        </span>
+                      </div>
+                      <p className={`text-xs mt-1 ${isPrem ? 'text-white/85' : 'text-zinc-500'}`}>
+                        {isPrem
+                          ? 'Tout illimité — recettes IA, analyse photo, coach Waty'
+                          : 'Journal, sport, sommeil — IA limitée'}
+                      </p>
+                      {p.hasFreeTrial && (
+                        <p className={`text-xs font-bold mt-2 ${isPrem ? 'text-white' : 'text-teal-700'}`}>
+                          🎁 3 jours gratuits
+                        </p>
+                      )}
+                      {rcBusy === p.packageId && (
+                        <Loader2 size={16} className={`animate-spin mt-2 ${isPrem ? 'text-white' : 'text-[#4B47A0]'}`} />
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {rcMsg && <p className="text-xs text-red-600">{rcMsg}</p>}
+
+              <button onClick={handleRcRestore} disabled={!!rcBusy}
+                className="text-xs font-bold text-[#4B47A0] underline mt-1">
+                {rcBusy === 'restore' ? 'Restauration…' : 'Restaurer mes achats'}
+              </button>
+
+              {/* Mentions légales obligatoires (Apple 3.1.2) */}
+              <p className="text-[11px] text-zinc-400 leading-relaxed mt-2">
+                Abonnement à renouvellement automatique. Le paiement est débité sur ton
+                compte Apple à la confirmation. L&apos;abonnement se renouvelle automatiquement
+                sauf désactivation au moins 24 h avant la fin de la période en cours. Gère ou
+                résilie ton abonnement dans les Réglages de ton compte Apple après l&apos;achat.
+                {' '}
+                <a href="https://mytwinapp.fr/legal" className="underline">Conditions d&apos;utilisation</a>
+                {' · '}
+                <a href="https://mytwinapp.fr/privacy" className="underline">Confidentialité</a>
+              </p>
+            </>
+          )}
         </div>
       </div>
     )

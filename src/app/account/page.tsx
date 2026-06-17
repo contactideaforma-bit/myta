@@ -12,6 +12,10 @@ import {
 } from 'lucide-react'
 import { getPlanLabel, getPlanPrice, hasFamilySwitch, isPremium } from '@/lib/plan-utils'
 import { isIosApp } from '@/lib/app-platform'
+import { restoreRcPurchases } from '@/lib/revenuecat'
+
+/** Ouvre la gestion des abonnements Apple (résiliation côté App Store). */
+const APPLE_MANAGE_SUBS_URL = 'itms-apps://apps.apple.com/account/subscriptions'
 
 /* ─── helpers ── */
 function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
@@ -53,8 +57,25 @@ export default function AccountPage() {
   const [token, setToken]     = useState('')
   const [iosApp, setIosApp]   = useState(false)
 
-  // App iOS : masquer la gestion d'abonnement/paiement (exigence Apple 3.1.1)
+  // App iOS : paiement géré par l'App Store (exigence Apple 3.1.1)
   useEffect(() => { setIosApp(isIosApp()) }, [])
+
+  // Restauration des achats in-app (obligatoire Apple)
+  const [restoreMsg, setRestoreMsg] = useState<string | null>(null)
+  const [restoring,  setRestoring]  = useState(false)
+  async function restorePurchases() {
+    setRestoreMsg(null)
+    setRestoring(true)
+    const res = await restoreRcPurchases()
+    setRestoring(false)
+    if (res.ok) {
+      if (res.planId) localStorage.setItem('myta_plan', res.planId)
+      setRestoreMsg('Achats restaurés ✅')
+      setTimeout(() => window.location.reload(), 800)
+    } else {
+      setRestoreMsg('Aucun achat à restaurer sur ce compte Apple.')
+    }
+  }
 
   // ── Profil ──
   const [fullName, setFullName]   = useState('')
@@ -446,9 +467,39 @@ export default function AccountPage() {
           )}
 
           {iosApp && (
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              La gestion de l&apos;abonnement n&apos;est pas disponible dans cette application.
-            </p>
+            <>
+              {['free', 'canceled'].includes(subStatus) && (
+                <button onClick={() => router.push('/pricing')}
+                  className="w-full py-3.5 rounded-2xl text-white font-bold text-sm"
+                  style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
+                  Voir les offres →
+                </button>
+              )}
+
+              {['active', 'trialing', 'past_due'].includes(subStatus) && (
+                <a href={APPLE_MANAGE_SUBS_URL}
+                  className="w-full flex items-center justify-between py-3 px-4 rounded-2xl border-2 border-zinc-200 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-all">
+                  <span className="flex items-center gap-2">
+                    <ExternalLink size={14} />
+                    Gérer / résilier mon abonnement
+                  </span>
+                  <ChevronRight size={15} className="text-zinc-400" />
+                </a>
+              )}
+
+              <button onClick={restorePurchases} disabled={restoring}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl border-2 border-zinc-200 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-all">
+                {restoring ? <Loader2 size={14} className="animate-spin" /> : null}
+                Restaurer mes achats
+              </button>
+
+              {restoreMsg && <p className="text-xs text-zinc-500 text-center">{restoreMsg}</p>}
+
+              <p className="text-[11px] text-zinc-400 leading-relaxed">
+                Abonnement géré via ton compte Apple. Le renouvellement et la résiliation
+                se font dans les Réglages App Store.
+              </p>
+            </>
           )}
 
           {!iosApp && ['active', 'trialing', 'past_due'].includes(subStatus) && (

@@ -1,0 +1,159 @@
+/**
+ * Intégration RevenueCat (achats in-app iOS — exigence Apple 3.1.1).
+ *
+ * - Ne s'active QUE dans l'app iOS (Capacitor). Sur le web, toutes les
+ *   fonctions sont des no-op : la monétisation web reste sur Stripe.
+ * - L'appUserID RevenueCat = l'ID utilisateur Supabase, ce qui permet au
+ *   webhook /api/webhook/revenuecat de retrouver le profil à mettre à jour.
+ *
+ * v1 : plans solo uniquement (Essentiel, Premium). Couple/Famille restent web.
+ *
+ * Variables d'env :
+ *   NEXT_PUBLIC_REVENUECAT_IOS_KEY   — clé publique SDK (Apple) RevenueCat
+ */
+
+import { isIosApp } from './app-platform'
+import type { PlanId } from './stripe-plans'
+
+/** Product IDs déclarés dans App Store Connect (auto-renewable subscriptions). */
+export const RC_PRODUCT_IDS = {
+  essentiel: 'fr.mytwinapp.app.essentiel.monthly',
+  premium:   'fr.mytwinapp.app.premium.monthly',
+} as const
+
+/** product_id App Store → planId interne (utilisé aussi côté webhook). */
+export const RC_PRODUCT_TO_PLAN: Record<string, PlanId> = {
+  [RC_PRODUCT_IDS.essentiel]: 'essentiel',
+  [RC_PRODUCT_IDS.premium]:   'premium',
+}
+
+let configured = false
+
+/** Import dynamique du plugin (évite de charger le natif sur le web). */
+async function getPurchases() {
+  const mod = await import('@revenuecat/purchases-capacitor')
+  return mod.Purchases
+}
+
+/**
+ * Initialise RevenueCat et associe l'utilisateur Supabase.
+ * À appeler une fois, côté client, après connexion (dans un useEffect).
+ */
+export async function initRevenueCat(supabaseUserId: string): Promise<void> {
+  if (!isIosApp()) return
+  const apiKey = process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY
+  if (!apiKey) {
+    console.warn('[RevenueCat] NEXT_PUBLIC_REVENUECAT_IOS_KEY manquante')
+    return
+  }
+  try {
+    const Purchases = await getPurchases()
+    if (!configured) {
+      await Purchases.configure({ apiKey, appUserID: supabaseUserId })
+      configured = true
+    } else {
+      await Purchases.logIn({ appUserID: supabaseUserId })
+    }
+  } catch (err) {
+    console.error('[RevenueCat] init:', err)
+  }
+}
+
+export interface RcProduct {
+  planId:        PlanId
+  productId:     string
+  priceString:   string   // ex: "4,99 €"
+  title:         string
+  /** identifiant du package RevenueCat à passer à purchase() */
+  packageId:     string
+  hasFreeTrial:  boolean
+}
+
+/**
+ * Récupère l'offering courant et le mappe sur nos plans solo.
+ * Retourne [] hors app iOS ou si l'offering n'est pas configuré.
+ */
+export async function getRcProducts(): Promise<RcProduct[]> {
+  if (!isIosApp()) return []
+  try {
+    const Purchases = await getPurchases()
+    const offerings = await Purchases.getOfferings()
+    const current = offerings.current
+    if (!current) return []
+
+    const out: RcProduct[] = []
+    for (const pkg of current.availablePackages) {
+      const productId = pkg.product.identifier
+      const planId = RC_PRODUCT_TO_PLAN[productId]
+      if (!planId) continue
+      out.push({
+        planId,
+        productId,
+        priceString: pkg.product.priceString,
+        title:       pkg.product.title,
+        packageId:   pkg.identifier,
+        hasFreeTrial: !!pkg.product.introPrice && pkg.product.introPrice.price === 0,
+      })
+    }
+    // Essentiel puis Premium
+    return out.sort((a, b) => (a.planId === 'premium' ? 1 : 0) - (b.planId === 'premium' ? 1 : 0))
+  } catch (err) {
+    console.error('[RevenueCat] getOfferings:', err)
+    return []
+  }
+}
+
+export interface RcPurchaseResult {
+  ok:      boolean
+  planId?: PlanId
+  /** true si l'utilisateur a annulé volontairement (pas une vraie erreur) */
+  cancelled?: boolean
+  error?:  string
+}
+
+/** Lance l'achat d'un package. */
+export async function purchaseRcPackage(packageId: string): Promise<RcPurchaseResult> {
+  if (!isIosApp()) return { ok: false, error: 'not_ios' }
+  try {
+    const Purchases = await getPurchases()
+    const offerings = await Purchases.getOfferings()
+    const pkg = offerings.current?.availablePackages.find(p => p.identifier === packageId)
+    if (!pkg) return { ok: false, error: 'package_not_found' }
+
+    const { customerInfo } = await Purchases.purchasePackage({ aPackage: pkg })
+    const planId = activePlanFromCustomerInfo(customerInfo)
+    return { ok: !!planId, planId: planId ?? undefined }
+  } catch (err: any) {
+    if (err?.code === 'PURCHASE_CANCELLED' || err?.userCancelled) {
+      return { ok: false, cancelled: true }
+    }
+    console.error('[RevenueCat] purchase:', err)
+    return { ok: false, error: err?.message ?? 'purchase_failed' }
+  }
+}
+
+/** Restaure les achats (obligatoire Apple). Retourne le plan actif si trouvé. */
+export async function restoreRcPurchases(): Promise<RcPurchaseResult> {
+  if (!isIosApp()) return { ok: false, error: 'not_ios' }
+  try {
+    const Purchases = await getPurchases()
+    const { customerInfo } = await Purchases.restorePurchases()
+    const planId = activePlanFromCustomerInfo(customerInfo)
+    return { ok: !!planId, planId: planId ?? undefined }
+  } catch (err: any) {
+    console.error('[RevenueCat] restore:', err)
+    return { ok: false, error: err?.message ?? 'restore_failed' }
+  }
+}
+
+/** Déduit le plan actif à partir des entitlements RevenueCat. */
+function activePlanFromCustomerInfo(info: any): PlanId | null {
+  const active = info?.entitlements?.active ?? {}
+  // L'entitlement "premium" prime sur "essentiel".
+  if (active.premium) return 'premium'
+  if (active.essentiel) return 'essentiel'
+  // Fallback : déduire depuis le product actif
+  const productId: string | undefined = info?.activeSubscriptions?.[0]
+  if (productId && RC_PRODUCT_TO_PLAN[productId]) return RC_PRODUCT_TO_PLAN[productId]
+  return null
+}
