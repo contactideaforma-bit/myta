@@ -5,7 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import { format, subDays, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { Moon, Sun, ChevronLeft, ChevronRight, Check, Loader2, Trash2, Star, ArrowDown } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { Waty } from '@/components/ui/Waty'
+import OnboardingCoach from '@/components/ui/OnboardingCoach'
+import { useOnboarding } from '@/lib/onboarding'
 
 interface SleepLog {
   id: string
@@ -48,6 +51,8 @@ function nightLabel(wakeDate: string): string {
 
 export default function SleepPage() {
   const supabase = createClient()
+  const router = useRouter()
+  const { step: obStep, advance: obAdvance, skip: obSkip } = useOnboarding()
   const [logs, setLogs]       = useState<SleepLog[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving]   = useState(false)
@@ -91,6 +96,11 @@ export default function SleepPage() {
     setNotes('')
     setSaving(false)
     showToast('✓ Nuit enregistrée !')
+    // Parcours guidé : première nuit → dernière étape (compte).
+    if (obStep === 'sleep') {
+      await obAdvance('sleep')
+      setTimeout(() => router.push('/account'), 1300)
+    }
   }
 
   async function deleteLog(id: string) {
@@ -149,6 +159,16 @@ export default function SleepPage() {
 
   return (
     <div className="page">
+
+      {/* Parcours guidé : suivi du sommeil */}
+      {obStep === 'sleep' && (
+        <OnboardingCoach
+          mode="nutrition"
+          title="Suis ton sommeil 😴"
+          message="Renseigne ton heure de coucher et de réveil. Le sommeil fait partie de ta forme globale : Waty en tient compte dans ton bilan."
+          onSkip={obSkip}
+        />
+      )}
 
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-tta-mid text-white px-5 py-3 rounded-full shadow-lg font-bold text-sm">

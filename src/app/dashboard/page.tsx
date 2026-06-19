@@ -11,6 +11,8 @@ import { useRouter } from 'next/navigation'
 import { Waty } from '@/components/ui/Waty'
 import { WelcomeModal } from '@/components/ui/WelcomeModal'
 import { TourGuide } from '@/components/ui/TourGuide'
+import OnboardingCoach from '@/components/ui/OnboardingCoach'
+import { useOnboarding, ONBOARDING_ROUTE, type OnboardingStep } from '@/lib/onboarding'
 import { BadgeDisplay } from '@/components/ui/BadgeDisplay'
 import { ChallengeCard } from '@/components/ui/ChallengeCard'
 import {
@@ -155,6 +157,26 @@ function ChildDashboard({ cs, router }: { cs: ChildStats; router: ReturnType<typ
   )
 }
 
+/** Messages du « hub » d'onboarding affichés sur le dashboard selon l'étape. */
+const ONBOARDING_HUB: Record<Exclude<OnboardingStep, 'done'>,
+  { mode: 'nutrition' | 'sport'; title: string; message: string; cta: string }> = {
+  profile: { mode: 'nutrition', title: 'Bienvenue sur MYTA ! 👋',
+    message: "Commençons par compléter ton profil : c'est lui qui personnalise tes calories, tes macros et les conseils de Waty.",
+    cta: 'Compléter mon profil' },
+  journal: { mode: 'nutrition', title: 'Profil prêt ✓',
+    message: 'Note ton premier repas (voix, photo ou texte) et regarde tes scores macro & micro s’adapter à toi.',
+    cta: 'Aller au journal' },
+  sport:   { mode: 'sport', title: 'Et côté sport ? 🏋️',
+    message: 'Enregistre ta première séance — décris-la simplement, Waty s’occupe du reste.',
+    cta: 'Nouvelle séance' },
+  sleep:   { mode: 'nutrition', title: 'Le sommeil compte aussi 😴',
+    message: 'Suis tes nuits pour un bilan complet de ta forme.',
+    cta: 'Suivre mon sommeil' },
+  account: { mode: 'nutrition', title: 'Dernière étape 🎯',
+    message: 'Découvre ton compte et la gestion de ton abonnement.',
+    cta: 'Voir mon compte' },
+}
+
 export default function DashboardPage() {
   const [stats, setStats]         = useState<Stats | null>(null)
   const [loading, setLoading]     = useState(true)
@@ -163,17 +185,18 @@ export default function DashboardPage() {
   const [showTour,  setShowTour]  = useState(false)
   const [childStats, setChildStats] = useState<ChildStats | null>(null)
 
+  const { step: obStep, skip: obSkip } = useOnboarding()
+
   const router   = useRouter()
   const supabase = createClient()
 
   useEffect(() => {
+    // Replay manuel du tour spotlight via ?tour=1 (depuis la page Guide).
     if (new URLSearchParams(window.location.search).get('tour') === '1') {
       setShowTour(true)
       window.history.replaceState({}, '', '/dashboard')
-      return
     }
-    const seen = localStorage.getItem('myta_guide_seen')
-    if (!seen) setShowModal(true)
+    // L'ancien WelcomeModal auto est remplacé par le parcours guidé (OnboardingCoach).
   }, [])
 
   function handleStartTour()  { localStorage.setItem('myta_guide_seen', '1'); setShowModal(false); setShowTour(true) }
@@ -333,6 +356,18 @@ export default function DashboardPage() {
           Bonjour{firstName ? `, ${firstName}` : ''} 👋
         </h1>
       </div>
+
+      {/* ── Onboarding guidé : hub Waty (pointe vers l'étape en cours) ── */}
+      {obStep && obStep !== 'done' && (
+        <OnboardingCoach
+          mode={ONBOARDING_HUB[obStep].mode}
+          title={ONBOARDING_HUB[obStep].title}
+          message={ONBOARDING_HUB[obStep].message}
+          ctaLabel={ONBOARDING_HUB[obStep].cta}
+          onCta={() => router.push(ONBOARDING_ROUTE[obStep])}
+          onSkip={obSkip}
+        />
+      )}
 
       {/* ── Série + Badge ── */}
       <div className="card flex flex-col gap-3">

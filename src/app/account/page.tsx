@@ -13,6 +13,8 @@ import {
 import { getPlanLabel, getPlanPrice, hasFamilySwitch, isPremium } from '@/lib/plan-utils'
 import { isIosApp } from '@/lib/app-platform'
 import { restoreRcPurchases } from '@/lib/revenuecat'
+import OnboardingCoach from '@/components/ui/OnboardingCoach'
+import { useOnboarding } from '@/lib/onboarding'
 
 /** Ouvre la gestion des abonnements Apple (résiliation côté App Store). */
 const APPLE_MANAGE_SUBS_URL = 'itms-apps://apps.apple.com/account/subscriptions'
@@ -51,6 +53,7 @@ const STATUS_LABEL: Record<string, { text: string; color: string; bg: string }> 
 
 export default function AccountPage() {
   const router   = useRouter()
+  const { step: obStep, advance: obAdvance, skip: obSkip } = useOnboarding()
   const supabase = createClient()
 
   const [loading, setLoading] = useState(true)
@@ -297,6 +300,18 @@ export default function AccountPage() {
 
   return (
     <div className="flex flex-col gap-5 pb-10">
+
+      {/* Parcours guidé : dernière étape */}
+      {obStep === 'account' && (
+        <OnboardingCoach
+          mode="nutrition"
+          title="Tu as fait le tour ! 🎉"
+          message="Ici tu gères ton compte, ton abonnement et tes infos. C'est la dernière étape du guide — tu es prêt(e) à utiliser MYTA au quotidien."
+          ctaLabel="Terminer le guide"
+          onCta={async () => { await obAdvance('account'); router.push('/dashboard') }}
+          onSkip={obSkip}
+        />
+      )}
 
       {/* Header */}
       <div>

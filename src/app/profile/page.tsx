@@ -10,6 +10,8 @@ import {
   Dumbbell, LogOut, Layers, BarChart3, CreditCard,
 } from 'lucide-react'
 import { Waty } from '@/components/ui/Waty'
+import OnboardingCoach from '@/components/ui/OnboardingCoach'
+import { useOnboarding } from '@/lib/onboarding'
 import { calcMicros, MICROS_AJR, MICROS_NAMES } from '@/lib/nutrition-analysis'
 import {
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -215,6 +217,7 @@ type CalcTab = 'tdee' | 'imc' | 'macros'
 export default function ProfilePage() {
   const router   = useRouter()
   const supabase = createClient()
+  const { step: obStep, advance: obAdvance, skip: obSkip } = useOnboarding()
 
   // ── États principaux ────────────────────────────────────────────────────────
   const [tab, setTab]         = useState<Tab>('bilan')
@@ -423,6 +426,13 @@ export default function ProfilePage() {
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
       await loadProfile()
+      // Parcours guidé : valider le profil fait avancer vers le journal.
+      if (obStep === 'profile') {
+        await obAdvance('profile')
+        setSaving(false)
+        router.push('/dashboard')
+        return
+      }
     }
     setSaving(false)
   }
@@ -594,6 +604,16 @@ export default function ProfilePage() {
   // ── Rendu ───────────────────────────────────────────────────────────────────
   return (
     <div className="page">
+
+      {/* Parcours guidé : pourquoi compléter le profil */}
+      {obStep === 'profile' && (
+        <OnboardingCoach
+          mode="nutrition"
+          title="Complétons ton profil 🙌"
+          message="Renseigne ton poids, ta taille, ton âge, ton sexe, ton niveau d'activité et ton objectif. Ces infos permettent à Waty de calculer des calories, des macros et des conseils vraiment adaptés à TOI. Quand c'est bon, appuie sur « Enregistrer » en bas."
+          onSkip={obSkip}
+        />
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between">

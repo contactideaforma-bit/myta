@@ -12,6 +12,8 @@ import {
 } from 'lucide-react'
 import { VoiceSession } from '@/components/sport/VoiceSession'
 import { Waty, WATY_MESSAGES } from '@/components/ui/Waty'
+import OnboardingCoach from '@/components/ui/OnboardingCoach'
+import { useOnboarding } from '@/lib/onboarding'
 
 type InputMode = 'none' | 'voice' | 'text'
 
@@ -159,6 +161,7 @@ function QuitModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: (
 export default function SessionPage() {
   const router   = useRouter()
   const supabase = createClient()
+  const { step: obStep, advance: obAdvance, skip: obSkip } = useOnboarding()
 
   const [inputMode, setInputMode] = useState<InputMode>('none')
   const [shuffledTips]            = useState(() => [...SPORT_TIPS].sort(() => Math.random() - 0.5))
@@ -232,6 +235,12 @@ export default function SessionPage() {
       setInputMode('none')
       setTimeout(() => setSaved(false), 4000)
 
+      // Parcours guidé : première séance enregistrée → étape sommeil.
+      if (obStep === 'sport') {
+        await obAdvance('sport')
+        setTimeout(() => router.push('/sleep'), 1300)
+      }
+
     } catch (err) {
       console.error('handleVoiceConfirm error:', err)
     }
@@ -239,6 +248,16 @@ export default function SessionPage() {
 
   return (
     <div className="page">
+
+      {/* Parcours guidé : première séance */}
+      {obStep === 'sport' && (
+        <OnboardingCoach
+          mode="sport"
+          title="Ta première séance 💪"
+          message={'Décris ta séance à la voix ou en texte, tout simplement. Par exemple : « J\'ai marché 20 min », « J\'ai fait une séance de boxe d\'1h », ou « 30 min de vélo et 3 séries de pompes ». Waty estime la durée et les calories pour toi.'}
+          onSkip={obSkip}
+        />
+      )}
 
       {/* Toast succès */}
       {saved && (

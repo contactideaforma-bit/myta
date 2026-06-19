@@ -13,6 +13,9 @@ import { getSmokingWatyMessage } from '@/lib/gamification'
 import { todayISO, round1 } from '@/lib/utils'
 import { searchFoods, type FoodItem } from '@/lib/foods-db'
 import { Waty, getWatyMessage } from '@/components/ui/Waty'
+import OnboardingCoach from '@/components/ui/OnboardingCoach'
+import { useOnboarding } from '@/lib/onboarding'
+import { useRouter } from 'next/navigation'
 import { VoiceMeal, type DetectedFood } from '@/components/nutrition/VoiceMeal'
 import {
   calcInflamScore, hasGluten, classifyInflam,
@@ -220,6 +223,8 @@ function EditQtyModal({ entry, onConfirm, onClose }: {
 // ─── Page principale ───────────────────────────────────────────────────────
 export default function JournalPage() {
   const supabase = createClient()
+  const router = useRouter()
+  const { step: obStep, advance: obAdvance, skip: obSkip } = useOnboarding()
 
   const [currentDate, setCurrentDate] = useState(todayISO())
   const [entries, setEntries]         = useState<JournalEntry[]>([])
@@ -291,6 +296,16 @@ export default function JournalPage() {
 
   // Charge données initiales
   useEffect(() => { loadAll() }, [])
+
+  // Parcours guidé : dès qu'un premier repas est enregistré (vocal/photo/texte) → étape sport.
+  useEffect(() => {
+    if (obStep === 'journal' && entries.length > 0) {
+      ;(async () => {
+        await obAdvance('journal')
+        router.push('/sport/session')
+      })()
+    }
+  }, [obStep, entries.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Recharge journal quand la date change
   useEffect(() => { loadDay(currentDate) }, [currentDate])
@@ -708,6 +723,16 @@ export default function JournalPage() {
 
   return (
     <div className="page">
+
+      {/* Parcours guidé : premier repas */}
+      {obStep === 'journal' && (
+        <OnboardingCoach
+          mode="nutrition"
+          title="Ton premier repas 🥗"
+          message="Ajoute un repas comme tu veux : à la voix, en photo de ton assiette, ou en texte. Waty détecte les aliments et calcule calories, macros ET micronutriments — le tout comparé à TES objectifs personnalisés (issus de ton profil)."
+          onSkip={obSkip}
+        />
+      )}
 
       {/* Toast */}
       {toast && (
