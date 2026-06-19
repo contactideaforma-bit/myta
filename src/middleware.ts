@@ -10,6 +10,11 @@ const PUBLIC_PATHS = [
   '/payment-failed',
   '/onboarding',
   '/legal',
+  '/privacy',          // politique de confidentialité (exigée publique par Apple/Google)
+  '/confidentialite',  // alias → /privacy
+  '/cgu',              // alias → /legal
+  '/contact',          // page de contact / support
+  '/demo',             // démo publique sans inscription
   '/success',
   '/cancel',
   '/family/accept',
