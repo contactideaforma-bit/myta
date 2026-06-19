@@ -477,14 +477,22 @@ export default function AccountPage() {
               )}
 
               {['active', 'trialing', 'past_due'].includes(subStatus) && (
-                <a href={APPLE_MANAGE_SUBS_URL}
-                  className="w-full flex items-center justify-between py-3 px-4 rounded-2xl border-2 border-zinc-200 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-all">
-                  <span className="flex items-center gap-2">
-                    <ExternalLink size={14} />
-                    Gérer / résilier mon abonnement
-                  </span>
-                  <ChevronRight size={15} className="text-zinc-400" />
-                </a>
+                <>
+                  <button onClick={() => router.push('/pricing?change=true')}
+                    className="w-full py-3.5 rounded-2xl text-white font-bold text-sm"
+                    style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
+                    Voir les offres / changer de forfait →
+                  </button>
+
+                  <a href={APPLE_MANAGE_SUBS_URL}
+                    className="w-full flex items-center justify-between py-3 px-4 rounded-2xl border-2 border-zinc-200 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-all">
+                    <span className="flex items-center gap-2">
+                      <ExternalLink size={14} />
+                      Gérer / résilier mon abonnement
+                    </span>
+                    <ChevronRight size={15} className="text-zinc-400" />
+                  </a>
+                </>
               )}
 
               <button onClick={restorePurchases} disabled={restoring}
