@@ -1,10 +1,16 @@
-[{
-  "relation": ["delegate_permission/common.handle_all_urls"],
-  "target": {
-    "namespace": "android_app",
-    "package_name": "fr.mytwinapp.app",
-    "sha256_cert_fingerprints": [
-      "67:28:6C:4C:FA:83:C1:3A:67:F5:14:89:D7:F1:4E:21:19:C9:B5:AE:AF:3A:7D:7A:A4:00:57:94:99:4F:8C:FD"
-    ]
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "fr.mytwinapp.app",
+      "sha256_cert_fingerprints": [
+        "67:28:6C:4C:FA:83:C1:3A:67:F5:14:89:D7:F1:4E:21:19:C9:B5:AE:AF:3A:7D:7A:A4:00:57:94:99:4F:8C:FD",
+        "D5:66:22:9F:C7:34:75:5A:0E:99:65:DC:47:86:4C:99:08:9F:27:4A:2D:EA:50:7E:43:20:A9:D5:63:C2:DC:37"
+      ]
+    }
   }
-}]
+]
