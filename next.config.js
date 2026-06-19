@@ -21,6 +21,13 @@ const nextConfig = {
       },
     ]
   },
+  // Alias des URLs déclarées sur l'App Store vers les pages existantes.
+  async redirects() {
+    return [
+      { source: '/cgu',             destination: '/legal',   permanent: false },
+      { source: '/confidentialite', destination: '/privacy', permanent: false },
+    ]
+  },
 }
 
 module.exports = withPWA(nextConfig)
