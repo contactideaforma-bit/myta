@@ -79,7 +79,10 @@ export default function ResetPasswordPage() {
       return
     }
     setDone(true)
-    setTimeout(() => { window.location.href = '/dashboard' }, 2000)
+    // Sécurité : on déconnecte la session de récupération et on renvoie vers
+    // l'écran de connexion pour que l'utilisateur se reconnecte avec le nouveau mdp.
+    await supabase.auth.signOut()
+    setTimeout(() => { window.location.href = '/auth?reset=success' }, 1800)
   }
 
   return (
@@ -156,7 +159,7 @@ export default function ResetPasswordPage() {
             <div className="flex flex-col items-center gap-3 py-6 text-center">
               <CheckCircle2 size={36} className="text-green-500" />
               <p className="text-sm font-bold text-zinc-900">Mot de passe mis à jour ✓</p>
-              <p className="text-xs text-zinc-400">Redirection vers ton espace…</p>
+              <p className="text-xs text-zinc-400">Retour à la connexion…</p>
             </div>
           )}
         </div>

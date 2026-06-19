@@ -2,27 +2,39 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Mail, Lock, User, ArrowRight, Loader2, Eye, EyeOff, Gift } from 'lucide-react'
+import { Mail, Lock, User, ArrowRight, Loader2, Eye, EyeOff, Gift, CheckCircle2 } from 'lucide-react'
+
+type Mode = 'login' | 'register' | 'forgot'
 
 export default function AuthPage() {
   const [email, setEmail]           = useState('')
   const [password, setPassword]     = useState('')
   const [name, setName]             = useState('')
   const [referralInput, setReferralInput] = useState('')
-  const [mode, setMode]             = useState<'login' | 'register'>('login')
+  const [mode, setMode]             = useState<Mode>('login')
 
-  // Auto-fill referral code from URL ?ref=CODE
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const ref = params.get('ref')
-    if (ref) { setReferralInput(ref.toUpperCase()); setMode('register') }
-  }, [])
   const [loading, setLoading]   = useState(false)
   const [message, setMessage]   = useState('')
+  const [msgType, setMsgType]   = useState<'success' | 'error'>('error')
   const [showPass, setShowPass] = useState(false)
   const [forgotSent, setForgotSent] = useState(false)
 
   const supabase = createClient()
+
+  function notify(text: string, type: 'success' | 'error') {
+    setMsgType(type)
+    setMessage(text)
+  }
+
+  // Auto-fill referral code from URL ?ref=CODE + message retour reset
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const ref = params.get('ref')
+    if (ref) { setReferralInput(ref.toUpperCase()); setMode('register') }
+    if (params.get('reset') === 'success') {
+      notify('✅ Mot de passe modifié ! Connecte-toi avec ton nouveau mot de passe.', 'success')
+    }
+  }, [])
 
   // ── Auto-redirect si déjà connecté (gère le token refresh côté client) ────
   useEffect(() => {
@@ -39,15 +51,27 @@ export default function AuthPage() {
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function handleForgotPassword() {
-    if (!email) { setMessage('Saisis ton adresse e-mail d\'abord.'); return }
+  function switchMode(m: Mode) {
+    setMode(m)
+    setMessage('')
+    setForgotSent(false)
+  }
+
+  async function handleForgotPassword(e: React.FormEvent) {
+    e.preventDefault()
+    if (!email) { notify("Saisis ton adresse e-mail d'abord.", 'error'); return }
     setLoading(true)
+    setMessage('')
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/reset-password`,
     })
     setLoading(false)
-    if (error) setMessage(error.message)
-    else { setForgotSent(true); setMessage('✅ Email de réinitialisation envoyé ! Vérifie ta boîte mail.') }
+    if (error) {
+      notify(error.message, 'error')
+    } else {
+      setForgotSent(true)
+      notify('Email de réinitialisation envoyé. Vérifie ta boîte mail (et tes spams).', 'success')
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -59,12 +83,12 @@ export default function AuthPage() {
       if (mode === 'login') {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) {
-          setMessage(error.message || 'Erreur de connexion')
+          notify(error.message || 'Erreur de connexion', 'error')
           setLoading(false)
           return
         }
         if (!data?.user) {
-          setMessage('Connexion échouée, réessaie.')
+          notify('Connexion échouée, réessaie.', 'error')
           setLoading(false)
           return
         }
@@ -75,7 +99,7 @@ export default function AuthPage() {
         const status    = profile?.subscription_status
         const hasAccess = ['trialing', 'active', 'vip'].includes(status ?? '')
 
-        setMessage('✅ Connexion réussie, redirection…')
+        notify('✅ Connexion réussie, redirection…', 'success')
         // Petit délai pour que le cookie soit bien posé avant la navigation
         setTimeout(() => {
           window.location.href = hasAccess ? '/dashboard' : '/pricing'
@@ -89,24 +113,33 @@ export default function AuthPage() {
             emailRedirectTo: `${window.location.origin}/auth/confirm`,
           },
         })
-        if (error) { setMessage(error.message) }
+        if (error) { notify(error.message, 'error') }
         else {
           if (referralInput.trim()) localStorage.setItem('myta_referral', referralInput.trim().toUpperCase())
-          setMessage('Vérifiez votre email pour confirmer votre compte.')
+          notify('Vérifiez votre email pour confirmer votre compte.', 'success')
         }
         setLoading(false)
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
-      setMessage('Erreur inattendue : ' + msg)
+      notify('Erreur inattendue : ' + msg, 'error')
       setLoading(false)
     }
   }
 
+  const noticeBox = message && (
+    <div className={`text-xs px-4 py-3 rounded-2xl flex items-start gap-2 ${
+      msgType === 'success'
+        ? 'bg-green-50 text-green-700 border border-green-200'
+        : 'bg-red-50 text-red-600 border border-red-200'
+    }`}>
+      <span>{msgType === 'success' ? '✅' : '⚠️'}</span>
+      <span>{message}</span>
+    </div>
+  )
+
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center px-5 py-12 page-gradient"
-    >
+    <div className="min-h-screen flex flex-col items-center justify-center px-5 py-12 page-gradient">
       <div className="w-full max-w-sm flex flex-col gap-8">
 
         <div className="flex flex-col items-center gap-4">
@@ -127,6 +160,55 @@ export default function AuthPage() {
           </div>
         </div>
 
+        {/* ────────── Écran MOT DE PASSE OUBLIÉ ────────── */}
+        {mode === 'forgot' ? (
+          <div className="bg-white rounded-3xl p-6 shadow-lg border border-zinc-100">
+            <h2 className="text-xl font-extrabold text-zinc-900 tracking-tight mb-0.5">Mot de passe oublié 🔑</h2>
+            <p className="text-zinc-400 text-sm mb-5">
+              Entre ton e-mail : on t'envoie un lien pour réinitialiser ton mot de passe.
+            </p>
+
+            {forgotSent ? (
+              <div className="flex flex-col items-center gap-4 py-4 text-center">
+                <CheckCircle2 size={36} className="text-green-500" />
+                <p className="text-sm font-bold text-zinc-900">E-mail envoyé ✓</p>
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  Un lien de réinitialisation vient d'être envoyé à <strong>{email}</strong>.
+                  Vérifie ta boîte mail (et tes spams), le lien est valable 1 h.
+                </p>
+                <button type="button" onClick={() => switchMode('login')}
+                  className="w-full py-3 rounded-2xl text-white text-sm font-bold"
+                  style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
+                  Retour à la connexion
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotPassword} className="flex flex-col gap-3">
+                <div className="relative">
+                  <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <input type="email" placeholder="Adresse e-mail" value={email}
+                    onChange={e => setEmail(e.target.value)} required autoFocus
+                    className="w-full pl-10 pr-4 py-3 border-2 border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-[#4B47A0] focus:ring-2 focus:ring-[#4B47A0]/15 transition-all bg-white" />
+                </div>
+
+                {noticeBox}
+
+                <button type="submit" disabled={loading}
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-white text-sm font-bold shadow-sm transition-all active:scale-[0.98] disabled:opacity-70 mt-1"
+                  style={{ background: 'linear-gradient(90deg, #4B47A0 0%, #2BA8B0 100%)' }}>
+                  {loading ? <Loader2 size={16} className="animate-spin" />
+                    : <>Envoyer le lien<ArrowRight size={15} /></>}
+                </button>
+
+                <button type="button" onClick={() => switchMode('login')}
+                  className="self-center text-xs text-zinc-400 hover:text-tta-mid transition-colors mt-1">
+                  ← Retour à la connexion
+                </button>
+              </form>
+            )}
+          </div>
+        ) : (
+        /* ────────── Écran CONNEXION / INSCRIPTION ────────── */
         <div className="bg-white rounded-3xl p-6 shadow-lg border border-zinc-100">
           <h2 className="text-xl font-extrabold text-zinc-900 tracking-tight mb-0.5">
             {mode === 'login' ? 'Bon retour ! 👋' : 'Créer un compte'}
@@ -137,7 +219,7 @@ export default function AuthPage() {
 
           <div className="flex bg-zinc-100 rounded-2xl p-1 mb-5">
             {(['login', 'register'] as const).map(m => (
-              <button key={m} onClick={() => { setMode(m); setMessage('') }}
+              <button key={m} onClick={() => switchMode(m)}
                 className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${mode === m ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'}`}>
                 {m === 'login' ? 'Connexion' : 'Inscription'}
               </button>
@@ -176,25 +258,14 @@ export default function AuthPage() {
               </button>
             </div>
 
-            {mode === 'login' && !forgotSent && (
-              <button
-                type="button"
-                onClick={handleForgotPassword}
-                disabled={loading}
-                className="self-end text-xs text-tta-mid hover:underline disabled:opacity-50 transition-colors"
-              >
+            {mode === 'login' && (
+              <button type="button" onClick={() => switchMode('forgot')} disabled={loading}
+                className="self-end text-xs text-tta-mid hover:underline disabled:opacity-50 transition-colors">
                 Mot de passe oublié ?
               </button>
             )}
 
-            {message && (
-              <div className={`text-xs px-4 py-3 rounded-2xl flex items-start gap-2 ${
-                message.includes('Vérifiez') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'
-              }`}>
-                <span>{message.includes('Vérifiez') ? '✅' : '⚠️'}</span>
-                <span>{message}</span>
-              </div>
-            )}
+            {noticeBox}
 
             <button type="submit" disabled={loading}
               className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-white text-sm font-bold shadow-sm transition-all active:scale-[0.98] disabled:opacity-70 mt-1"
@@ -204,6 +275,7 @@ export default function AuthPage() {
             </button>
           </form>
         </div>
+        )}
 
         {/* Lien démo */}
         <button
@@ -217,7 +289,7 @@ export default function AuthPage() {
           <div className="flex gap-3">
             <a href="/legal" className="text-xs text-zinc-400 hover:text-tta-mid transition-colors">Mentions légales</a>
             <a href="/legal" className="text-xs text-zinc-400 hover:text-tta-mid transition-colors">CGU</a>
-            <a href="/legal" className="text-xs text-zinc-400 hover:text-tta-mid transition-colors">Confidentialité</a>
+            <a href="/privacy" className="text-xs text-zinc-400 hover:text-tta-mid transition-colors">Confidentialité</a>
           </div>
         </div>
       </div>
