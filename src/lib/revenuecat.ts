@@ -38,7 +38,12 @@ async function getPurchases() {
     RC_TIMEOUT_MS,
     'import'
   )
-  return mod.Purchases
+  // ⚠️ NE JAMAIS retourner mod.Purchases nu depuis une fonction async :
+  // l'objet Purchases est un proxy Capacitor "thenable". Le `return`/`await`
+  // déclenche alors Purchases.then(), rejeté par le natif avec
+  // « "Purchases.then()" is not implemented on ios » → achats cassés.
+  // On l'encapsule dans un objet (non-thenable) pour neutraliser ce piège.
+  return { Purchases: mod.Purchases }
 }
 
 /**
@@ -69,7 +74,7 @@ export async function initRevenueCat(supabaseUserId: string): Promise<void> {
     return
   }
   try {
-    const Purchases = await getPurchases()
+    const { Purchases } = await getPurchases()
     if (!configured) {
       await withTimeout(Purchases.configure({ apiKey, appUserID: supabaseUserId }), RC_TIMEOUT_MS, 'configure')
       configured = true
@@ -98,7 +103,7 @@ export interface RcProduct {
 export async function getRcProducts(): Promise<RcProduct[]> {
   if (!isIosApp()) return []
   try {
-    const Purchases = await getPurchases()
+    const { Purchases } = await getPurchases()
     const offerings = await withTimeout(Purchases.getOfferings(), RC_TIMEOUT_MS, 'getOfferings')
     const current = offerings.current
     if (!current) return []
@@ -137,7 +142,7 @@ export interface RcPurchaseResult {
 export async function purchaseRcPackage(packageId: string): Promise<RcPurchaseResult> {
   if (!isIosApp()) return { ok: false, error: 'not_ios' }
   try {
-    const Purchases = await getPurchases()
+    const { Purchases } = await getPurchases()
     const offerings = await Purchases.getOfferings()
     const pkg = offerings.current?.availablePackages.find(p => p.identifier === packageId)
     if (!pkg) return { ok: false, error: 'package_not_found' }
@@ -158,7 +163,7 @@ export async function purchaseRcPackage(packageId: string): Promise<RcPurchaseRe
 export async function restoreRcPurchases(): Promise<RcPurchaseResult> {
   if (!isIosApp()) return { ok: false, error: 'not_ios' }
   try {
-    const Purchases = await getPurchases()
+    const { Purchases } = await getPurchases()
     const { customerInfo } = await Purchases.restorePurchases()
     const planId = activePlanFromCustomerInfo(customerInfo)
     return { ok: !!planId, planId: planId ?? undefined }
