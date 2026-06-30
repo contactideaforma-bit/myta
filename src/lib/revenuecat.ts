@@ -105,6 +105,14 @@ export async function getRcProducts(): Promise<RcProduct[]> {
   try {
     const { Purchases } = await getPurchases()
     const offerings = await withTimeout(Purchases.getOfferings(), RC_TIMEOUT_MS, 'getOfferings')
+    // Diagnostic temporaire : structure réelle renvoyée par le SDK.
+    console.log('[RevenueCat][diag] offerings', JSON.stringify({
+      current: offerings.current?.identifier ?? null,
+      all: Object.keys(offerings.all ?? {}),
+      pkgs: offerings.current?.availablePackages?.map((p: any) => p.product?.identifier) ?? [],
+      allPkgs: Object.values(offerings.all ?? {}).flatMap((o: any) =>
+        (o.availablePackages ?? []).map((p: any) => p.product?.identifier)),
+    }))
     const current = offerings.current
     if (!current) return []
 
