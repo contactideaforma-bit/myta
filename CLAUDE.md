@@ -47,6 +47,9 @@ const supabase = createServerClient(url, key, {
 - Product IDs IAP (codés en dur): fr.mytwinapp.app.essentiel.monthly / fr.mytwinapp.app.premium.monthly ; entitlements RC: essentiel/premium
 - Env à ajouter (Vercel): NEXT_PUBLIC_REVENUECAT_IOS_KEY, REVENUECAT_WEBHOOK_AUTH
 
+## Fait dans cette session (Play Store deep links)
+- ✅ Deep links Play Console validés : assetlinks.json corrigé avec l'empreinte Play App Signing (D5:66:22:9F...) en plus de la clé d'upload (67:28:6C...) + relation get_login_creds. Le SHA-256 manquant était celui de Play App Signing (clé avec laquelle Google re-signe l'app livrée). Domaine mytwinapp.fr → validé.
+
 ## Fait avant
 - ✅ Menu disparu sur /friends (Navbar manquante dans friends/layout.tsx)
 - ✅ Création de groupe (auth route via Bearer + cookies req.cookies)
