@@ -296,7 +296,15 @@ function PricingContent() {
     setRcMsg(null)
     setRcLoading(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      // getSession borné : dans le WebView iOS il peut se bloquer (verrou
+      // navigator.locks non supporté) → on ne reste jamais coincé dessus.
+      const sessionRes = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise<{ data: { session: null } }>((resolve) =>
+          setTimeout(() => resolve({ data: { session: null } }), 8000)
+        ),
+      ])
+      const session = sessionRes.data.session
       if (!session) { setIsAnon(true); return }
       setIsAnon(false)
       await initRevenueCat(session.user.id)
@@ -313,6 +321,10 @@ function PricingContent() {
     if (!isIosApp()) return
     setIosApp(true)
     void loadRcProducts()
+    // Garde-fou absolu : quoi qu'il arrive, on coupe le chargement après 15 s
+    // (évite tout spinner infini même si un appel réseau/natif ne répond jamais).
+    const failsafe = setTimeout(() => setRcLoading(false), 15000)
+    return () => clearTimeout(failsafe)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleRcPurchase(pkgId: string) {
