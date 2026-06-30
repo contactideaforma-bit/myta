@@ -291,16 +291,28 @@ function PricingContent() {
   const supabase = createClient()
 
   // App iOS : achats in-app via RevenueCat (exigence Apple 3.1.1).
+  // try/finally garantit que le spinner est TOUJOURS coupé (jamais d'attente infinie).
+  async function loadRcProducts() {
+    setRcMsg(null)
+    setRcLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { setIsAnon(true); return }
+      setIsAnon(false)
+      await initRevenueCat(session.user.id)
+      setRcProducts(await getRcProducts())
+    } catch (err) {
+      console.error('[pricing] chargement offres RC:', err)
+      setRcProducts([])
+    } finally {
+      setRcLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (!isIosApp()) return
     setIosApp(true)
-    ;(async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { setIsAnon(true); setRcLoading(false); return }
-      await initRevenueCat(session.user.id)
-      setRcProducts(await getRcProducts())
-      setRcLoading(false)
-    })()
+    void loadRcProducts()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleRcPurchase(pkgId: string) {
@@ -389,8 +401,13 @@ function PricingContent() {
             <div className="bg-white rounded-3xl p-6 shadow-lg border border-zinc-100 w-full flex flex-col gap-3">
               <p className="text-3xl">😕</p>
               <p className="text-sm text-zinc-500">
-                Les offres ne sont pas disponibles pour le moment. Réessaie plus tard.
+                Les offres ne sont pas disponibles pour le moment.
               </p>
+              <button onClick={() => void loadRcProducts()} disabled={rcLoading}
+                className="w-full py-3 rounded-2xl text-white text-sm font-bold"
+                style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
+                Réessayer
+              </button>
               <button onClick={handleRcRestore} disabled={rcBusy === 'restore'}
                 className="text-xs font-bold text-[#4B47A0] underline">
                 Restaurer mes achats

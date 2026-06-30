@@ -29,9 +29,15 @@ export const RC_PRODUCT_TO_PLAN: Record<string, PlanId> = {
 
 let configured = false
 
-/** Import dynamique du plugin (évite de charger le natif sur le web). */
+/** Import dynamique du plugin (évite de charger le natif sur le web).
+ *  Borné par un timeout : si le chunk JS (servi par Vercel / le service worker
+ *  PWA) ne se charge pas, on échoue proprement au lieu de bloquer l'UI. */
 async function getPurchases() {
-  const mod = await import('@revenuecat/purchases-capacitor')
+  const mod = await withTimeout(
+    import('@revenuecat/purchases-capacitor'),
+    RC_TIMEOUT_MS,
+    'import'
+  )
   return mod.Purchases
 }
 
