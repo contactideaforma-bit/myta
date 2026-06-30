@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { isIosApp } from '@/lib/app-platform'
 import type { PlanId } from '@/lib/stripe-plans'
 import {
-  initRevenueCat, getRcProducts, purchaseRcPackage, restoreRcPurchases,
+  initRevenueCat, getRcProducts, purchaseRcPackage, restoreRcPurchases, getLastRcDiag,
   type RcProduct,
 } from '@/lib/revenuecat'
 
@@ -286,6 +286,7 @@ function PricingContent() {
   const [rcLoading,  setRcLoading]  = useState(true)
   const [rcBusy,     setRcBusy]     = useState<string | null>(null) // packageId / 'restore' en cours
   const [rcMsg,      setRcMsg]      = useState<string | null>(null)
+  const [rcDebug,    setRcDebug]    = useState('')
   const [isAnon,     setIsAnon]     = useState(false)
   const router   = useRouter()
   const supabase = createClient()
@@ -313,6 +314,7 @@ function PricingContent() {
       console.error('[pricing] chargement offres RC:', err)
       setRcProducts([])
     } finally {
+      setRcDebug(getLastRcDiag())
       setRcLoading(false)
     }
   }
@@ -424,6 +426,11 @@ function PricingContent() {
                 className="text-xs font-bold text-[#4B47A0] underline">
                 Restaurer mes achats
               </button>
+              {rcDebug && (
+                <p className="text-[10px] text-zinc-400 break-all mt-2 text-left">
+                  diag: {rcDebug}
+                </p>
+              )}
             </div>
           )}
 

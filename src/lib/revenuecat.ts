@@ -100,19 +100,24 @@ export interface RcProduct {
  * Récupère l'offering courant et le mappe sur nos plans solo.
  * Retourne [] hors app iOS ou si l'offering n'est pas configuré.
  */
+/** Diagnostic temporaire affiché à l'écran (debug paywall iOS). */
+let _lastRcDiag = '(pas encore chargé)'
+export function getLastRcDiag(): string { return _lastRcDiag }
+
 export async function getRcProducts(): Promise<RcProduct[]> {
-  if (!isIosApp()) return []
+  if (!isIosApp()) { _lastRcDiag = 'not-ios'; return [] }
   try {
     const { Purchases } = await getPurchases()
     const offerings = await withTimeout(Purchases.getOfferings(), RC_TIMEOUT_MS, 'getOfferings')
     // Diagnostic temporaire : structure réelle renvoyée par le SDK.
-    console.log('[RevenueCat][diag] offerings', JSON.stringify({
+    _lastRcDiag = JSON.stringify({
       current: offerings.current?.identifier ?? null,
       all: Object.keys(offerings.all ?? {}),
       pkgs: offerings.current?.availablePackages?.map((p: any) => p.product?.identifier) ?? [],
       allPkgs: Object.values(offerings.all ?? {}).flatMap((o: any) =>
         (o.availablePackages ?? []).map((p: any) => p.product?.identifier)),
-    }))
+    })
+    console.log('[RevenueCat][diag] offerings', _lastRcDiag)
     const current = offerings.current
     if (!current) return []
 
@@ -132,7 +137,8 @@ export async function getRcProducts(): Promise<RcProduct[]> {
     }
     // Essentiel puis Premium
     return out.sort((a, b) => (a.planId === 'premium' ? 1 : 0) - (b.planId === 'premium' ? 1 : 0))
-  } catch (err) {
+  } catch (err: any) {
+    _lastRcDiag = 'ERR: ' + (err?.message ?? String(err))
     console.error('[RevenueCat] getOfferings:', err)
     return []
   }
