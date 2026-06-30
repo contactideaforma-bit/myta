@@ -1,8 +1,12 @@
+// ⚠️ Service worker PWA désactivé : l'app iOS (Capacitor) charge mytwinapp.fr
+// en direct ; le précache Workbox provoquait des bundles périmés bloquants
+// (écran d'offres figé en chargement → rejet Apple 2.1b). On sert désormais
+// un sw.js auto-destructeur (public/sw.js) qui purge le cache des appareils
+// déjà piégés. next-pwa est neutralisé pour ne plus régénérer de sw.js.
 const withPWA = require('next-pwa')({
   dest: 'public',
-  disable: process.env.NODE_ENV === 'development',
-  register: true,
-  skipWaiting: true,
+  disable: true,
+  register: false,
 })
 
 /** @type {import('next').NextConfig} */
