@@ -280,7 +280,10 @@ function AiExplainer() {
 function PricingContent() {
   const [activeTab, setActiveTab] = useState<TabKey>('solo')
   const [loading,   setLoading]   = useState<string | null>(null)
-  const [iosApp,    setIosApp]    = useState(false)
+  // null = plateforme pas encore détectée → on n'affiche RIEN (évite le flash
+  // de la page prix web/Stripe dans l'app iOS, interdit par Apple 3.1.1)
+  const [iosApp,    setIosApp]    = useState<boolean | null>(null)
+  const [showDiag,  setShowDiag]  = useState(false)
   // Écran achat iOS (RevenueCat — achats in-app, exigence Apple 3.1.1)
   const [rcProducts, setRcProducts] = useState<RcProduct[]>([])
   const [rcLoading,  setRcLoading]  = useState(true)
@@ -329,8 +332,9 @@ function PricingContent() {
   }
 
   useEffect(() => {
-    if (!isIosApp()) return
-    setIosApp(true)
+    const ios = isIosApp()
+    setIosApp(ios)
+    if (!ios) return
     void loadRcProducts()
     // Garde-fou absolu : quoi qu'il arrive, on coupe le chargement après 15 s
     // (évite tout spinner infini même si un appel réseau/natif ne répond jamais).
@@ -388,6 +392,15 @@ function PricingContent() {
 
   const currentTab = TABS.find(t => t.key === activeTab)!
 
+  // Plateforme pas encore détectée → loader (évite le flash de la page Stripe)
+  if (iosApp === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center page-gradient">
+        <Loader2 size={32} className="animate-spin text-[#4B47A0]" />
+      </div>
+    )
+  }
+
   // ── App iOS : achats in-app via l'App Store (RevenueCat — Apple 3.1.1) ────
   if (iosApp) {
     return (
@@ -422,7 +435,8 @@ function PricingContent() {
           {/* Produits indisponibles */}
           {!isAnon && !rcLoading && rcProducts.length === 0 && (
             <div className="bg-white rounded-3xl p-6 shadow-lg border border-zinc-100 w-full flex flex-col gap-3">
-              <p className="text-3xl">😕</p>
+              {/* Tap sur l'emoji = afficher le diagnostic technique (debug) */}
+              <p className="text-3xl select-none" onClick={() => setShowDiag(s => !s)}>😕</p>
               <p className="text-sm text-zinc-500">
                 Les offres ne sont pas disponibles pour le moment.
               </p>
@@ -435,8 +449,7 @@ function PricingContent() {
                 className="text-xs font-bold text-[#4B47A0] underline">
                 Restaurer mes achats
               </button>
-              {(process.env.NODE_ENV !== 'production'
-                || new URLSearchParams(window.location.search).get('debug') === '1') && rcDebug && (
+              {showDiag && rcDebug && (
                 <p className="text-[10px] text-zinc-400 break-all mt-2 text-left">
                   diag: {rcDebug}
                 </p>
