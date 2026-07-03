@@ -47,7 +47,13 @@ const supabase = createServerClient(url, key, {
 - Product IDs IAP (codés en dur): fr.mytwinapp.app.essentiel.monthly / fr.mytwinapp.app.premium.monthly ; entitlements RC: essentiel/premium
 - Env à ajouter (Vercel): NEXT_PUBLIC_REVENUECAT_IOS_KEY, REVENUECAT_WEBHOOK_AUTH
 
-## Fait dans cette session (Play Store deep links)
+## Fait dans cette session (rejet App Review 03/07 — Guideline 2.1(a))
+- Rejet Apple : erreur sur la page abonnement après création de compte (iPad Air 11" M3, iPadOS 26.5) + compte démo fourni avait déjà un abo actif
+- ✅ revenuecat.ts : fallback sur offerings.all si offerings.current est null (config RC incomplète/sandbox)
+- ✅ pricing/page.tsx : retry auto (1,5 s) si 0 produit au 1er chargement + diag debug masqué en prod
+- ⏳ À faire avant resoumission : vérifier RevenueCat (offering marqué "Current", 2 packages attachés), vérifier IAP rattachés à la version dans ASC, fournir un compte démo SANS abonnement actif, tester sur iPad, git push + rebuild/upload
+
+## Fait dans la session précédente (Play Store deep links)
 - ✅ Deep links Play Console validés : assetlinks.json corrigé avec l'empreinte Play App Signing (D5:66:22:9F...) en plus de la clé d'upload (67:28:6C...) + relation get_login_creds. Le SHA-256 manquant était celui de Play App Signing (clé avec laquelle Google re-signe l'app livrée). Domaine mytwinapp.fr → validé.
 
 ## Fait avant

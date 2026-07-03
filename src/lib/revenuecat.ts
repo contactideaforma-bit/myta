@@ -118,7 +118,14 @@ export async function getRcProducts(): Promise<RcProduct[]> {
         (o.availablePackages ?? []).map((p: any) => p.product?.identifier)),
     })
     console.log('[RevenueCat][diag] offerings', _lastRcDiag)
+    // Fallback : si aucun offering "current" n'est défini côté RevenueCat
+    // (config incomplète / sandbox review), on prend le premier offering
+    // qui contient nos produits plutôt que d'afficher un écran d'erreur.
     const current = offerings.current
+      ?? Object.values(offerings.all ?? {}).find(o =>
+           (o.availablePackages ?? []).some(p => RC_PRODUCT_TO_PLAN[p.product?.identifier])
+         )
+      ?? null
     if (!current) return []
 
     const out: RcProduct[] = []
@@ -158,7 +165,12 @@ export async function purchaseRcPackage(packageId: string): Promise<RcPurchaseRe
   try {
     const { Purchases } = await getPurchases()
     const offerings = await Purchases.getOfferings()
-    const pkg = offerings.current?.availablePackages.find(p => p.identifier === packageId)
+    const offering = offerings.current
+      ?? Object.values(offerings.all ?? {}).find(o =>
+           (o.availablePackages ?? []).some(p => p.identifier === packageId)
+         )
+      ?? null
+    const pkg = offering?.availablePackages.find(p => p.identifier === packageId)
     if (!pkg) return { ok: false, error: 'package_not_found' }
 
     const { customerInfo } = await Purchases.purchasePackage({ aPackage: pkg })

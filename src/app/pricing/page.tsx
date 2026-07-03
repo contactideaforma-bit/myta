@@ -309,7 +309,14 @@ function PricingContent() {
       if (!session) { setIsAnon(true); return }
       setIsAnon(false)
       await initRevenueCat(session.user.id)
-      setRcProducts(await getRcProducts())
+      let products = await getRcProducts()
+      // Retry unique : StoreKit peut échouer juste après création de compte
+      // (config RC pas encore prête). Évite l'écran d'erreur au 1er passage.
+      if (products.length === 0) {
+        await new Promise(r => setTimeout(r, 1500))
+        products = await getRcProducts()
+      }
+      setRcProducts(products)
     } catch (err) {
       console.error('[pricing] chargement offres RC:', err)
       setRcProducts([])
@@ -426,7 +433,7 @@ function PricingContent() {
                 className="text-xs font-bold text-[#4B47A0] underline">
                 Restaurer mes achats
               </button>
-              {rcDebug && (
+              {process.env.NODE_ENV !== 'production' && rcDebug && (
                 <p className="text-[10px] text-zinc-400 break-all mt-2 text-left">
                   diag: {rcDebug}
                 </p>
