@@ -227,6 +227,17 @@ function paymentFailedEmailHtml(firstName: string): string {
 
 // ─── Webhook handler ─────────────────────────────────────────────────────────
 
+/**
+ * Fin de période d'un abonnement, compatible toutes versions d'API Stripe.
+ * Depuis l'API 2025+ (basil/dahlia), current_period_end n'est plus sur la
+ * subscription mais sur ses items → new Date(undefined*1000).toISOString()
+ * levait une exception ⇒ HTTP 500 ⇒ Stripe a désactivé l'endpoint.
+ */
+function subPeriodEnd(sub: any): string | null {
+  const ts = sub?.current_period_end ?? sub?.items?.data?.[0]?.current_period_end
+  return typeof ts === 'number' ? new Date(ts * 1000).toISOString() : null
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.text()
   const sig  = req.headers.get('stripe-signature')!
@@ -239,6 +250,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 })
   }
 
+  // try/catch global : une erreur de traitement ne doit JAMAIS renvoyer 500
+  // (Stripe désactive l'endpoint après trop d'échecs). On log et on ack ;
+  // les événements ratés restent rejouables depuis le dashboard Stripe.
+  try {
   switch (event.type) {
 
     case 'checkout.session.completed': {
@@ -341,8 +356,9 @@ export async function POST(req: NextRequest) {
 
         const updatePayload: Record<string, unknown> = {
           subscription_status: sub.status,
-          subscription_end:    new Date(sub.current_period_end * 1000).toISOString(),
         }
+        const periodEnd = subPeriodEnd(sub)
+        if (periodEnd) updatePayload.subscription_end = periodEnd
         if (planId) updatePayload.plan = planId
 
         await supabaseAdmin.from('profiles').update(updatePayload).eq('id', uid)
@@ -354,10 +370,10 @@ export async function POST(req: NextRequest) {
       const sub = event.data.object
       const uid = sub?.metadata?.supabase_user_id
       if (uid) {
-        await supabaseAdmin.from('profiles').update({
-          subscription_status: 'canceled',
-          subscription_end:    new Date(sub.current_period_end * 1000).toISOString(),
-        }).eq('id', uid)
+        const cancelPayload: Record<string, unknown> = { subscription_status: 'canceled' }
+        const cancelEnd = subPeriodEnd(sub)
+        if (cancelEnd) cancelPayload.subscription_end = cancelEnd
+        await supabaseAdmin.from('profiles').update(cancelPayload).eq('id', uid)
       }
       break
     }
@@ -400,6 +416,9 @@ export async function POST(req: NextRequest) {
       }
       break
     }
+  }
+  } catch (err) {
+    console.error(`[webhook] Erreur traitement ${event.type}:`, err)
   }
 
   return NextResponse.json({ received: true })
