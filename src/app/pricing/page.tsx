@@ -316,10 +316,12 @@ function PricingContent() {
         await new Promise(r => setTimeout(r, 1500))
         products = await getRcProducts()
       }
-      setRcProducts(products)
+      // ⚠️ Ne JAMAIS écraser des offres déjà affichées par un résultat vide
+      // (un appel StoreKit qui échoue ne doit pas faire disparaître le paywall).
+      setRcProducts(prev => (products.length > 0 ? products : prev))
     } catch (err) {
       console.error('[pricing] chargement offres RC:', err)
-      setRcProducts([])
+      // Ne pas effacer les offres déjà chargées
     } finally {
       setRcDebug(getLastRcDiag())
       setRcLoading(false)
@@ -433,7 +435,8 @@ function PricingContent() {
                 className="text-xs font-bold text-[#4B47A0] underline">
                 Restaurer mes achats
               </button>
-              {process.env.NODE_ENV !== 'production' && rcDebug && (
+              {(process.env.NODE_ENV !== 'production'
+                || new URLSearchParams(window.location.search).get('debug') === '1') && rcDebug && (
                 <p className="text-[10px] text-zinc-400 break-all mt-2 text-left">
                   diag: {rcDebug}
                 </p>
