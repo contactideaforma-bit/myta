@@ -51,7 +51,9 @@ const supabase = createServerClient(url, key, {
 - Rejet Apple : erreur sur la page abonnement après création de compte (iPad Air 11" M3, iPadOS 26.5) + compte démo fourni avait déjà un abo actif
 - ✅ revenuecat.ts : fallback sur offerings.all si offerings.current est null (config RC incomplète/sandbox)
 - ✅ pricing/page.tsx : retry auto (1,5 s) si 0 produit au 1er chargement + diag debug masqué en prod
-- ⏳ À faire avant resoumission : vérifier RevenueCat (offering marqué "Current", 2 packages attachés), vérifier IAP rattachés à la version dans ASC, fournir un compte démo SANS abonnement actif, tester sur iPad, git push + rebuild/upload
+- ✅ CAUSE RACINE trouvée (via ASC) : disponibilité des IAP limitée (Essentiel 3 pays, Premium Europe 42) → pas de USA → reviewer US ne voyait aucun produit. Corrigé : tous les pays (175) activés pour les 2 abonnements + futurs pays auto
+- ✅ Webhook Stripe désactivé par Stripe (9× HTTP 500 depuis 27/06) : current_period_end absent de l'objet subscription en API dahlia → fix subPeriodEnd() via items + try/catch global anti-500. À faire : réactiver l'endpoint dans le dashboard Stripe + rejouer les événements manqués
+- ⏳ À faire avant resoumission : retester TestFlight (compte neuf → offres visibles), compte démo SANS abonnement actif, resoumettre (pas de rebuild nécessaire, l'app charge mytwinapp.fr)
 
 ## Fait dans la session précédente (Play Store deep links)
 - ✅ Deep links Play Console validés : assetlinks.json corrigé avec l'empreinte Play App Signing (D5:66:22:9F...) en plus de la clé d'upload (67:28:6C...) + relation get_login_creds. Le SHA-256 manquant était celui de Play App Signing (clé avec laquelle Google re-signe l'app livrée). Domaine mytwinapp.fr → validé.
