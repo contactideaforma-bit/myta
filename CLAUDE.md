@@ -47,6 +47,21 @@ const supabase = createServerClient(url, key, {
 - Product IDs IAP (codés en dur): fr.mytwinapp.app.essentiel.monthly / fr.mytwinapp.app.premium.monthly ; entitlements RC: essentiel/premium
 - Env à ajouter (Vercel): NEXT_PUBLIC_REVENUECAT_IOS_KEY, REVENUECAT_WEBHOOK_AUTH
 
+## Fait le 07/07 (3e rejet 2.1(a) — cause racine identifiée : abos jamais inclus dans les soumissions)
+- Rejet du 06/07 identique (iPad Air M3, « error message on the subscription page », build 1.0 (4))
+- **CAUSE RACINE** : les emails Apple montrent « Number of items submitted: 1 » sur TOUTES les soumissions (vérifié dans ASC : les 2 soumissions supprimées = 1 élément chacune). Les 2 abos sont coincés en « Waiting for Review » ORPHELINS (liés à aucune soumission depuis la suppression de la 1re) → non fetchables par le reviewer → paywall vide → boucle de rejets. Le code n'a jamais été en cause.
+- Blocage ASC : abos en WFR → section « Achats intégrés et abonnements » absente de la page version, bouton « Soumettre pour vérification » des abos grisé, brouillon de soumission n'accepte pas d'ajout. Modifier la localisation ne réinitialise PAS l'état. Bug ASC connu (cf. forums Apple/RevenueCat).
+- Vérifié : accord « Applications payantes » Actif (tous pays, 15/06/26–10/06/27) ✅ ; fiche abo complète (capture + notes) ✅
+- ✅ Actions du 07/07 : soumission rejetée supprimée (retrait de la version) → nouveau brouillon → note reviewer ajoutée en tête des « Remarques » (EN : abos coincés en WFR, impossible de les rattacher, merci de les approuver AVEC la version) → **soumission ENVOYÉE le 07/07 ~15h10** (version 1.0, build 1.0 (4), app « En attente de vérification »)
+- Modif mineure : description Essentiel « Journal, sport et sommeil — IA limitée » (tentative de reset d'état)
+- ⏳ EN PARALLÈLE (recommandé, voie la plus fiable selon la communauté) : contacter Apple Developer Support (https://developer.apple.com/contact/ → demander un rappel téléphonique) pour faire débloquer les 2 abos coincés en « Waiting for Review » (ID Apple Essentiel : 6780541713)
+
+## Fait le 04/07 (déblocage abonnements « Waiting for Review »)
+- Constat : soumission ASC bien « Supprimé » (annulée session précédente) mais les 2 abos restent « En attente de vérification » → confirmé via doc/communauté RevenueCat : les produits Apple en « Waiting for Review » ne sont PAS fetchables (ni sandbox/TestFlight, ni API RC qui les filtre côté serveur → packages: []). Limitation Apple, pas un bug : impossible de tester le paywall TestFlight avant approbation des abos. Test API RC (offerings, en-têtes SDK complets) → toujours packages: [].
+- Conclusion : les 1ers abos restent WFR tant qu'une version n'est pas approuvée — la seule voie est de resoumettre (motifs du rejet corrigés : pays ✅, compte démo ✅).
+- ✅ Soumission ENVOYÉE à Apple le 04/07 à 18:34 (version 1.0, build 1.0 (4)) — vérification sous ~48 h, app en « En attente de vérification »
+- ✅ Compte démo gibbes.contact@gmail.com remis à subscription_status='free', plan=null dans Supabase (était vip/premium — 2e motif de rejet)
+
 ## Fait dans cette session (rejet App Review 03/07 — Guideline 2.1(a))
 - Rejet Apple : erreur sur la page abonnement après création de compte (iPad Air 11" M3, iPadOS 26.5) + compte démo fourni avait déjà un abo actif
 - ✅ revenuecat.ts : fallback sur offerings.all si offerings.current est null (config RC incomplète/sandbox)

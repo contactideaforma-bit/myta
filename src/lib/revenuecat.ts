@@ -63,10 +63,11 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
 const RC_TIMEOUT_MS = 12000
 
 /**
- * Initialise RevenueCat et associe l'utilisateur Supabase.
- * À appeler une fois, côté client, après connexion (dans un useEffect).
+ * Initialise RevenueCat. Sans `supabaseUserId`, configure un utilisateur
+ * ANONYME (exigence Apple 5.1.1(v) : l'achat doit être possible sans compte).
+ * Avec un userId, associe l'utilisateur Supabase (logIn si déjà configuré).
  */
-export async function initRevenueCat(supabaseUserId: string): Promise<void> {
+export async function initRevenueCat(supabaseUserId?: string): Promise<void> {
   if (!isIosApp()) return
   const apiKey = process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY
   if (!apiKey) {
@@ -76,13 +77,36 @@ export async function initRevenueCat(supabaseUserId: string): Promise<void> {
   try {
     const { Purchases } = await getPurchases()
     if (!configured) {
-      await withTimeout(Purchases.configure({ apiKey, appUserID: supabaseUserId }), RC_TIMEOUT_MS, 'configure')
+      await withTimeout(
+        Purchases.configure(supabaseUserId ? { apiKey, appUserID: supabaseUserId } : { apiKey }),
+        RC_TIMEOUT_MS, 'configure'
+      )
       configured = true
-    } else {
+    } else if (supabaseUserId) {
       await withTimeout(Purchases.logIn({ appUserID: supabaseUserId }), RC_TIMEOUT_MS, 'login')
     }
   } catch (err) {
     console.error('[RevenueCat] init:', err)
+  }
+}
+
+/**
+ * Associe l'utilisateur Supabase au SDK RevenueCat après connexion/inscription.
+ * RevenueCat transfère automatiquement les achats faits en anonyme vers ce
+ * compte. Retourne le plan actif éventuel (pour sync UI + serveur).
+ */
+export async function linkRevenueCatUser(supabaseUserId: string): Promise<PlanId | null> {
+  if (!isIosApp()) return null
+  try {
+    await initRevenueCat() // configure (anonyme) si pas déjà fait
+    const { Purchases } = await getPurchases()
+    const { customerInfo } = await withTimeout(
+      Purchases.logIn({ appUserID: supabaseUserId }), RC_TIMEOUT_MS, 'login'
+    )
+    return activePlanFromCustomerInfo(customerInfo)
+  } catch (err) {
+    console.error('[RevenueCat] link:', err)
+    return null
   }
 }
 

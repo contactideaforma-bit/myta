@@ -308,10 +308,11 @@ function PricingContent() {
           setTimeout(() => resolve({ data: { session: null } }), 8000)
         ),
       ])
+      // Apple 5.1.1(v) : l'achat doit être possible SANS compte → si pas de
+      // session, on initialise RevenueCat en anonyme et on affiche le paywall.
       const session = sessionRes.data.session
-      if (!session) { setIsAnon(true); return }
-      setIsAnon(false)
-      await initRevenueCat(session.user.id)
+      setIsAnon(!session)
+      await initRevenueCat(session?.user.id)
       let products = await getRcProducts()
       // Retry unique : StoreKit peut échouer juste après création de compte
       // (config RC pas encore prête). Évite l'écran d'erreur au 1er passage.
@@ -349,7 +350,9 @@ function PricingContent() {
     setRcBusy(null)
     if (res.ok) {
       if (res.planId) localStorage.setItem('myta_plan', res.planId)
-      router.push('/dashboard')
+      // Achat anonyme (sans compte) : proposer ensuite la création de compte
+      // (optionnelle, pour synchroniser le suivi) — jamais AVANT l'achat.
+      router.push(isAnon ? '/auth?purchased=1' : '/dashboard')
     } else if (!res.cancelled) {
       setRcMsg("L'achat n'a pas abouti. Réessaie dans un instant.")
     }
@@ -362,7 +365,7 @@ function PricingContent() {
     setRcBusy(null)
     if (res.ok) {
       if (res.planId) localStorage.setItem('myta_plan', res.planId)
-      router.push('/dashboard')
+      router.push(isAnon ? '/auth?purchased=1' : '/dashboard')
     } else {
       setRcMsg('Aucun achat à restaurer sur ce compte Apple.')
     }
@@ -408,24 +411,8 @@ function PricingContent() {
         <div className="w-full max-w-sm flex flex-col gap-6 items-center text-center">
           <img src="/logo_my_twin_app.png" alt="MYTA" className="w-40 object-contain" />
 
-          {/* Pas connecté */}
-          {isAnon && (
-            <div className="bg-white rounded-3xl p-6 shadow-lg border border-zinc-100 flex flex-col gap-3 w-full">
-              <p className="text-3xl">👋</p>
-              <h1 className="text-lg font-extrabold text-zinc-900">Bienvenue sur MYTA</h1>
-              <p className="text-sm text-zinc-500 leading-relaxed">
-                Connecte-toi ou crée ton compte pour commencer.
-              </p>
-              <button onClick={() => router.push('/auth')}
-                className="w-full py-3 rounded-2xl text-white text-sm font-bold mt-2"
-                style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
-                Se connecter / Créer un compte
-              </button>
-            </div>
-          )}
-
           {/* Chargement des produits */}
-          {!isAnon && rcLoading && (
+          {rcLoading && (
             <div className="bg-white rounded-3xl p-8 shadow-lg border border-zinc-100 w-full">
               <Loader2 size={28} className="animate-spin text-[#4B47A0] mx-auto" />
               <p className="text-sm text-zinc-500 mt-3">Chargement des offres…</p>
@@ -433,7 +420,7 @@ function PricingContent() {
           )}
 
           {/* Produits indisponibles */}
-          {!isAnon && !rcLoading && rcProducts.length === 0 && (
+          {!rcLoading && rcProducts.length === 0 && (
             <div className="bg-white rounded-3xl p-6 shadow-lg border border-zinc-100 w-full flex flex-col gap-3">
               {/* Tap sur l'emoji = afficher le diagnostic technique (debug) */}
               <p className="text-3xl select-none" onClick={() => setShowDiag(s => !s)}>😕</p>
@@ -458,7 +445,7 @@ function PricingContent() {
           )}
 
           {/* Liste des abonnements */}
-          {!isAnon && !rcLoading && rcProducts.length > 0 && (
+          {!rcLoading && rcProducts.length > 0 && (
             <>
               <h1 className="text-xl font-extrabold text-zinc-900">Passe au niveau supérieur</h1>
               <div className="flex flex-col gap-3 w-full">
@@ -517,6 +504,17 @@ function PricingContent() {
                 {' · '}
                 <a href="https://mytwinapp.fr/privacy" className="underline">Confidentialité</a>
               </p>
+
+              {/* Compte OPTIONNEL (Apple 5.1.1(v)) : jamais requis pour acheter */}
+              {isAnon && (
+                <p className="text-xs text-zinc-500 mt-1">
+                  Un compte (gratuit, optionnel) permet de retrouver ton suivi sur tous
+                  tes appareils.{' '}
+                  <button onClick={() => router.push('/auth')} className="font-bold text-[#4B47A0] underline">
+                    Se connecter / créer un compte
+                  </button>
+                </p>
+              )}
             </>
           )}
         </div>
