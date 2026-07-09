@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { hasActiveAccess } from '@/lib/access'
 import { CheckCircle, ArrowRight, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
@@ -47,11 +48,11 @@ export default function ConfirmPage() {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('subscription_status')
+      .select('subscription_status, trial_ends_at')
       .eq('id', session.user.id)
       .single()
 
-    const hasAccess = ['trialing', 'active', 'vip'].includes(profile?.subscription_status ?? '')
+    const hasAccess = hasActiveAccess(profile?.subscription_status, profile?.trial_ends_at)
     router.push(hasAccess ? '/dashboard' : '/onboarding')
   }
 

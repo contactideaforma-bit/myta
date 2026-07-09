@@ -20,6 +20,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { PlanId, STRIPE_PLANS } from './stripe-plans'
+import { hasActiveAccess, isFreeTrial } from './access'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -54,7 +55,7 @@ export async function checkAiQuota(userId: string, feature: AiFeature): Promise<
     const { data: profile, error } = await supabaseAdmin
       .from('profiles')
       .select(
-        'plan, subscription_status, family_role, family_owner_id, ai_daily_key, ai_daily_meal_used, ai_daily_sport_used'
+        'plan, subscription_status, trial_ends_at, family_role, family_owner_id, ai_daily_key, ai_daily_meal_used, ai_daily_sport_used'
       )
       .eq('id', userId)
       .single()
@@ -80,22 +81,23 @@ export async function checkAiQuota(userId: string, feature: AiFeature): Promise<
     // Plan effectif : partenaire famille → hérite du propriétaire
     let effectivePlan: string | null = profile.plan ?? null
     let activeStatus = profile.subscription_status ?? ''
+    let trialEndsAt: string | null = profile.trial_ends_at ?? null
 
     if (profile.family_role === 'partner' && profile.family_owner_id) {
       const { data: owner } = await supabaseAdmin
         .from('profiles')
-        .select('plan, subscription_status')
+        .select('plan, subscription_status, trial_ends_at')
         .eq('id', profile.family_owner_id)
         .single()
       if (owner) {
         effectivePlan = owner.plan ?? effectivePlan
         activeStatus  = owner.subscription_status ?? activeStatus
+        trialEndsAt   = owner.trial_ends_at ?? trialEndsAt
       }
     }
 
-    // Abonnement actif requis
-    const activeStatuses = ['trialing', 'active', 'vip']
-    if (!activeStatuses.includes(activeStatus)) {
+    // Accès requis (abonné OU essai 3 jours en cours). L'essai expiré est refusé.
+    if (!hasActiveAccess(activeStatus, trialEndsAt)) {
       return {
         allowed: false,
         error: NextResponse.json({
@@ -105,9 +107,10 @@ export async function checkAiQuota(userId: string, feature: AiFeature): Promise<
       }
     }
 
-    // Détecter le tier (premium vs essentiel)
+    // Détecter le tier (premium vs essentiel).
+    // Pendant l'essai gratuit 3 jours → accès Premium complet offert.
     const planConfig = effectivePlan ? STRIPE_PLANS[effectivePlan as PlanId] : null
-    const isPremium  = planConfig?.tier === 'premium'
+    const isPremium  = planConfig?.tier === 'premium' || isFreeTrial(activeStatus, trialEndsAt)
 
     // Premium → illimité
     if (isPremium) {

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { hasActiveAccess } from '@/lib/access'
 
 // ─── Tarifs ────────────────────────────────────────────────────────────────────
 const PLANS = {
@@ -178,8 +179,8 @@ export default function HomePage() {
       if (!session) return
       try {
         const { data: profile } = await supabase
-          .from('profiles').select('subscription_status').eq('id', session.user.id).single()
-        const hasAccess = ['trialing', 'active', 'vip'].includes(profile?.subscription_status ?? '')
+          .from('profiles').select('subscription_status, trial_ends_at').eq('id', session.user.id).single()
+        const hasAccess = hasActiveAccess(profile?.subscription_status, profile?.trial_ends_at)
         window.location.href = hasAccess ? '/dashboard' : '/pricing'
       } catch {
         window.location.href = '/dashboard'

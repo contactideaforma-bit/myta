@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
+import { hasActiveAccess } from '@/lib/access'
 
 // ─── Routes publiques ─────────────────────────────────────────────────────────
 const PUBLIC_PATHS = [
@@ -76,12 +77,12 @@ export async function middleware(request: NextRequest) {
   try {
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('subscription_status')
+      .select('subscription_status, trial_ends_at')
       .eq('id', user.id)
       .single()
 
     const status = profile?.subscription_status
-    const hasAccess = ['trialing', 'active', 'vip'].includes(status ?? '')
+    const hasAccess = hasActiveAccess(status, profile?.trial_ends_at)
 
     if (!hasAccess) {
       const dest = status === 'past_due' ? '/payment-failed' : '/pricing'

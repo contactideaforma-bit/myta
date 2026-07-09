@@ -5,11 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Check, Loader2, Crown, Shield, Star, Zap, Users, Baby, Info } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { isIosApp } from '@/lib/app-platform'
+import { hasActiveAccess } from '@/lib/access'
 import type { PlanId } from '@/lib/stripe-plans'
-import {
-  initRevenueCat, getRcProducts, purchaseRcPackage, restoreRcPurchases, getLastRcDiag,
-  type RcProduct,
-} from '@/lib/revenuecat'
 
 // ─── Données des plans ────────────────────────────────────────────────────────
 
@@ -283,110 +280,60 @@ function PricingContent() {
   // null = plateforme pas encore détectée → on n'affiche RIEN (évite le flash
   // de la page prix web/Stripe dans l'app iOS, interdit par Apple 3.1.1)
   const [iosApp,    setIosApp]    = useState<boolean | null>(null)
-  const [showDiag,  setShowDiag]  = useState(false)
-  // Écran achat iOS (RevenueCat — achats in-app, exigence Apple 3.1.1)
-  const [rcProducts, setRcProducts] = useState<RcProduct[]>([])
-  const [rcLoading,  setRcLoading]  = useState(true)
-  const [rcBusy,     setRcBusy]     = useState<string | null>(null) // packageId / 'restore' en cours
-  const [rcMsg,      setRcMsg]      = useState<string | null>(null)
-  const [rcDebug,    setRcDebug]    = useState('')
-  const [isAnon,     setIsAnon]     = useState(false)
   const router   = useRouter()
   const supabase = createClient()
 
-  // App iOS : achats in-app via RevenueCat (exigence Apple 3.1.1).
-  // try/finally garantit que le spinner est TOUJOURS coupé (jamais d'attente infinie).
-  async function loadRcProducts() {
-    setRcMsg(null)
-    setRcLoading(true)
+  // ── App iOS (modèle "Netflix") ────────────────────────────────────────────
+  // AUCUNE UI d'achat, aucun prix, aucun lien externe, aucun renvoi vers le web
+  // (Apple 3.1.3(b) — interdiction de "steering"). L'app se contente de
+  // constater l'état du compte. Le paiement se fait sur le site, hors de l'app.
+  const [checking, setChecking] = useState(false)
+  const [signedIn, setSignedIn] = useState<boolean | null>(null)
+
+  // Re-vérifie l'accès : l'utilisateur a pu s'abonner sur le web depuis son
+  // navigateur → si l'abonnement est actif, on entre dans l'app.
+  async function recheckAccess() {
+    setChecking(true)
     try {
-      // getSession borné : dans le WebView iOS il peut se bloquer (verrou
-      // navigator.locks non supporté) → on ne reste jamais coincé dessus.
-      const sessionRes = await Promise.race([
-        supabase.auth.getSession(),
-        new Promise<{ data: { session: null } }>((resolve) =>
-          setTimeout(() => resolve({ data: { session: null } }), 8000)
-        ),
-      ])
-      // Apple 5.1.1(v) : l'achat doit être possible SANS compte → si pas de
-      // session, on initialise RevenueCat en anonyme et on affiche le paywall.
-      const session = sessionRes.data.session
-      setIsAnon(!session)
-      await initRevenueCat(session?.user.id)
-      let products = await getRcProducts()
-      // Retry unique : StoreKit peut échouer juste après création de compte
-      // (config RC pas encore prête). Évite l'écran d'erreur au 1er passage.
-      if (products.length === 0) {
-        await new Promise(r => setTimeout(r, 1500))
-        products = await getRcProducts()
+      const { data: { session } } = await supabase.auth.getSession()
+      setSignedIn(!!session)
+      if (session) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('subscription_status, trial_ends_at')
+          .eq('id', session.user.id)
+          .single()
+        if (hasActiveAccess(profile?.subscription_status, profile?.trial_ends_at)) {
+          router.replace('/dashboard')
+          return
+        }
       }
-      // ⚠️ Ne JAMAIS écraser des offres déjà affichées par un résultat vide
-      // (un appel StoreKit qui échoue ne doit pas faire disparaître le paywall).
-      setRcProducts(prev => (products.length > 0 ? products : prev))
-    } catch (err) {
-      console.error('[pricing] chargement offres RC:', err)
-      // Ne pas effacer les offres déjà chargées
-    } finally {
-      setRcDebug(getLastRcDiag())
-      setRcLoading(false)
-    }
+    } catch { /* ignore */ }
+    setChecking(false)
   }
 
   useEffect(() => {
     const ios = isIosApp()
     setIosApp(ios)
-    if (!ios) return
-    void loadRcProducts()
-    // Garde-fou absolu : quoi qu'il arrive, on coupe le chargement après 15 s
-    // (évite tout spinner infini même si un appel réseau/natif ne répond jamais).
-    const failsafe = setTimeout(() => setRcLoading(false), 15000)
-    return () => clearTimeout(failsafe)
+    if (ios) void recheckAccess()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function handleRcPurchase(pkgId: string) {
-    setRcMsg(null)
-    setRcBusy(pkgId)
-    const res = await purchaseRcPackage(pkgId)
-    setRcBusy(null)
-    if (res.ok) {
-      if (res.planId) localStorage.setItem('myta_plan', res.planId)
-      // Achat anonyme (sans compte) : proposer ensuite la création de compte
-      // (optionnelle, pour synchroniser le suivi) — jamais AVANT l'achat.
-      router.push(isAnon ? '/auth?purchased=1' : '/dashboard')
-    } else if (!res.cancelled) {
-      setRcMsg("L'achat n'a pas abouti. Réessaie dans un instant.")
-    }
-  }
-
-  async function handleRcRestore() {
-    setRcMsg(null)
-    setRcBusy('restore')
-    const res = await restoreRcPurchases()
-    setRcBusy(null)
-    if (res.ok) {
-      if (res.planId) localStorage.setItem('myta_plan', res.planId)
-      router.push(isAnon ? '/auth?purchased=1' : '/dashboard')
-    } else {
-      setRcMsg('Aucun achat à restaurer sur ce compte Apple.')
-    }
-  }
-
-  // Rediriger vers /account si déjà abonné (sauf si on vient changer de forfait)
+  // Web uniquement : rediriger vers /account si déjà abonné (sauf changement de
+  // forfait). Sur iOS c'est recheckAccess() qui gère l'entrée dans l'app.
   useEffect(() => {
-    // window.location.search = source de vérité, aucune race d'hydratation
+    if (isIosApp()) return
     if (new URLSearchParams(window.location.search).get('change') === 'true') return
 
     let active = true
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!active) return
-      if (!session) return
+      if (!active || !session) return
       const { data: profile } = await supabase
         .from('profiles')
-        .select('subscription_status')
+        .select('subscription_status, trial_ends_at')
         .eq('id', session.user.id)
         .single()
       if (!active) return
-      if (['trialing', 'active', 'vip'].includes(profile?.subscription_status ?? '')) {
+      if (hasActiveAccess(profile?.subscription_status, profile?.trial_ends_at)) {
         router.replace('/account')
       }
     })
@@ -404,119 +351,58 @@ function PricingContent() {
     )
   }
 
-  // ── App iOS : achats in-app via l'App Store (RevenueCat — Apple 3.1.1) ────
+  // ── Écran iOS neutre (modèle "Netflix", Apple 3.1.3(b)) ────────────────────
+  // Aucun prix, aucun bouton d'achat, aucun lien vers le site, aucun "steering".
+  // L'app constate seulement l'état du compte.
   if (iosApp) {
     return (
-      <div className="min-h-screen flex flex-col items-center px-5 py-12 page-gradient">
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12 page-gradient">
         <div className="w-full max-w-sm flex flex-col gap-6 items-center text-center">
           <img src="/logo_my_twin_app.png" alt="MYTA" className="w-40 object-contain" />
 
-          {/* Chargement des produits */}
-          {rcLoading && (
+          {checking ? (
             <div className="bg-white rounded-3xl p-8 shadow-lg border border-zinc-100 w-full">
               <Loader2 size={28} className="animate-spin text-[#4B47A0] mx-auto" />
-              <p className="text-sm text-zinc-500 mt-3">Chargement des offres…</p>
+              <p className="text-sm text-zinc-500 mt-3">Vérification de ton compte…</p>
             </div>
-          )}
-
-          {/* Produits indisponibles */}
-          {!rcLoading && rcProducts.length === 0 && (
-            <div className="bg-white rounded-3xl p-6 shadow-lg border border-zinc-100 w-full flex flex-col gap-3">
-              {/* Tap sur l'emoji = afficher le diagnostic technique (debug) */}
-              <p className="text-3xl select-none" onClick={() => setShowDiag(s => !s)}>😕</p>
-              <p className="text-sm text-zinc-500">
-                Les offres ne sont pas disponibles pour le moment.
+          ) : signedIn === false ? (
+            // Pas connecté → simple connexion (aucune vente ici)
+            <div className="bg-white rounded-3xl p-7 shadow-lg border border-zinc-100 w-full flex flex-col gap-4">
+              <p className="text-base font-extrabold text-zinc-900">Bienvenue sur MYTA</p>
+              <p className="text-sm text-zinc-500 leading-relaxed">
+                Connecte-toi pour accéder à ton espace.
               </p>
-              <button onClick={() => void loadRcProducts()} disabled={rcLoading}
-                className="w-full py-3 rounded-2xl text-white text-sm font-bold"
+              <button onClick={() => router.push('/auth')}
+                className="w-full py-3.5 rounded-2xl text-white text-sm font-bold"
                 style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
-                Réessayer
+                Se connecter
               </button>
-              <button onClick={handleRcRestore} disabled={rcBusy === 'restore'}
-                className="text-xs font-bold text-[#4B47A0] underline">
-                Restaurer mes achats
+            </div>
+          ) : (
+            // Connecté mais pas d'abonnement actif → état neutre, sans renvoi
+            <div className="bg-white rounded-3xl p-7 shadow-lg border border-zinc-100 w-full flex flex-col gap-4">
+              <p className="text-base font-extrabold text-zinc-900">Aucun abonnement actif</p>
+              <p className="text-sm text-zinc-500 leading-relaxed">
+                Ce compte n&apos;a pas d&apos;abonnement actif pour le moment.
+              </p>
+              <button onClick={() => void recheckAccess()} disabled={checking}
+                className="w-full py-3.5 rounded-2xl text-white text-sm font-bold disabled:opacity-60"
+                style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
+                Actualiser
               </button>
-              {showDiag && rcDebug && (
-                <p className="text-[10px] text-zinc-400 break-all mt-2 text-left">
-                  diag: {rcDebug}
-                </p>
-              )}
+              <button
+                onClick={async () => { await supabase.auth.signOut(); router.replace('/auth') }}
+                className="text-xs font-bold text-zinc-400 underline">
+                Se déconnecter
+              </button>
             </div>
           )}
 
-          {/* Liste des abonnements */}
-          {!rcLoading && rcProducts.length > 0 && (
-            <>
-              <h1 className="text-xl font-extrabold text-zinc-900">Passe au niveau supérieur</h1>
-              <div className="flex flex-col gap-3 w-full">
-                {rcProducts.map(p => {
-                  const isPrem = p.planId === 'premium'
-                  return (
-                    <button
-                      key={p.packageId}
-                      onClick={() => handleRcPurchase(p.packageId)}
-                      disabled={!!rcBusy}
-                      className="w-full rounded-3xl p-5 text-left shadow-lg border transition disabled:opacity-60"
-                      style={isPrem
-                        ? { background: 'linear-gradient(135deg, #4B47A0, #2BA8B0)', borderColor: 'transparent' }
-                        : { background: '#fff', borderColor: '#e4e4e7' }}>
-                      <div className="flex items-center justify-between">
-                        <span className={`font-extrabold ${isPrem ? 'text-white' : 'text-zinc-900'}`}>
-                          {isPrem ? 'Premium' : 'Essentiel'}
-                        </span>
-                        <span className={`text-sm font-bold ${isPrem ? 'text-white' : 'text-zinc-900'}`}>
-                          {p.priceString} / mois
-                        </span>
-                      </div>
-                      <p className={`text-xs mt-1 ${isPrem ? 'text-white/85' : 'text-zinc-500'}`}>
-                        {isPrem
-                          ? 'Tout illimité — recettes IA, analyse photo, coach Waty'
-                          : 'Journal, sport, sommeil — IA limitée'}
-                      </p>
-                      {p.hasFreeTrial && (
-                        <p className={`text-xs font-bold mt-2 ${isPrem ? 'text-white' : 'text-teal-700'}`}>
-                          🎁 3 jours gratuits
-                        </p>
-                      )}
-                      {rcBusy === p.packageId && (
-                        <Loader2 size={16} className={`animate-spin mt-2 ${isPrem ? 'text-white' : 'text-[#4B47A0]'}`} />
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-
-              {rcMsg && <p className="text-xs text-red-600">{rcMsg}</p>}
-
-              <button onClick={handleRcRestore} disabled={!!rcBusy}
-                className="text-xs font-bold text-[#4B47A0] underline mt-1">
-                {rcBusy === 'restore' ? 'Restauration…' : 'Restaurer mes achats'}
-              </button>
-
-              {/* Mentions légales obligatoires (Apple 3.1.2) */}
-              <p className="text-[11px] text-zinc-400 leading-relaxed mt-2">
-                Abonnement à renouvellement automatique. Le paiement est débité sur ton
-                compte Apple à la confirmation. L&apos;abonnement se renouvelle automatiquement
-                sauf désactivation au moins 24 h avant la fin de la période en cours. Gère ou
-                résilie ton abonnement dans les Réglages de ton compte Apple après l&apos;achat.
-                {' '}
-                <a href="https://mytwinapp.fr/legal" className="underline">Conditions d&apos;utilisation</a>
-                {' · '}
-                <a href="https://mytwinapp.fr/privacy" className="underline">Confidentialité</a>
-              </p>
-
-              {/* Compte OPTIONNEL (Apple 5.1.1(v)) : jamais requis pour acheter */}
-              {isAnon && (
-                <p className="text-xs text-zinc-500 mt-1">
-                  Un compte (gratuit, optionnel) permet de retrouver ton suivi sur tous
-                  tes appareils.{' '}
-                  <button onClick={() => router.push('/auth')} className="font-bold text-[#4B47A0] underline">
-                    Se connecter / créer un compte
-                  </button>
-                </p>
-              )}
-            </>
-          )}
+          <p className="text-[11px] text-zinc-400 leading-relaxed">
+            <a href="https://mytwinapp.fr/legal" className="underline">Conditions d&apos;utilisation</a>
+            {' · '}
+            <a href="https://mytwinapp.fr/privacy" className="underline">Confidentialité</a>
+          </p>
         </div>
       </div>
     )
