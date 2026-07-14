@@ -17,8 +17,8 @@ import type { PlanId } from './stripe-plans'
 
 /** Product IDs déclarés dans App Store Connect (auto-renewable subscriptions). */
 export const RC_PRODUCT_IDS = {
-  essentiel: 'fr.mytwinapp.app.essentiel.monthly',
-  premium:   'fr.mytwinapp.app.premium.monthly',
+  essentiel: 'fr.mytwinapp.app.essentiel.monthly.v2',
+  premium:   'fr.mytwinapp.app.premium.monthly.v2',
 } as const
 
 /** product_id App Store → planId interne (utilisé aussi côté webhook). */
