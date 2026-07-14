@@ -2,8 +2,29 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { isIosApp } from '@/lib/app-platform'
+import { linkRevenueCatUser } from '@/lib/revenuecat'
 import { hasActiveAccess } from '@/lib/access'
 import { Mail, Lock, User, ArrowRight, Loader2, Eye, EyeOff, Gift, CheckCircle2 } from 'lucide-react'
+
+/**
+ * App iOS : après connexion/inscription, rattache l'utilisateur RevenueCat
+ * (transfert des achats faits en anonyme — Apple 5.1.1(v)) puis synchronise
+ * l'abonnement vers le profil Supabase côté serveur.
+ */
+async function syncIosPurchases(accessToken: string | undefined, userId: string) {
+  if (!isIosApp()) return
+  try {
+    const plan = await linkRevenueCatUser(userId)
+    if (plan) localStorage.setItem('myta_plan', plan)
+    if (accessToken) {
+      await fetch('/api/revenuecat/claim', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }).catch(() => {})
+    }
+  } catch { /* best effort — ne bloque jamais la connexion */ }
+}
 
 type Mode = 'login' | 'register' | 'forgot'
 
@@ -35,6 +56,11 @@ export default function AuthPage() {
     if (params.get('reset') === 'success') {
       notify('✅ Mot de passe modifié ! Connecte-toi avec ton nouveau mot de passe.', 'success')
     }
+    // Achat in-app effectué sans compte (Apple 5.1.1(v)) : compte optionnel
+    if (params.get('purchased') === '1') {
+      setMode('register')
+      notify('✅ Abonnement activé ! Crée un compte (gratuit) pour sauvegarder ton suivi et le retrouver sur tous tes appareils.', 'success')
+    }
   }, [])
 
   // ── Auto-redirect si déjà connecté (gère le token refresh côté client) ────
@@ -42,6 +68,7 @@ export default function AuthPage() {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) return
       try {
+        await syncIosPurchases(session.access_token, session.user.id)
         const { data: profile } = await supabase
           .from('profiles').select('subscription_status, trial_ends_at').eq('id', session.user.id).single()
         const hasAccess = hasActiveAccess(profile?.subscription_status, profile?.trial_ends_at)
@@ -94,7 +121,10 @@ export default function AuthPage() {
           return
         }
 
-        // Vérifier statut abonnement (accès = abonné OU essai 3 j en cours)
+        // App iOS : rattacher les achats anonymes au compte AVANT de lire le statut
+        await syncIosPurchases(data.session?.access_token, data.user.id)
+
+        // Vérifier statut abonnement
         const { data: profile } = await supabase
           .from('profiles').select('subscription_status, trial_ends_at').eq('id', data.user.id).single()
         const hasAccess = hasActiveAccess(profile?.subscription_status, profile?.trial_ends_at)
