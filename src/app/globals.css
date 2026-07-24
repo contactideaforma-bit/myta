@@ -10,10 +10,29 @@
   .page-gradient { background: linear-gradient(160deg, #f0f0ff 0%, #e8fbf8 50%, #f0fdf4 100%); }
   .dark .page-gradient { background: linear-gradient(160deg, #1a1825 0%, #1d2030 50%, #1a2526 100%); }
 
+  /* App mobile : largeur verrouillée, pas de scroll horizontal ni d'effet
+     élastique « page web », pas de zoom double-tap, texte non re-scalé par iOS */
+  html, body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    overscroll-behavior-y: none;
+    -webkit-text-size-adjust: 100%;
+    touch-action: pan-y;
+  }
+  html { height: 100%; }
+
   body {
     @apply bg-cream text-zinc-800 antialiased;
     font-family: var(--font-geist-sans), system-ui, sans-serif;
+    min-height: 100%;
+    /* encoches iPhone (viewport-fit=cover) */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
+
+  /* Les zones de jeu gèrent leurs propres gestes (canvas mini-jeux) */
+  canvas { touch-action: none; }
 
   /* Dark mode */
   .dark body        { background-color: #1a1825; color: #f0eeff; }

@@ -38,6 +38,11 @@ const supabase = createServerClient(url, key, {
 - `friend_groups` + `group_members` — feature Amis & Challenges (SQL : supabase-groups.sql)
 - `user_badges`, `challenge_completions`, `smoking_log`
 
+## Fait le 24/07 soir (4) — Fix viewport mobile (écran fixe)
+- **Cause** : aucune balise viewport dans layout.tsx → le WebView iOS rendait le site en largeur desktop (~980 px) : page zoomable/déplaçable « comme une page web ».
+- **Fix layout.tsx** : `export const viewport: Viewport` (Next 14) = width device-width, initialScale 1, maximumScale 1, userScalable false, viewportFit cover, themeColor #4B47A0 (meta theme-color manuel retiré).
+- **Fix globals.css** : html/body overflow-x hidden + max-width 100% (plus de scroll horizontal), overscroll-behavior-y none (plus d'effet élastique), -webkit-text-size-adjust 100%, touch-action pan-y (pas de zoom double-tap ; canvas = touch-action none pour les mini-jeux), safe-area-inset gauche/droite (encoches).
+
 ## Fait le 24/07 soir (3) — Mini-jeux refaits en VRAIS jeux (canvas)
 - Retour IDEA : jeux trop basiques → **Floor is Lava réécrit en vrai platformer Canvas** façon Mario (maquette fournie) : 5 niveaux dessinés à la main, plateformes briques au-dessus d'une lave animée (vagues + bulles 🔥), étoiles à ramasser (⭐=1 pt), plateformes mobiles horizontales (niv 3+) et ascenseurs verticaux (niv 4+), drapeau FINISH 🏁 + trophée, 3 vies (respawn début de niveau), bonus +5 pts/vie restante à la victoire. Contrôles : boutons tactiles ◀ ▶ SAUT + clavier (flèches/espace), buffer de saut 9 frames, caméra qui suit, Waty flippé selon la direction.
 - **Le Grand Tri réécrit en jeu d'arcade Canvas** : les aliments tombent du ciel (rotation), on déplace Waty au doigt (pointermove, lissage) ou aux flèches ; attraper les sains = +10 (+15 bonus combo ×5), attraper la malbouffe = -1 ❤️ + flash rouge, 3 vies, vitesse et fréquence de spawn croissantes, popups de score.
