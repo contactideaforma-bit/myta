@@ -26,12 +26,12 @@ export interface GameDef {
 export const GAMES: GameDef[] = [
   {
     key: 'lava', title: 'Floor is Lava', emoji: '🌋',
-    desc: 'La lave monte ! Saute sur la bonne plateforme pour sauver Waty, de plus en plus vite.',
-    unlockDays: 7, href: '/games/lava', scoreUnit: 'vagues', color: '#f97316',
+    desc: 'Un vrai platformer ! 5 niveaux au-dessus de la lave : saute, ramasse les étoiles et atteins le drapeau.',
+    unlockDays: 7, href: '/games/lava', scoreUnit: '⭐', color: '#f97316',
   },
   {
     key: 'tri', title: 'Le Grand Tri', emoji: '🥗',
-    desc: 'Sain ou plaisir ? Trie un max d’aliments en 45 secondes avec Waty.',
+    desc: 'Les aliments pleuvent ! Déplace Waty au doigt : attrape les sains, évite la malbouffe.',
     unlockDays: 14, href: '/games/tri', scoreUnit: 'points', color: '#22c55e',
   },
   {

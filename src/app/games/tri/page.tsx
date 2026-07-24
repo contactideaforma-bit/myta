@@ -1,9 +1,10 @@
 'use client'
 
 /**
- * 🥗 Le Grand Tri — mini-jeu Waty (palier 14 jours).
- * Sain ou plaisir ? Trie un maximum d'aliments en 45 secondes.
- * +2 par bonne réponse (+ bonus de série), -1 si erreur.
+ * 🥗 Le Grand Tri — jeu d'arcade (palier 14 jours).
+ * Les aliments tombent du ciel : déplace Waty au doigt (ou aux flèches)
+ * pour ATTRAPER les aliments sains et ÉVITER la malbouffe.
+ * 3 vies, combos, ça va de plus en plus vite !
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -11,139 +12,271 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Lock, Play, RotateCcw, Trophy, Loader2 } from 'lucide-react'
 import { saveBestScore, useGameUnlocks } from '@/lib/games'
 
-const DURATION = 45 // secondes
-
-interface Food { e: string; n: string; sain: boolean }
-
-const FOODS: Food[] = [
-  { e: '🥦', n: 'Brocoli',            sain: true  },
-  { e: '🍩', n: 'Donut',              sain: false },
-  { e: '🍎', n: 'Pomme',              sain: true  },
-  { e: '🍟', n: 'Frites',             sain: false },
-  { e: '🥕', n: 'Carotte',            sain: true  },
-  { e: '🍔', n: 'Burger',             sain: false },
-  { e: '🐟', n: 'Saumon',             sain: true  },
-  { e: '🍕', n: 'Pizza 4 fromages',   sain: false },
-  { e: '🥑', n: 'Avocat',             sain: true  },
-  { e: '🥤', n: 'Soda',               sain: false },
-  { e: '🍳', n: 'Œufs',               sain: true  },
-  { e: '🍫', n: 'Barre chocolatée',   sain: false },
-  { e: '🍌', n: 'Banane',             sain: true  },
-  { e: '🌭', n: 'Hot-dog',            sain: false },
-  { e: '🥬', n: 'Épinards',           sain: true  },
-  { e: '🍰', n: 'Part de gâteau',     sain: false },
-  { e: '🍓', n: 'Fraises',            sain: true  },
-  { e: '🍪', n: 'Cookies',            sain: false },
-  { e: '🫘', n: 'Lentilles',          sain: true  },
-  { e: '🧁', n: 'Cupcake',            sain: false },
-  { e: '🍗', n: 'Poulet grillé',      sain: true  },
-  { e: '🥓', n: 'Bacon frit',         sain: false },
-  { e: '🥜', n: 'Amandes',            sain: true  },
-  { e: '🍭', n: 'Sucette',            sain: false },
-  { e: '🍅', n: 'Tomate',             sain: true  },
-  { e: '🍦', n: 'Glace',              sain: false },
-  { e: '🥣', n: "Flocons d'avoine",   sain: true  },
-  { e: '🥐', n: 'Croissant',          sain: false },
-  { e: '🍊', n: 'Orange',             sain: true  },
-  { e: '🍿', n: 'Pop-corn beurré',    sain: false },
-  { e: '🫐', n: 'Myrtilles',          sain: true  },
-  { e: '🥞', n: 'Pancakes au sirop',  sain: false },
-  { e: '🍚', n: 'Riz complet',        sain: true  },
-  { e: '🧀', n: 'Raclette',           sain: false },
-  { e: '🥗', n: 'Salade composée',    sain: true  },
-  { e: '🍺', n: 'Bière',              sain: false },
-  { e: '🍠', n: 'Patate douce',       sain: true  },
-  { e: '🍬', n: 'Bonbons',            sain: false },
-  { e: '🥒', n: 'Concombre',          sain: true  },
-  { e: '🥧', n: 'Tarte au sucre',     sain: false },
-  { e: '🍇', n: 'Raisin',             sain: true  },
-  { e: '🧋', n: 'Bubble tea',         sain: false },
-  { e: '🌽', n: 'Maïs nature',        sain: true  },
-  { e: '🍜', n: 'Nouilles instant.',  sain: false },
-  { e: '🍋', n: 'Citron',             sain: true  },
-  { e: '🥛', n: 'Milkshake',          sain: false },
-  { e: '🫑', n: 'Poivron',            sain: true  },
-  { e: '🍧', n: 'Granité sirop',      sain: false },
-  { e: '🍉', n: 'Pastèque',           sain: true  },
-  { e: '🥟', n: 'Beignet frit',       sain: false },
-]
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
-}
-
 type Phase = 'intro' | 'play' | 'over'
+
+const VIEW_H     = 440
+const WATY_W     = 58
+const WATY_H     = 58
+const FLOOR_PAD  = 14          // marge sous Waty
+const BASE_FALL  = 2.1         // vitesse de chute de départ
+const BASE_SPAWN = 52          // frames entre 2 spawns au départ
+
+const SAIN = ['🥦', '🍎', '🥕', '🐟', '🥑', '🍌', '🥬', '🍓', '🍳', '🥜', '🍅', '🫐', '🍊', '🥒', '🍇', '🍉', '🥗', '🍋']
+const JUNK = ['🍩', '🍟', '🍔', '🥤', '🍕', '🍫', '🌭', '🍰', '🍪', '🧁', '🍭', '🍦', '🍬', '🥐', '🍺', '🧋']
+
+interface Item { x: number; y: number; vy: number; emoji: string; sain: boolean; rot: number; vr: number }
+interface Pop  { x: number; y: number; text: string; color: string; life: number }
 
 export default function TriGamePage() {
   const router = useRouter()
   const { loading, daysUsed, unlocked, bestScores } = useGameUnlocks()
 
-  const [phase, setPhase]     = useState<Phase>('intro')
-  const [deck, setDeck]       = useState<Food[]>([])
-  const [idx, setIdx]         = useState(0)
-  const [score, setScore]     = useState(0)
-  const [streak, setStreak]   = useState(0)
-  const [timeLeft, setTimeLeft] = useState(DURATION)
-  const [best, setBest]       = useState(0)
+  const [phase, setPhase]   = useState<Phase>('intro')
+  const [score, setScore]   = useState(0)
+  const [lives, setLives]   = useState(3)
+  const [combo, setCombo]   = useState(0)
+  const [best, setBest]     = useState(0)
   const [newRecord, setNewRecord] = useState(false)
-  const [flash, setFlash]     = useState<'good' | 'bad' | null>(null)
 
-  const scoreRef = useRef(0)
+  // ── Moteur ──
+  const canvasRef  = useRef<HTMLCanvasElement | null>(null)
+  const rafRef     = useRef(0)
+  const runningRef = useRef(false)
+  const phaseRef   = useRef<Phase>('intro')
+
+  const watyXRef   = useRef(150)      // centre de Waty
+  const targetXRef = useRef(150)
+  const itemsRef   = useRef<Item[]>([])
+  const popsRef    = useRef<Pop[]>([])
+  const scoreRef   = useRef(0)
+  const livesRef   = useRef(3)
+  const comboRef   = useRef(0)
+  const spawnRef   = useRef(0)
+  const tRef       = useRef(0)
+  const flashRef   = useRef(0)        // flash rouge quand malbouffe attrapée
+
+  const keysRef    = useRef({ left: false, right: false })
+  const watyImgRef = useRef<HTMLImageElement | null>(null)
 
   useEffect(() => {
     if (bestScores.tri !== undefined) setBest(bestScores.tri)
   }, [bestScores.tri])
 
-  // Chrono
   useEffect(() => {
-    if (phase !== 'play') return
-    if (timeLeft <= 0) { endGame(); return }
-    const t = setTimeout(() => setTimeLeft(s => s - 1), 1000)
-    return () => clearTimeout(t)
-  }, [phase, timeLeft]) // eslint-disable-line react-hooks/exhaustive-deps
+    const img = new Image()
+    img.src = '/waty-nutrition.png'
+    watyImgRef.current = img
 
-  function start() {
-    setDeck(shuffle(FOODS))
-    setIdx(0)
-    setScore(0); scoreRef.current = 0
-    setStreak(0)
-    setTimeLeft(DURATION)
-    setNewRecord(false)
-    setPhase('play')
+    const down = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft')  keysRef.current.left = true
+      if (e.key === 'ArrowRight') keysRef.current.right = true
+    }
+    const up = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft')  keysRef.current.left = false
+      if (e.key === 'ArrowRight') keysRef.current.right = false
+    }
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
+    return () => {
+      window.removeEventListener('keydown', down)
+      window.removeEventListener('keyup', up)
+      runningRef.current = false
+      cancelAnimationFrame(rafRef.current)
+    }
+  }, [])
+
+  function setPhaseBoth(p: Phase) { phaseRef.current = p; setPhase(p) }
+
+  function startGame() {
+    const canvas = canvasRef.current
+    const w = canvas ? canvas.clientWidth : 300
+    watyXRef.current = w / 2
+    targetXRef.current = w / 2
+    itemsRef.current = []
+    popsRef.current = []
+    scoreRef.current = 0
+    livesRef.current = 3
+    comboRef.current = 0
+    spawnRef.current = 20
+    tRef.current = 0
+    setScore(0); setLives(3); setCombo(0); setNewRecord(false)
+    setPhaseBoth('play')
+    if (!runningRef.current) {
+      runningRef.current = true
+      rafRef.current = requestAnimationFrame(loop)
+    }
   }
 
   async function endGame() {
-    setPhase('over')
+    setPhaseBoth('over')
     const record = await saveBestScore('tri', scoreRef.current)
     if (record) { setBest(scoreRef.current); setNewRecord(true) }
   }
 
-  function answer(saidSain: boolean) {
-    if (phase !== 'play') return
-    const food = deck[idx % deck.length]
-    const correct = food.sain === saidSain
+  function loop() {
+    if (!runningRef.current) return
+    if (phaseRef.current === 'play') update()
+    draw()
+    rafRef.current = requestAnimationFrame(loop)
+  }
 
-    if (correct) {
-      const newStreak = streak + 1
-      const bonus = newStreak > 0 && newStreak % 5 === 0 ? 3 : 0 // bonus série ×5
-      const pts = 2 + bonus
-      scoreRef.current += pts
-      setScore(scoreRef.current)
-      setStreak(newStreak)
-      setFlash('good')
-    } else {
-      scoreRef.current = Math.max(0, scoreRef.current - 1)
-      setScore(scoreRef.current)
-      setStreak(0)
-      setFlash('bad')
+  function update() {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const w = canvas.clientWidth
+    const t = ++tRef.current
+
+    // ── Déplacement de Waty (suit le doigt / flèches) ──
+    if (keysRef.current.left)  targetXRef.current -= 6.5
+    if (keysRef.current.right) targetXRef.current += 6.5
+    targetXRef.current = Math.max(WATY_W / 2, Math.min(w - WATY_W / 2, targetXRef.current))
+    // lissage
+    watyXRef.current += (targetXRef.current - watyXRef.current) * 0.35
+
+    // ── Difficulté progressive ──
+    const fallSpeed = BASE_FALL + t * 0.0016
+    const spawnEvery = Math.max(22, BASE_SPAWN - Math.floor(t / 180) * 4)
+
+    // ── Spawn ──
+    if (--spawnRef.current <= 0) {
+      spawnRef.current = spawnEvery
+      const sain = Math.random() < 0.62
+      const pool = sain ? SAIN : JUNK
+      itemsRef.current.push({
+        x: 26 + Math.random() * (w - 52),
+        y: -30,
+        vy: fallSpeed * (0.85 + Math.random() * 0.5),
+        emoji: pool[Math.floor(Math.random() * pool.length)],
+        sain,
+        rot: Math.random() * Math.PI,
+        vr: (Math.random() - 0.5) * 0.08,
+      })
     }
-    setTimeout(() => setFlash(null), 250)
-    setIdx(i => i + 1)
+
+    // ── Chute + collisions ──
+    const watyTop  = VIEW_H - FLOOR_PAD - WATY_H
+    const watyL    = watyXRef.current - WATY_W / 2
+    const watyR    = watyXRef.current + WATY_W / 2
+    const kept: Item[] = []
+
+    for (const it of itemsRef.current) {
+      it.y += it.vy
+      it.rot += it.vr
+
+      // Attrapé ? (zone = tête/bras de Waty)
+      const caught = it.y + 14 >= watyTop && it.y - 6 <= watyTop + WATY_H * 0.7 &&
+                     it.x >= watyL - 8 && it.x <= watyR + 8
+
+      if (caught) {
+        if (it.sain) {
+          comboRef.current += 1
+          const bonus = comboRef.current % 5 === 0 ? 15 : 0
+          scoreRef.current += 10 + bonus
+          popsRef.current.push({ x: it.x, y: watyTop - 8, text: bonus ? `+${10 + bonus} 🔥` : '+10', color: '#16a34a', life: 40 })
+        } else {
+          livesRef.current -= 1
+          comboRef.current = 0
+          flashRef.current = 14
+          popsRef.current.push({ x: it.x, y: watyTop - 8, text: '💔', color: '#dc2626', life: 40 })
+        }
+        setScore(scoreRef.current); setLives(livesRef.current); setCombo(comboRef.current)
+        if (livesRef.current <= 0) { endGame(); return }
+        continue
+      }
+
+      // Raté (au sol)
+      if (it.y > VIEW_H + 20) {
+        if (it.sain && comboRef.current > 0) { comboRef.current = 0; setCombo(0) }
+        continue
+      }
+      kept.push(it)
+    }
+    itemsRef.current = kept
+
+    // Popups
+    popsRef.current = popsRef.current.filter(p => (p.life -= 1) > 0)
+    if (flashRef.current > 0) flashRef.current -= 1
+  }
+
+  function draw() {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const dpr = window.devicePixelRatio || 1
+    const w = canvas.clientWidth, h = VIEW_H
+    if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+      canvas.width = w * dpr; canvas.height = h * dpr
+    }
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+
+    const t = tRef.current
+
+    // Ciel
+    const bg = ctx.createLinearGradient(0, 0, 0, h)
+    bg.addColorStop(0, '#e0f2fe'); bg.addColorStop(0.7, '#f0fdf4'); bg.addColorStop(1, '#dcfce7')
+    ctx.fillStyle = bg
+    ctx.fillRect(0, 0, w, h)
+
+    // Nuages
+    ctx.font = '22px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    ctx.globalAlpha = 0.7
+    ctx.fillText('☁️', ((t * 0.3) % (w + 80)) - 40, 46)
+    ctx.fillText('☁️', ((t * 0.18 + 180) % (w + 80)) - 40, 90)
+    ctx.globalAlpha = 1
+
+    // Sol herbe
+    ctx.fillStyle = '#86efac'
+    ctx.fillRect(0, h - FLOOR_PAD, w, FLOOR_PAD)
+    ctx.fillStyle = '#4ade80'
+    ctx.fillRect(0, h - FLOOR_PAD, w, 3)
+
+    // Aliments
+    for (const it of itemsRef.current) {
+      ctx.save()
+      ctx.translate(it.x, it.y)
+      ctx.rotate(it.rot)
+      ctx.font = '30px serif'
+      ctx.fillText(it.emoji, 0, 0)
+      ctx.restore()
+    }
+
+    // Waty
+    const watyTop = h - FLOOR_PAD - WATY_H
+    const img = watyImgRef.current
+    if (img && img.complete) {
+      // petit balancement de course
+      const lean = Math.sin(t / 6) * 0.06 * Math.min(1, Math.abs(targetXRef.current - watyXRef.current) / 8)
+      ctx.save()
+      ctx.translate(watyXRef.current, watyTop + WATY_H / 2)
+      ctx.rotate(lean)
+      ctx.drawImage(img, -WATY_W / 2, -WATY_H / 2, WATY_W, WATY_H)
+      ctx.restore()
+    } else {
+      ctx.font = '44px serif'
+      ctx.fillText('🍉', watyXRef.current, watyTop + WATY_H / 2)
+    }
+
+    // Popups score
+    for (const p of popsRef.current) {
+      ctx.globalAlpha = Math.min(1, p.life / 25)
+      ctx.font = 'bold 17px sans-serif'
+      ctx.fillStyle = p.color
+      ctx.fillText(p.text, p.x, p.y - (40 - p.life) * 0.8)
+      ctx.globalAlpha = 1
+    }
+
+    // Flash rouge malbouffe
+    if (flashRef.current > 0) {
+      ctx.fillStyle = `rgba(220,38,38,${flashRef.current / 40})`
+      ctx.fillRect(0, 0, w, h)
+    }
+  }
+
+  // ── Contrôle au doigt / souris ──────────────────────────────────────────────
+  function pointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    targetXRef.current = e.clientX - rect.left
   }
 
   // ── Garde-fous ──────────────────────────────────────────────────────────────
@@ -163,8 +296,6 @@ export default function TriGamePage() {
     </div>
   )
 
-  const food = deck.length ? deck[idx % deck.length] : null
-
   return (
     <div className="page select-none">
 
@@ -175,6 +306,7 @@ export default function TriGamePage() {
         </button>
         <div className="flex items-center gap-3 text-sm font-bold">
           <span className="text-green-600">🥗 {score}</span>
+          <span className="text-red-500">{'❤️'.repeat(Math.max(0, lives))}{'🖤'.repeat(Math.max(0, 3 - lives))}</span>
           <span className="flex items-center gap-1 text-zinc-400"><Trophy size={13} /> {best}</span>
         </div>
       </div>
@@ -187,21 +319,22 @@ export default function TriGamePage() {
             <>
               <h1 className="text-xl font-extrabold text-zinc-900">🥗 Le Grand Tri</h1>
               <p className="text-sm text-zinc-500 leading-relaxed max-w-xs">
-                Waty te montre un aliment : à toi de dire s&apos;il est <span className="font-bold text-green-600">sain</span> ou
-                <span className="font-bold text-pink-500"> plaisir</span> ! {DURATION} secondes, +2 par bonne réponse,
-                +3 de bonus toutes les 5 d&apos;affilée, -1 si erreur.
+                Les aliments pleuvent ! <span className="font-bold">Glisse ton doigt</span> pour déplacer Waty :
+                attrape les aliments <span className="font-bold text-green-600">sains</span> (+10, combo ×5 = bonus 🔥)
+                et <span className="font-bold text-pink-500">évite la malbouffe</span> (-1 ❤️).
+                Ça tombe de plus en plus vite…
               </p>
             </>
           ) : (
             <>
               <h1 className="text-xl font-extrabold text-zinc-900">
-                {newRecord ? '🏆 NOUVEAU RECORD !' : 'Temps écoulé ! ⏰'}
+                {newRecord ? '🏆 NOUVEAU RECORD !' : 'Plus de vies ! 💔'}
               </h1>
               <p className="text-4xl font-black text-green-600">{score} <span className="text-sm text-zinc-400 font-semibold">points</span></p>
               {!newRecord && best > 0 && <p className="text-xs text-zinc-400">Record : {best} points</p>}
             </>
           )}
-          <button onClick={start}
+          <button onClick={startGame}
             className="flex items-center gap-2 px-8 py-3.5 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98] transition-all"
             style={{ background: 'linear-gradient(90deg, #16a34a, #2BA8B0)' }}>
             {phase === 'intro' ? <><Play size={16} fill="currentColor" /> Jouer</> : <><RotateCcw size={16} /> Rejouer</>}
@@ -209,42 +342,25 @@ export default function TriGamePage() {
         </div>
       )}
 
-      {/* ── Jeu ── */}
-      {phase === 'play' && food && (
-        <>
-          {/* Chrono */}
-          <div className="card flex items-center gap-3 py-3">
-            <span className={`text-lg font-black ${timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-zinc-700'}`}>⏱ {timeLeft}s</span>
-            <div className="flex-1 h-2 bg-zinc-100 rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-1000"
-                style={{ width: `${(timeLeft / DURATION) * 100}%`, background: timeLeft <= 10 ? '#ef4444' : 'linear-gradient(90deg, #16a34a, #2BA8B0)' }} />
+      {/* ── Zone de jeu ── */}
+      {phase === 'play' && (
+        <div className="relative rounded-3xl overflow-hidden shadow-md border-2 border-green-200 touch-none">
+          <canvas
+            ref={canvasRef}
+            className="block w-full cursor-pointer"
+            style={{ height: VIEW_H }}
+            onPointerMove={pointerMove}
+            onPointerDown={pointerMove}
+          />
+          {combo >= 3 && (
+            <div className="absolute top-2 right-2 bg-orange-500 text-white text-xs font-black px-3 py-1 rounded-full animate-pulse">
+              🔥 COMBO ×{combo}
             </div>
-            {streak >= 2 && <span className="text-xs font-black text-orange-500">🔥×{streak}</span>}
+          )}
+          <div className="absolute top-2 left-2 bg-black/40 text-white text-[10px] font-bold px-3 py-1 rounded-full">
+            🥗 à attraper · 🍩 à éviter
           </div>
-
-          {/* Carte aliment */}
-          <div className={`card flex flex-col items-center gap-3 py-10 transition-colors duration-200 ${
-            flash === 'good' ? 'bg-green-50' : flash === 'bad' ? 'bg-red-50' : ''
-          }`}>
-            <span className="text-7xl">{food.e}</span>
-            <p className="text-lg font-extrabold text-zinc-900">{food.n}</p>
-            <p className="text-xs text-zinc-400">Sain ou plaisir ?</p>
-          </div>
-
-          {/* Boutons réponse */}
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => answer(true)}
-              className="py-6 rounded-3xl text-white font-extrabold text-lg shadow-lg active:scale-[0.96] transition-all"
-              style={{ background: 'linear-gradient(135deg, #16a34a, #22c55e)' }}>
-              🥗 Sain
-            </button>
-            <button onClick={() => answer(false)}
-              className="py-6 rounded-3xl text-white font-extrabold text-lg shadow-lg active:scale-[0.96] transition-all"
-              style={{ background: 'linear-gradient(135deg, #ec4899, #f472b6)' }}>
-              🍩 Plaisir
-            </button>
-          </div>
-        </>
+        </div>
       )}
     </div>
   )

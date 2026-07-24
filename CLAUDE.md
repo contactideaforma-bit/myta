@@ -38,6 +38,13 @@ const supabase = createServerClient(url, key, {
 - `friend_groups` + `group_members` — feature Amis & Challenges (SQL : supabase-groups.sql)
 - `user_badges`, `challenge_completions`, `smoking_log`
 
+## Fait le 24/07 soir (3) — Mini-jeux refaits en VRAIS jeux (canvas)
+- Retour IDEA : jeux trop basiques → **Floor is Lava réécrit en vrai platformer Canvas** façon Mario (maquette fournie) : 5 niveaux dessinés à la main, plateformes briques au-dessus d'une lave animée (vagues + bulles 🔥), étoiles à ramasser (⭐=1 pt), plateformes mobiles horizontales (niv 3+) et ascenseurs verticaux (niv 4+), drapeau FINISH 🏁 + trophée, 3 vies (respawn début de niveau), bonus +5 pts/vie restante à la victoire. Contrôles : boutons tactiles ◀ ▶ SAUT + clavier (flèches/espace), buffer de saut 9 frames, caméra qui suit, Waty flippé selon la direction.
+- **Le Grand Tri réécrit en jeu d'arcade Canvas** : les aliments tombent du ciel (rotation), on déplace Waty au doigt (pointermove, lissage) ou aux flèches ; attraper les sains = +10 (+15 bonus combo ×5), attraper la malbouffe = -1 ❤️ + flash rouge, 3 vies, vitesse et fréquence de spawn croissantes, popups de score.
+- Moteurs : rAF + refs (zéro re-render dans la boucle), rendu Canvas 2D avec devicePixelRatio. Waty = waty-sport.png / waty-nutrition.png (fallback 🍉).
+- games.ts : descriptions mises à jour (scoreUnit lava = ⭐). Runner inchangé.
+- Fichiers : src/app/games/lava/page.tsx, src/app/games/tri/page.tsx, src/lib/games.ts.
+
 ## Fait le 24/07 soir (2) — Mini-jeux Waty 🎮
 - **Section Mini-jeux Waty** débloquée par paliers de jours d'utilisation NON consécutifs : 7 j → 🌋 Floor is Lava (réflexe : taper la plateforme sûre avant l'éruption, accélération progressive), 14 j → 🥗 Le Grand Tri (sain/plaisir, 45 s, bonus série ×5, 50 aliments), 30 j → 🏃 Waty Runner (runner infini tactile, physique saut/gravité, rAF, score en mètres).
 - **SQL : `supabase-minigames.sql`** (⏳ IDEA : à exécuter dans Supabase SQL Editor) — tables `activity_days` (PK user_id+day, RLS select/insert own) et `game_scores` (PK user_id+game_key, RLS) + **backfill** des jours depuis journal_entries et sessions → les utilisateurs existants ne repartent pas de zéro.
