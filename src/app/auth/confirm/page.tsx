@@ -48,9 +48,15 @@ export default function ConfirmPage() {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('subscription_status, trial_ends_at')
+      .select('subscription_status, trial_ends_at, onboarding_step')
       .eq('id', session.user.id)
       .single()
+
+    // Nouveau compte (tuto pas terminé) → tuto d'introduction, même en essai gratuit
+    if (profile?.onboarding_step && profile.onboarding_step !== 'done') {
+      router.push('/onboarding')
+      return
+    }
 
     const hasAccess = hasActiveAccess(profile?.subscription_status, profile?.trial_ends_at)
     router.push(hasAccess ? '/dashboard' : '/onboarding')

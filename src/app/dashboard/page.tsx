@@ -191,9 +191,16 @@ export default function DashboardPage() {
   const supabase = createClient()
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
     // Replay manuel du tour spotlight via ?tour=1 (depuis la page Guide).
-    if (new URLSearchParams(window.location.search).get('tour') === '1') {
+    if (params.get('tour') === '1') {
       setShowTour(true)
+      window.history.replaceState({}, '', '/dashboard')
+    }
+    // Arrivée depuis le tuto d'introduction (?welcome=1) : lancer le tour
+    // spotlight automatiquement, une seule fois (skippable — croix / clic fond).
+    if (params.get('welcome') === '1') {
+      if (!localStorage.getItem('myta_guide_seen')) setShowTour(true)
       window.history.replaceState({}, '', '/dashboard')
     }
     // L'ancien WelcomeModal auto est remplacé par le parcours guidé (OnboardingCoach).

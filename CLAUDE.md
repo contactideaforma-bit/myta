@@ -38,6 +38,25 @@ const supabase = createServerClient(url, key, {
 - `friend_groups` + `group_members` — feature Amis & Challenges (SQL : supabase-groups.sql)
 - `user_badges`, `challenge_completions`, `smoking_log`
 
+## Fait le 24/07 soir (2) — Mini-jeux Waty 🎮
+- **Section Mini-jeux Waty** débloquée par paliers de jours d'utilisation NON consécutifs : 7 j → 🌋 Floor is Lava (réflexe : taper la plateforme sûre avant l'éruption, accélération progressive), 14 j → 🥗 Le Grand Tri (sain/plaisir, 45 s, bonus série ×5, 50 aliments), 30 j → 🏃 Waty Runner (runner infini tactile, physique saut/gravité, rAF, score en mètres).
+- **SQL : `supabase-minigames.sql`** (⏳ IDEA : à exécuter dans Supabase SQL Editor) — tables `activity_days` (PK user_id+day, RLS select/insert own) et `game_scores` (PK user_id+game_key, RLS) + **backfill** des jours depuis journal_entries et sessions → les utilisateurs existants ne repartent pas de zéro.
+- **Tracking des jours** : `logActivityToday()` appelé depuis la Navbar (présente sur toutes les pages connectées), 1 upsert max/jour (guard localStorage `myta_activity_YYYY-MM-DD`).
+- **`src/lib/games.ts`** : GAMES (défs + paliers), logActivityToday, saveBestScore (upsert si record battu), hook useGameUnlocks (daysUsed + unlocked() + bestScores).
+- **Pages** : `/games` (hub avec progression et jeux verrouillés/déverrouillés), `/games/lava`, `/games/tri`, `/games/runner` (+ layout avec Navbar). Chaque jeu revérifie le palier (écran verrouillé sinon) et sauvegarde le meilleur score.
+- **Navbar** : entrée « Mini-jeux Waty » (icône Gamepad2) après Amis & Challenges + appel logActivityToday.
+- Routes protégées par le middleware (pas dans PUBLIC_PATHS) → réservé aux comptes avec accès actif. 100% web → git push suffit.
+- Fichiers : supabase-minigames.sql, src/lib/games.ts, src/app/games/{layout,page}.tsx, src/app/games/{lava,tri,runner}/page.tsx, src/components/ui/Navbar.tsx.
+
+## Fait le 24/07 soir (tuto d'introduction nouveaux utilisateurs)
+- **Refonte complète de `/onboarding`** en vrai tuto post-inscription (7 étapes, toutes skippables) : bienvenue → prénom (pré-rempli depuis user_metadata) → sexe + année de naissance → poids/taille → objectif → activité → récap. Le récap calcule TDEE (Mifflin-St Jeor, même formule que /profile) + macros suggérées (même logique que computeMacros) et enregistre calorie_target/prot/carb/fat_target + toutes les infos dans profiles (upsert). « Passer l'introduction » (global) + « Passer cette étape » (par étape).
+- **Fix flux post-inscription** : `auth/confirm` envoyait les nouveaux comptes (essai 3j → hasAccess=true) DIRECT au dashboard → le tuto n'était jamais vu. Désormais : onboarding_step ≠ 'done' → `/onboarding`.
+- **Tour spotlight auto** : fin du tuto → `/dashboard?welcome=1` → TourGuide se lance automatiquement 1 fois (si `myta_guide_seen` absent). Skip = croix/clic fond (handleDoneTour pose le flag). Replay inchangé via /guide (?tour=1).
+- **Chaînage parcours Waty** : si le profil est complet à la fin du tuto, `advanceOnboarding('profile')` → les cartes Waty reprennent à l'étape « journal » ; sinon l'étape « profile » reste active et Waty guide vers le profil.
+- Aucune migration SQL nécessaire (colonnes sex/birth_date/weight_kg/height_cm/activity_factor/onboarding_step déjà en place — vérifier que `supabase-onboarding.sql` a bien été exécuté).
+- Fichiers modifiés : `src/app/onboarding/page.tsx` (réécrit), `src/app/auth/confirm/page.tsx`, `src/app/dashboard/page.tsx`.
+- ⏳ IDEA : `npm run build` puis `git push` (aucun rebuild iOS — l'app charge mytwinapp.fr).
+
 ## Fait le 24/07 après-midi — 🎉 APP APPROUVÉE PAR APPLE 🎉
 - **MYTA 1.0 (5) est APPROUVÉE et sur l'App Store.** Les 2 abos .v2 (Essentiel + Premium) sont **« Approuvé »** dans ASC → paywall fonctionnel en production. La théorie était bonne : les abos WFR sont testés et approuvés avec le binaire.
 - ⏳ **Localisation du groupe d'abonnements** : état « Finaliser avant soumission » — ASC exige qu'elle parte avec une NOUVELLE version de l'app (bouton « Ajouter pour vérification » sur la page du groupe, à faire à la prochaine soumission 1.1). Non bloquant : n'affecte que le nom affiché dans Réglages > Abonnements.

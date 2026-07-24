@@ -8,9 +8,10 @@ import {
   Dumbbell, Timer, History, User,
   LogOut, AlertTriangle, Menu, X,
   ChevronRight, Sun, Moon, MessageSquareWarning, Send, CheckCircle,
-  HelpCircle, Users, Settings, ArrowLeft,
+  HelpCircle, Users, Settings, ArrowLeft, Gamepad2,
 } from 'lucide-react'
 import { ProfileSwitcher } from './ProfileSwitcher'
+import { logActivityToday } from '@/lib/games'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
 import { useTheme } from '@/components/ui/ThemeProvider'
@@ -143,6 +144,9 @@ export function Navbar() {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) return
       const selfId = data.user.id
+
+      // Mini-jeux Waty : compter le jour d'utilisation (1×/jour, guard localStorage)
+      logActivityToday(selfId)
 
       // Lire le profil actif depuis localStorage
       const storedId   = localStorage.getItem('myta_viewing_as_id')
@@ -486,6 +490,23 @@ export function Navbar() {
               <p className="text-[10px] text-zinc-400">Défis & Sauver Waty</p>
             </div>
             {pathname === '/friends' && <ChevronRight size={14} className="text-tta-mid" />}
+          </button>
+
+          {/* Mini-jeux Waty */}
+          <button onClick={() => handleNavClick('/games')}
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-all',
+              pathname.startsWith('/games') ? 'bg-tta-light' : 'hover:bg-zinc-50 text-zinc-600'
+            )}>
+            <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center',
+              pathname.startsWith('/games') ? 'bg-tta-mid/20' : 'bg-amber-50')}>
+              <Gamepad2 size={16} className={pathname.startsWith('/games') ? 'text-tta-mid' : 'text-amber-500'} />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-zinc-700">Mini-jeux Waty</p>
+              <p className="text-[10px] text-zinc-400">À débloquer en utilisant l'app</p>
+            </div>
+            {pathname.startsWith('/games') && <ChevronRight size={14} className="text-tta-mid" />}
           </button>
 
           {/* Profil */}
