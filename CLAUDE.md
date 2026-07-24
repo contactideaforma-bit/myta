@@ -38,6 +38,15 @@ const supabase = createServerClient(url, key, {
 - `friend_groups` + `group_members` — feature Amis & Challenges (SQL : supabase-groups.sql)
 - `user_badges`, `challenge_completions`, `smoking_log`
 
+## Fait le 24/07 (reprise après pause — état des lieux + déblocage)
+- **Constat critique** : les fixes du 15/07 (5.1.1(v) + 2.1(b)) n'avaient JAMAIS été commités/poussés — ils dormaient en local sur le Mac. → Commités le 24/07 (`110b34a`). ⏳ `git push` à faire par IDEA (Claude n'a pas le réseau via le pont device). Sans ce push, les fixes ne sont PAS en prod → resoumettre = rejet assuré.
+- **Mails Apple relus (Gmail)** :
+    - Rejet 15/07 : confirme 5.1.1(v) + 2.1(b). **« Number of items submitted: 1 »** → les 2 abos .v2 n'étaient PAS dans la soumission du 14/07 (même soumission aea10f2c réactivée — impossible d'y ajouter des éléments). Ils ne sont donc toujours pas passés en review.
+    - Le mail de rejet précise noir sur blanc : « The in-app purchases/subscriptions do not need to have been previously approved to confirm they function correctly in review » → l'échec d'achat en review = bug code (corrigé), pas l'état des abos.
+    - Réponse support 16/07 (case 102935558738, abos WFR v1) : « you must submit a binary for the review to continue » — rien à attendre de plus du support, la voie est la resoumission.
+- **Plan prochaine soumission** : créer une NOUVELLE soumission (pas réactiver aea10f2c) avec build 1.0 (5) + les 2 abos .v2 rattachés (mail Apple doit dire « items submitted: 3 »), après : push Vercel + env RC vérifiées + statut regulated medical device ASC + note reviewer (achat sans compte dès l'ouverture) + test sandbox.
+- 🔧 Effet de bord pont device : fichiers `.git/*.lock` non supprimables via Claude → déplacés dans `_to_delete/` à la racine du repo. **IDEA : `rm -rf _to_delete` (ne pas commiter ce dossier).**
+
 ## Fait le 15/07 (rejet v1.0 (5) — 5.1.1(v) + 2.1(b), corrigés par Claude)
 - **Rejet 15/07 (iPad Air M3, iPadOS 26.5.2)** : (1) **5.1.1(v)** compte exigé avant achat IAP ; (2) **2.1(b)** « an error message appeared after trying to purchase IAP/subscriptions ».
 - **Cause 5.1.1(v) trouvée** : l'app iOS charge `mytwinapp.fr/` = la LANDING WEB marketing — tous les CTA (« Essai gratuit », « Démarrer ») mènent à `/auth?mode=signup`, et l'écran /auth n'offrait AUCUN chemin vers le paywall sans compte. Le paywall anonyme (fait le 07/07) existait mais était indécouvrable. Bonus : la landing affichait prix Stripe + mentions CB dans l'app iOS (risque 3.1.1).
