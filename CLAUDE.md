@@ -38,6 +38,12 @@ const supabase = createServerClient(url, key, {
 - `friend_groups` + `group_members` — feature Amis & Challenges (SQL : supabase-groups.sql)
 - `user_badges`, `challenge_completions`, `smoking_log`
 
+## Fait le 24/07 après-midi — 🎉 APP APPROUVÉE PAR APPLE 🎉
+- **MYTA 1.0 (5) est APPROUVÉE et sur l'App Store.** Les 2 abos .v2 (Essentiel + Premium) sont **« Approuvé »** dans ASC → paywall fonctionnel en production. La théorie était bonne : les abos WFR sont testés et approuvés avec le binaire.
+- ⏳ **Localisation du groupe d'abonnements** : état « Finaliser avant soumission » — ASC exige qu'elle parte avec une NOUVELLE version de l'app (bouton « Ajouter pour vérification » sur la page du groupe, à faire à la prochaine soumission 1.1). Non bloquant : n'affecte que le nom affiché dans Réglages > Abonnements.
+- **Migration compte Individual → Organization LANCÉE** (formulaire Apple soumis le 24/07, réponse annoncée sous 1 jour ouvré) : objectif = nom vendeur App Store « IDEAFORMA » au lieu du nom personnel. Données utilisées : IDEAFORMA, SASU, SIREN 993125335, RCS Nanterre 2025B12114, TVA FR65993125335, 144 av. Charles de Gaulle 92200 Neuilly-sur-Seine, D-U-N-S 28-548-2062, site https://mytwinapp.fr, Myriam = fondatrice/présidente/associée unique, pas de DBA, société sans compte développeur existant, Tax ID membership individuel = None. L'app reste en ligne pendant la migration.
+- ⏳ **À suivre (migration)** : (1) répondre au mail d'Apple Developer Support (vérif documents société, possible appel) ; (2) après migration, vérifier dans ASC > Accords/Banking que les infos bancaires/fiscales passent au nom d'IDEAFORMA ; (3) vérifier que le nom vendeur sur la fiche App Store devient IDEAFORMA.
+
 ## Fait le 24/07 (reprise après pause — état des lieux + déblocage)
 - **Constat critique** : les fixes du 15/07 (5.1.1(v) + 2.1(b)) n'avaient JAMAIS été commités/poussés — ils dormaient en local sur le Mac. → Commités le 24/07 (`110b34a`). ⏳ `git push` à faire par IDEA (Claude n'a pas le réseau via le pont device). Sans ce push, les fixes ne sont PAS en prod → resoumettre = rejet assuré.
 - **Mails Apple relus (Gmail)** :
