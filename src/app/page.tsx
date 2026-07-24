@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { hasActiveAccess } from '@/lib/access'
+import { isIosApp } from '@/lib/app-platform'
 
 // ─── Tarifs ────────────────────────────────────────────────────────────────────
 const PLANS = {
@@ -171,10 +172,31 @@ const BRAND_GRADIENT = 'linear-gradient(90deg, #4B47A0 0%, #2BA8B0 100%)'
 export default function HomePage() {
   const [tab, setTab] = useState<TabKey>('solo')
   const [screenIdx, setScreenIdx] = useState(0)
+  // true = app iOS détectée → on masque la landing (redirection en cours)
+  const [iosRedirecting, setIosRedirecting] = useState(false)
 
   // ── Redirect to dashboard if already logged in ────────────────────────────
   useEffect(() => {
     const supabase = createClient()
+    // App iOS (Capacitor) : ne JAMAIS afficher la landing web (contenu
+    // Stripe/CB interdit — Apple 3.1.1) et ne JAMAIS forcer l'inscription :
+    // sans session → paywall in-app directement (achat possible sans compte,
+    // Apple 5.1.1(v)). La connexion reste proposée (optionnelle) sur /pricing.
+    if (isIosApp()) {
+      setIosRedirecting(true)
+      supabase.auth.getSession().then(async ({ data: { session } }) => {
+        if (!session) { window.location.replace('/pricing'); return }
+        try {
+          const { data: profile } = await supabase
+            .from('profiles').select('subscription_status, trial_ends_at').eq('id', session.user.id).single()
+          const hasAccess = hasActiveAccess(profile?.subscription_status, profile?.trial_ends_at)
+          window.location.replace(hasAccess ? '/dashboard' : '/pricing')
+        } catch {
+          window.location.replace('/pricing')
+        }
+      })
+      return
+    }
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) return
       try {
@@ -195,6 +217,16 @@ export default function HomePage() {
   }, [])
 
   const plans = PLANS[tab]
+
+  // App iOS : écran neutre pendant la redirection vers le paywall in-app
+  // (évite tout flash de la landing web avec prix Stripe — Apple 3.1.1)
+  if (iosRedirecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <img src="/logo_my_twin_app.png" alt="MYTA" className="w-40 object-contain animate-pulse" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-white font-sans">

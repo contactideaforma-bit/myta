@@ -42,6 +42,10 @@ export default function AuthPage() {
   const [forgotSent, setForgotSent] = useState(false)
 
   const supabase = createClient()
+  // App iOS : l'inscription est OPTIONNELLE (Apple 5.1.1(v)) → on affiche un
+  // accès direct au paywall sans compte.
+  const [iosApp, setIosApp] = useState(false)
+  useEffect(() => { setIosApp(isIosApp()) }, [])
 
   function notify(text: string, type: 'success' | 'error') {
     setMsgType(type)
@@ -305,6 +309,15 @@ export default function AuthPage() {
             </button>
           </form>
         </div>
+        )}
+
+        {/* App iOS : accès au paywall SANS compte (Apple 5.1.1(v)) */}
+        {iosApp && (
+          <button
+            onClick={() => window.location.href = '/pricing'}
+            className="w-full py-3 rounded-2xl border-2 border-[#4B47A0]/30 text-[#4B47A0] text-sm font-bold hover:bg-[#4B47A0]/5 transition-all flex items-center justify-center gap-2">
+            Continuer sans compte — voir les abonnements →
+          </button>
         )}
 
         {/* Lien démo */}

@@ -356,6 +356,8 @@ function PricingContent() {
       router.push(isAnon ? '/auth?purchased=1' : '/dashboard')
     } else if (!res.cancelled) {
       setRcMsg("L'achat n'a pas abouti. Réessaie dans un instant.")
+      // diag visible en tapant l'emoji / utile sur capture d'écran de review
+      setRcDebug(getLastRcDiag())
     }
   }
 
@@ -487,7 +489,12 @@ function PricingContent() {
                 })}
               </div>
 
-              {rcMsg && <p className="text-xs text-red-600">{rcMsg}</p>}
+              {rcMsg && (
+                <p className="text-xs text-red-600" onClick={() => setShowDiag(s => !s)}>{rcMsg}</p>
+              )}
+              {rcMsg && showDiag && rcDebug && (
+                <p className="text-[10px] text-zinc-400 break-all text-left">diag: {rcDebug}</p>
+              )}
 
               <button onClick={handleRcRestore} disabled={!!rcBusy}
                 className="text-xs font-bold text-[#4B47A0] underline mt-1">

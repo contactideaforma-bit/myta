@@ -188,22 +188,35 @@ export async function purchaseRcPackage(packageId: string): Promise<RcPurchaseRe
   if (!isIosApp()) return { ok: false, error: 'not_ios' }
   try {
     const { Purchases } = await getPurchases()
-    const offerings = await Purchases.getOfferings()
-    const offering = offerings.current
-      ?? Object.values(offerings.all ?? {}).find(o =>
-           (o.availablePackages ?? []).some(p => p.identifier === packageId)
-         )
-      ?? null
+    // On recherche le package dans TOUS les offerings (pas seulement current)
+    const offerings = await withTimeout(Purchases.getOfferings(), RC_TIMEOUT_MS, 'getOfferings')
+    const offering = offerings.current?.availablePackages?.some(p => p.identifier === packageId)
+      ? offerings.current
+      : Object.values(offerings.all ?? {}).find(o =>
+          (o.availablePackages ?? []).some(p => p.identifier === packageId)
+        ) ?? null
     const pkg = offering?.availablePackages.find(p => p.identifier === packageId)
-    if (!pkg) return { ok: false, error: 'package_not_found' }
+    if (!pkg) {
+      _lastRcDiag = 'purchase: package_not_found ' + packageId
+      return { ok: false, error: 'package_not_found' }
+    }
 
+    // ⚠️ Pas de timeout ici : la feuille d'achat Apple peut rester ouverte
+    // longtemps (Face ID, sandbox review…). Si purchasePackage RÉSOUT sans
+    // erreur, l'achat StoreKit a ABOUTI → on retourne TOUJOURS ok:true,
+    // même si l'entitlement n'apparaît pas encore dans customerInfo
+    // (latence de validation du reçu côté RevenueCat, fréquente en sandbox).
+    // Apple 2.1(b) : ne JAMAIS afficher une erreur après un achat réussi.
     const { customerInfo } = await Purchases.purchasePackage({ aPackage: pkg })
     const planId = activePlanFromCustomerInfo(customerInfo)
-    return { ok: !!planId, planId: planId ?? undefined }
+      ?? RC_PRODUCT_TO_PLAN[pkg.product?.identifier ?? '']
+      ?? null
+    return { ok: true, planId: planId ?? undefined }
   } catch (err: any) {
     if (err?.code === 'PURCHASE_CANCELLED' || err?.userCancelled) {
       return { ok: false, cancelled: true }
     }
+    _lastRcDiag = 'purchase ERR: ' + (err?.code ?? '') + ' ' + (err?.message ?? String(err))
     console.error('[RevenueCat] purchase:', err)
     return { ok: false, error: err?.message ?? 'purchase_failed' }
   }
