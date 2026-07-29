@@ -1,35 +1,85 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { hasActiveAccess } from '@/lib/access'
+import { isIosApp } from '@/lib/app-platform'
+import { linkRevenueCatUser } from '@/lib/revenuecat'
 import { CheckCircle, ArrowRight, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import type { Session } from '@supabase/supabase-js'
 
 export default function ConfirmPage() {
   const [status,   setStatus]   = useState<'loading' | 'success'>('loading')
   const [userName, setUserName] = useState('')
+  const handled  = useRef(false)
   const router   = useRouter()
   const supabase = createClient()
+
+  // App iOS : rattacher les achats RevenueCat anonymes au compte fraîchement
+  // créé/connecté (transfert 5.1.1(v)), puis sync serveur → profiles.
+  async function syncPurchases(session: Session) {
+    if (!isIosApp()) return
+    try {
+      const plan = await linkRevenueCatUser(session.user.id)
+      if (plan) localStorage.setItem('myta_plan', plan)
+      await fetch('/api/revenuecat/claim', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      }).catch(() => {})
+    } catch { /* best effort */ }
+  }
+
+  async function routeIntoApp(userId: string) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('subscription_status, trial_ends_at, onboarding_step')
+      .eq('id', userId)
+      .single()
+
+    // Nouveau compte (tuto pas terminé) → tuto d'introduction, même en essai gratuit
+    if (profile?.onboarding_step && profile.onboarding_step !== 'done') {
+      router.push('/onboarding')
+      return
+    }
+
+    const hasAccess = hasActiveAccess(profile?.subscription_status, profile?.trial_ends_at)
+    router.push(hasAccess ? '/dashboard' : '/onboarding')
+  }
+
+  async function handleSession(session: Session) {
+    if (handled.current) return
+    handled.current = true
+
+    const name = session.user.user_metadata?.full_name?.split(' ')[0]
+      ?? session.user.user_metadata?.name?.split(' ')[0] ?? ''
+    setUserName(name)
+
+    await syncPurchases(session)
+
+    // Retour OAuth après achat in-app (?purchased=1) : le compte est lié,
+    // l'abonnement rattaché → on entre DIRECTEMENT dans l'app (pas d'écran).
+    if (new URLSearchParams(window.location.search).get('purchased') === '1') {
+      await routeIntoApp(session.user.id)
+      return
+    }
+    setStatus('success')
+  }
 
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>
 
     // Écoute les changements d'auth (Supabase injecte les tokens via le hash de l'URL)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        const name = session?.user?.user_metadata?.full_name?.split(' ')[0] ?? ''
-        setUserName(name)
-        setStatus('success')
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+        void handleSession(session)
       }
     })
 
     // Fallback : session déjà active
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        const name = session.user.user_metadata?.full_name?.split(' ')[0] ?? ''
-        setUserName(name)
-        setStatus('success')
+        void handleSession(session)
       } else {
         // Sécurité : afficher la page après 4s même sans session (lien expiré, etc.)
         timeout = setTimeout(() => setStatus('success'), 4000)
@@ -45,21 +95,7 @@ export default function ConfirmPage() {
   async function handleContinue() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { router.push('/auth'); return }
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('subscription_status, trial_ends_at, onboarding_step')
-      .eq('id', session.user.id)
-      .single()
-
-    // Nouveau compte (tuto pas terminé) → tuto d'introduction, même en essai gratuit
-    if (profile?.onboarding_step && profile.onboarding_step !== 'done') {
-      router.push('/onboarding')
-      return
-    }
-
-    const hasAccess = hasActiveAccess(profile?.subscription_status, profile?.trial_ends_at)
-    router.push(hasAccess ? '/dashboard' : '/onboarding')
+    await routeIntoApp(session.user.id)
   }
 
   return (

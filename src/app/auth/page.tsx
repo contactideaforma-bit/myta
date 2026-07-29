@@ -28,6 +28,21 @@ async function syncIosPurchases(accessToken: string | undefined, userId: string)
 
 type Mode = 'login' | 'register' | 'forgot'
 
+// ── Logos SVG (Apple / Google) ────────────────────────────────────────────────
+const AppleLogo = () => (
+  <svg width="16" height="16" viewBox="0 0 384 512" fill="currentColor" aria-hidden>
+    <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
+  </svg>
+)
+const GoogleLogo = () => (
+  <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden>
+    <path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.5 6.1 29.5 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.6-.4-3.9z"/>
+    <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.5 6.1 29.5 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+    <path fill="#4CAF50" d="M24 44c5.4 0 10.3-2.1 14-5.4l-6.5-5.5c-2.1 1.6-4.7 2.9-7.5 2.9-5.2 0-9.6-3.3-11.2-7.9l-6.5 5C9.6 39.6 16.2 44 24 44z"/>
+    <path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4 5.6l6.5 5.5C41.6 35.4 44 30.1 44 24c0-1.3-.1-2.6-.4-3.9z"/>
+  </svg>
+)
+
 export default function AuthPage() {
   const [email, setEmail]           = useState('')
   const [password, setPassword]     = useState('')
@@ -36,10 +51,12 @@ export default function AuthPage() {
   const [mode, setMode]             = useState<Mode>('login')
 
   const [loading, setLoading]   = useState(false)
+  const [oauthLoading, setOauthLoading] = useState<'apple' | 'google' | null>(null)
   const [message, setMessage]   = useState('')
   const [msgType, setMsgType]   = useState<'success' | 'error'>('error')
   const [showPass, setShowPass] = useState(false)
   const [forgotSent, setForgotSent] = useState(false)
+  const [purchased, setPurchased] = useState(false)
 
   const supabase = createClient()
   // App iOS : l'inscription est OPTIONNELLE (Apple 5.1.1(v)) → on affiche un
@@ -60,10 +77,12 @@ export default function AuthPage() {
     if (params.get('reset') === 'success') {
       notify('✅ Mot de passe modifié ! Connecte-toi avec ton nouveau mot de passe.', 'success')
     }
-    // Achat in-app effectué sans compte (Apple 5.1.1(v)) : compte optionnel
+    // Achat in-app effectué sans compte (Apple 5.1.1(v)) : compte optionnel.
+    // Le chemin recommandé = 1 tap « Continuer avec Apple » (pas de formulaire).
     if (params.get('purchased') === '1') {
+      setPurchased(true)
       setMode('register')
-      notify('✅ Abonnement activé ! Crée un compte (gratuit) pour sauvegarder ton suivi et le retrouver sur tous tes appareils.', 'success')
+      notify('✅ Abonnement activé ! Lie un compte (gratuit) en 1 tap pour sauvegarder ton suivi et le retrouver sur tous tes appareils.', 'success')
     }
   }, [])
 
@@ -82,6 +101,27 @@ export default function AuthPage() {
       }
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Connexion 1 tap : compte lié à Apple / Google (Supabase OAuth) ────────
+  // Après un achat in-app anonyme, /auth/confirm?purchased=1 rattache les
+  // achats RevenueCat au compte puis entre directement dans l'app.
+  async function handleOAuth(provider: 'apple' | 'google') {
+    setMessage('')
+    setOauthLoading(provider)
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/auth/confirm${purchased ? '?purchased=1' : ''}`,
+        },
+      })
+      if (error) throw error
+      // signInWithOAuth redirige la page — on laisse le spinner tourner.
+    } catch {
+      notify(`Connexion ${provider === 'apple' ? 'Apple' : 'Google'} indisponible pour le moment. Réessaie ou utilise l'email.`, 'error')
+      setOauthLoading(null)
+    }
+  }
 
   function switchMode(m: Mode) {
     setMode(m)
@@ -172,6 +212,32 @@ export default function AuthPage() {
     </div>
   )
 
+  // Boutons sociaux : Apple partout, Google uniquement hors app iOS
+  // (l'OAuth Google est bloqué dans les WebView embarquées).
+  const socialButtons = (
+    <div className="flex flex-col gap-2 mb-4">
+      <button type="button" onClick={() => handleOAuth('apple')} disabled={loading || !!oauthLoading}
+        className="w-full py-3 rounded-2xl bg-black text-white text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60 dark:border dark:border-zinc-600">
+        {oauthLoading === 'apple'
+          ? <Loader2 size={16} className="animate-spin" />
+          : <><AppleLogo /> Continuer avec Apple</>}
+      </button>
+      {!iosApp && (
+        <button type="button" onClick={() => handleOAuth('google')} disabled={loading || !!oauthLoading}
+          className="w-full py-3 rounded-2xl bg-white border-2 border-zinc-200 text-zinc-700 text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60">
+          {oauthLoading === 'google'
+            ? <Loader2 size={16} className="animate-spin" />
+            : <><GoogleLogo /> Continuer avec Google</>}
+        </button>
+      )}
+      <div className="flex items-center gap-3 my-1">
+        <div className="flex-1 h-px bg-zinc-200 dark:bg-[#3d3a7a]" />
+        <span className="text-[11px] text-zinc-400 font-semibold">ou par email</span>
+        <div className="flex-1 h-px bg-zinc-200 dark:bg-[#3d3a7a]" />
+      </div>
+    </div>
+  )
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-5 py-12 page-gradient">
       <div className="w-full max-w-sm flex flex-col gap-8">
@@ -242,11 +308,15 @@ export default function AuthPage() {
         /* ────────── Écran CONNEXION / INSCRIPTION ────────── */
         <div className="bg-white rounded-3xl p-6 shadow-lg border border-zinc-100">
           <h2 className="text-xl font-extrabold text-zinc-900 tracking-tight mb-0.5">
-            {mode === 'login' ? 'Bon retour ! 👋' : 'Créer un compte'}
+            {purchased ? 'Abonnement activé 🎉' : mode === 'login' ? 'Bon retour ! 👋' : 'Créer un compte'}
           </h2>
           <p className="text-zinc-400 text-sm mb-5">
-            {mode === 'login' ? 'Connecte-toi à ton espace MYTA' : 'Rejoins My Twin App gratuitement'}
+            {purchased
+              ? 'Lie ton compte en 1 tap pour entrer dans l\'app'
+              : mode === 'login' ? 'Connecte-toi à ton espace MYTA' : 'Rejoins My Twin App gratuitement'}
           </p>
+
+          {socialButtons}
 
           <div className="flex bg-zinc-100 rounded-2xl p-1 mb-5">
             {(['login', 'register'] as const).map(m => (
@@ -309,7 +379,7 @@ export default function AuthPage() {
         )}
 
         {/* App iOS : accès au paywall SANS compte (Apple 5.1.1(v)) */}
-        {iosApp && (
+        {iosApp && !purchased && (
           <button
             onClick={() => window.location.href = '/pricing'}
             className="w-full py-3 rounded-2xl border-2 border-[#4B47A0]/30 text-[#4B47A0] text-sm font-bold hover:bg-[#4B47A0]/5 transition-all flex items-center justify-center gap-2">
@@ -318,11 +388,13 @@ export default function AuthPage() {
         )}
 
         {/* Lien démo */}
-        <button
-          onClick={() => window.location.href = '/demo'}
-          className="w-full py-3 rounded-2xl border-2 border-dashed border-zinc-200 text-zinc-500 text-sm font-semibold hover:border-[#4B47A0] hover:text-[#4B47A0] transition-all flex items-center justify-center gap-2">
-          👀 Voir la démo sans s'inscrire
-        </button>
+        {!purchased && (
+          <button
+            onClick={() => window.location.href = '/demo'}
+            className="w-full py-3 rounded-2xl border-2 border-dashed border-zinc-200 text-zinc-500 text-sm font-semibold hover:border-[#4B47A0] hover:text-[#4B47A0] transition-all flex items-center justify-center gap-2">
+            👀 Voir la démo sans s'inscrire
+          </button>
+        )}
 
         <div className="flex flex-col items-center gap-2">
           <p className="text-center text-zinc-400 text-xs">🔒 Données sécurisées · synchronisées avec Supabase</p>

@@ -38,6 +38,17 @@ const supabase = createServerClient(url, key, {
 - `friend_groups` + `group_members` — feature Amis & Challenges (SQL : supabase-groups.sql)
 - `user_badges`, `challenge_completions`, `smoking_log`
 
+## Fait le 29/07 soir — Compte lié Apple/Google après achat (1 tap, OAuth Supabase web)
+- **Demande IDEA** : après le paiement IAP anonyme, ne plus tomber sur le formulaire d'inscription — compte lié au compte Apple (iOS) / Google (Android), entrée directe dans l'app avec le forfait. Précision donnée : un compte 100% silencieux est impossible (Apple ne révèle jamais l'identité de l'acheteur) → flux retenu = 1 tap « Continuer avec Apple ». **Choix IDEA : OAuth web Supabase** (pas de plugin natif → AUCUN rebuild iOS ni resoumission).
+- **auth/page.tsx** : boutons « Continuer avec Apple » (partout) et « Continuer avec Google » (masqué dans l'app iOS — OAuth Google bloqué en WebView) via `supabase.auth.signInWithOAuth` avec `redirectTo=/auth/confirm(?purchased=1)` + séparateur « ou par email ». Mode `purchased=1` : titre « Abonnement activé 🎉 », sous-titre « lie ton compte en 1 tap », boutons « continuer sans compte »/démo masqués.
+- **auth/confirm/page.tsx** : à la session (retour OAuth par hash ou lien email) → `syncPurchases` (linkRevenueCatUser + POST /api/revenuecat/claim, iOS only) puis si `?purchased=1` → **redirect direct** onboarding (nouveau compte) ou dashboard, sans écran intermédiaire ; sinon écran de bienvenue habituel. Garde anti-double-exécution (useRef), name aussi lu depuis user_metadata.name (Google).
+- **⏳ CONFIG À FAIRE (IDEA, sans ça les boutons renverront une erreur)** :
+    1. **Supabase → Auth → URL Configuration** : ajouter `https://mytwinapp.fr/auth/confirm` aux Redirect URLs.
+    2. **Apple Developer → Identifiers** : créer un **Services ID** (ex `fr.mytwinapp.app.web`), activer Sign in with Apple, domaine `mytwinapp.fr`, return URL `https://<project-ref>.supabase.co/auth/v1/callback` ; **Keys** : créer une clé « Sign in with Apple » (.p8). **Supabase → Auth → Providers → Apple** : renseigner Services ID + secret (généré depuis Team ID + Key ID + .p8).
+    3. **Google Cloud Console** : OAuth Client ID (Web), redirect URI `https://<project-ref>.supabase.co/auth/v1/callback` → **Supabase → Providers → Google** (client ID + secret).
+- **Conformité** : 4.8 OK (Sign in with Apple offert dans l'app ; Google absent de l'app iOS). NB WebView : cookies Safari non partagés → 1re connexion Apple demande l'identifiant + code, ensuite fluide.
+- ✅ typecheck. 100% web → `git push` suffit.
+
 ## Fait le 29/07 — Dark mode paywall + wallets Stripe + point migration Apple
 - **Fix dark mode paywall iOS (screenshot IDEA : carte Essentiel illisible)** : la carte Essentiel utilisait un style inline `background:'#fff'` → non écrasé par `.dark .bg-white`, alors que `text-zinc-900` devenait clair → texte clair sur carte blanche. `pricing/page.tsx` : carte passée en classes `bg-white border-zinc-200` (les overrides dark s'appliquent), gradient Premium inchangé.
 - **globals.css — compléments dark** : `.dark .text-\[\#4B47A0\]` → #a8a4ee (liens « Restaurer mes achats », « Se connecter » illisibles sur fond sombre, 21 occurrences dans src) ; `.dark .bg-white\/60→\/95` → rgba(37,35,64,x) (nav landing, footer sticky démo, veils) — les /15-/30 (effet verre sur dégradés) restent intacts.
