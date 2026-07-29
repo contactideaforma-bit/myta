@@ -122,6 +122,17 @@
   .dark .text-red-700, .dark .text-red-600 { color: #fca5a5 !important; }
   .dark .text-nutri-dark { color: #86efac !important; }
   .dark .text-sport-dark { color: #c4b5fd !important; }
+
+  /* ── Compléments audit dark (29/07) ── */
+  /* Liens/accents violet marque (#4B47A0) : trop foncés sur fond sombre */
+  .dark .text-\[\#4B47A0\] { color: #a8a4ee !important; }
+  /* Surfaces blanches translucides (barres sticky, veils). Les faibles
+     opacités (/15 à /30 : effet verre sur dégradés colorés) restent intactes */
+  .dark .bg-white\/95 { background-color: rgba(37, 35, 64, 0.95) !important; }
+  .dark .bg-white\/90 { background-color: rgba(37, 35, 64, 0.9) !important; }
+  .dark .bg-white\/80 { background-color: rgba(37, 35, 64, 0.8) !important; }
+  .dark .bg-white\/70 { background-color: rgba(37, 35, 64, 0.7) !important; }
+  .dark .bg-white\/60 { background-color: rgba(37, 35, 64, 0.6) !important; }
 }
 
 /* ── Animations landing page ── */

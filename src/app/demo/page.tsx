@@ -131,7 +131,7 @@ export default function DemoPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#f8f8fc' }}>
+    <div className="min-h-screen flex flex-col bg-[#f8f8fc] dark:bg-[#1a1825]">
 
       {/* ── Bannière démo ── */}
       <div className="sticky top-0 z-40 w-full"

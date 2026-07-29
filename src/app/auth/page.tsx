@@ -179,16 +179,13 @@ export default function AuthPage() {
         <div className="flex flex-col items-center gap-4">
           <img src="/logo_my_twin_app.png" alt="My Twin App" className="w-64 object-contain drop-shadow-sm" />
           <div className="flex gap-2">
-            <span className="px-3 py-1 rounded-full text-xs font-bold border"
-              style={{ background: '#f0fdf4', color: '#16A34A', borderColor: '#bbf7d0' }}>
+            <span className="px-3 py-1 rounded-full text-xs font-bold border bg-green-50 text-green-600 border-green-200">
               🥗 Nutrition
             </span>
-            <span className="px-3 py-1 rounded-full text-xs font-bold border"
-              style={{ background: '#f0f0ff', color: '#4B47A0', borderColor: '#c7d2fe' }}>
+            <span className="px-3 py-1 rounded-full text-xs font-bold border bg-indigo-50 text-indigo-600 border-indigo-100">
               🏋️ Sport
             </span>
-            <span className="px-3 py-1 rounded-full text-xs font-bold border"
-              style={{ background: '#e8fbf8', color: '#0D7A6E', borderColor: '#99f6e4' }}>
+            <span className="px-3 py-1 rounded-full text-xs font-bold border bg-teal-50 text-teal-700 border-teal-100">
               😴 Sommeil
             </span>
           </div>

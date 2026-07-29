@@ -113,7 +113,10 @@ export async function POST(req: NextRequest) {
     // Paramètres de base de la session Stripe
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'subscription',
-      payment_method_types: ['card'],
+      // Pas de payment_method_types : Stripe applique les moyens de paiement
+      // activés dans le Dashboard (carte + wallets Apple Pay / Google Pay / Link).
+      // Les wallets s'affichent automatiquement sur le Checkout hébergé selon
+      // le navigateur (Apple Pay sur Safari/iOS, Google Pay sur Chrome/Android).
       customer_email: user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: {

@@ -459,10 +459,12 @@ function PricingContent() {
                       key={p.packageId}
                       onClick={() => handleRcPurchase(p.packageId)}
                       disabled={!!rcBusy}
-                      className="w-full rounded-3xl p-5 text-left shadow-lg border transition disabled:opacity-60"
+                      className={`w-full rounded-3xl p-5 text-left shadow-lg border transition disabled:opacity-60 ${
+                        isPrem ? 'border-transparent' : 'bg-white border-zinc-200'
+                      }`}
                       style={isPrem
-                        ? { background: 'linear-gradient(135deg, #4B47A0, #2BA8B0)', borderColor: 'transparent' }
-                        : { background: '#fff', borderColor: '#e4e4e7' }}>
+                        ? { background: 'linear-gradient(135deg, #4B47A0, #2BA8B0)' }
+                        : undefined}>
                       <div className="flex items-center justify-between">
                         <span className={`font-extrabold ${isPrem ? 'text-white' : 'text-zinc-900'}`}>
                           {isPrem ? 'Premium' : 'Essentiel'}
