@@ -28,6 +28,12 @@ async function syncIosPurchases(accessToken: string | undefined, userId: string)
 
 type Mode = 'login' | 'register' | 'forgot'
 
+// ⏳ Compte développeur Apple en migration (accès coupé, dossier 20000118458293) :
+// le provider Apple n'est pas configurable dans Supabase → bouton masqué pour
+// éviter l'erreur « provider is not enabled ». Repasser à true quand Apple aura
+// rétabli l'accès ET que le provider Apple sera configuré dans Supabase.
+const APPLE_SIGNIN_READY: boolean = false
+
 // ── Logos SVG (Apple / Google) ────────────────────────────────────────────────
 const AppleLogo = () => (
   <svg width="16" height="16" viewBox="0 0 384 512" fill="currentColor" aria-hidden>
@@ -212,16 +218,19 @@ export default function AuthPage() {
     </div>
   )
 
-  // Boutons sociaux : Apple partout, Google uniquement hors app iOS
-  // (l'OAuth Google est bloqué dans les WebView embarquées).
-  const socialButtons = (
+  // Boutons sociaux : Apple partout (si configuré), Google uniquement hors app
+  // iOS (l'OAuth Google est bloqué dans les WebView embarquées).
+  const showSocial = APPLE_SIGNIN_READY || !iosApp
+  const socialButtons = showSocial && (
     <div className="flex flex-col gap-2 mb-4">
-      <button type="button" onClick={() => handleOAuth('apple')} disabled={loading || !!oauthLoading}
-        className="w-full py-3 rounded-2xl bg-black text-white text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60 dark:border dark:border-zinc-600">
-        {oauthLoading === 'apple'
-          ? <Loader2 size={16} className="animate-spin" />
-          : <><AppleLogo /> Continuer avec Apple</>}
-      </button>
+      {APPLE_SIGNIN_READY && (
+        <button type="button" onClick={() => handleOAuth('apple')} disabled={loading || !!oauthLoading}
+          className="w-full py-3 rounded-2xl bg-black text-white text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60 dark:border dark:border-zinc-600">
+          {oauthLoading === 'apple'
+            ? <Loader2 size={16} className="animate-spin" />
+            : <><AppleLogo /> Continuer avec Apple</>}
+        </button>
+      )}
       {!iosApp && (
         <button type="button" onClick={() => handleOAuth('google')} disabled={loading || !!oauthLoading}
           className="w-full py-3 rounded-2xl bg-white border-2 border-zinc-200 text-zinc-700 text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60">
@@ -312,7 +321,9 @@ export default function AuthPage() {
           </h2>
           <p className="text-zinc-400 text-sm mb-5">
             {purchased
-              ? 'Lie ton compte en 1 tap pour entrer dans l\'app'
+              ? (showSocial
+                  ? 'Lie ton compte en 1 tap pour entrer dans l\'app'
+                  : 'Crée un compte (gratuit) pour retrouver ton suivi partout')
               : mode === 'login' ? 'Connecte-toi à ton espace MYTA' : 'Rejoins My Twin App gratuitement'}
           </p>
 
