@@ -8,14 +8,14 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Lock, Play, RotateCcw, Trophy, Loader2 } from 'lucide-react'
+import { ArrowLeft, Lock, Play, RotateCcw, Trophy, Loader2, X } from 'lucide-react'
 import { saveBestScore, useGameUnlocks } from '@/lib/games'
+import { GameShell, safeTop } from '@/components/ui/GameShell'
 
 type Phase = 'intro' | 'play' | 'over'
 
 // ── Constantes physiques (unités : px, 60 fps de référence) ──────────────────
-const WORLD_H    = 220   // hauteur fixe du monde (px)
-const GROUND_Y   = 180   // y du sol
+const GROUND_Y0  = 180   // y du sol par défaut (avant mesure de l'écran)
 const WATY_X     = 48    // position horizontale fixe de Waty
 const WATY_SIZE  = 44
 const GRAVITY    = 0.62
@@ -36,11 +36,13 @@ export default function RunnerGamePage() {
   const [newRecord, setNewRecord] = useState(false)
   // Rendu : on ne garde en state que ce qui s'affiche
   const [meters, setMeters]   = useState(0)
-  const [watyY, setWatyY]     = useState(GROUND_Y - WATY_SIZE)
+  const [watyY, setWatyY]     = useState(GROUND_Y0 - WATY_SIZE)
+  const [groundY, setGroundY] = useState(GROUND_Y0)
   const [obs, setObs]         = useState<Obstacle[]>([])
 
   // ── Refs moteur (pas de re-render pendant la boucle) ──
-  const yRef        = useRef(GROUND_Y - WATY_SIZE)
+  const yRef        = useRef(GROUND_Y0 - WATY_SIZE)
+  const groundYRef  = useRef(GROUND_Y0)
   const vyRef       = useRef(0)
   const onGroundRef = useRef(true)
   const obsRef      = useRef<Obstacle[]>([])
@@ -66,7 +68,7 @@ export default function RunnerGamePage() {
   }
 
   function start() {
-    yRef.current = GROUND_Y - WATY_SIZE
+    yRef.current = groundYRef.current - WATY_SIZE
     vyRef.current = 0
     onGroundRef.current = true
     obsRef.current = []
@@ -74,12 +76,19 @@ export default function RunnerGamePage() {
     nextSpawnRef.current = 240
     setMeters(0)
     setObs([])
-    setWatyY(GROUND_Y - WATY_SIZE)
+    setWatyY(groundYRef.current - WATY_SIZE)
     setNewRecord(false)
     setPhase('play')
     runningRef.current = true
     requestAnimationFrame(() => {
-      worldWRef.current = worldRef.current?.clientWidth || 360
+      const el = worldRef.current
+      worldWRef.current = el?.clientWidth || 360
+      // Le sol se cale en bas de l'écran : plus de ciel, même hauteur de saut.
+      const g = Math.max(140, (el?.clientHeight || 220) - 46)
+      groundYRef.current = g
+      setGroundY(g)
+      yRef.current = g - WATY_SIZE
+      setWatyY(g - WATY_SIZE)
       rafRef.current = requestAnimationFrame(tick)
     })
   }
@@ -93,8 +102,8 @@ export default function RunnerGamePage() {
     // ── Physique Waty ──
     vyRef.current += GRAVITY
     yRef.current += vyRef.current
-    if (yRef.current >= GROUND_Y - WATY_SIZE) {
-      yRef.current = GROUND_Y - WATY_SIZE
+    if (yRef.current >= groundYRef.current - WATY_SIZE) {
+      yRef.current = groundYRef.current - WATY_SIZE
       vyRef.current = 0
       onGroundRef.current = true
     }
@@ -122,7 +131,7 @@ export default function RunnerGamePage() {
     const wy1 = yRef.current + 6,    wy2 = yRef.current + WATY_SIZE - 2
     for (const o of obsRef.current) {
       const ox1 = o.x + 5, ox2 = o.x + o.size - 5
-      const oy1 = GROUND_Y - o.size + 4, oy2 = GROUND_Y
+      const oy1 = groundYRef.current - o.size + 4, oy2 = groundYRef.current
       if (wx1 < ox2 && wx2 > ox1 && wy1 < oy2 && wy2 > oy1) {
         gameOver()
         return
@@ -135,6 +144,12 @@ export default function RunnerGamePage() {
     setMeters(Math.floor(distRef.current))
 
     rafRef.current = requestAnimationFrame(tick)
+  }
+
+  function quit() {
+    runningRef.current = false
+    cancelAnimationFrame(rafRef.current)
+    router.push('/games')
   }
 
   async function gameOver() {
@@ -164,89 +179,99 @@ export default function RunnerGamePage() {
   )
 
   return (
-    <div className="page select-none">
+    <GameShell>
+      <div className="relative mx-auto h-full w-full max-w-[520px]">
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <button onClick={() => router.push('/games')} className="flex items-center gap-1 text-sm text-zinc-400 hover:text-zinc-600">
-          <ArrowLeft size={15} /> Mini-jeux
-        </button>
-        <div className="flex items-center gap-3 text-sm font-bold">
-          <span className="text-tta-mid">🏃 {meters} m</span>
-          <span className="flex items-center gap-1 text-zinc-400"><Trophy size={13} /> {best} m</span>
-        </div>
-      </div>
+        {/* ── Monde du jeu ── */}
+        {phase === 'play' && (
+          <div
+            ref={worldRef}
+            onPointerDown={jump}
+            className="absolute inset-0 overflow-hidden cursor-pointer touch-none"
+            style={{ background: 'linear-gradient(180deg, #e0f2fe 0%, #f0f9ff 65%, #dcfce7 100%)' }}>
 
-      {/* ── Intro / Game over ── */}
-      {(phase === 'intro' || phase === 'over') && (
-        <div className="card flex flex-col items-center gap-4 py-8 text-center">
-          <img src="/waty-sport.png" alt="Waty" className="w-20 h-20 object-contain" />
-          {phase === 'intro' ? (
-            <>
-              <h1 className="text-xl font-extrabold text-zinc-900">🏃 Waty Runner</h1>
-              <p className="text-sm text-zinc-500 leading-relaxed max-w-xs">
-                Waty court vers ses objectifs ! <span className="font-bold">Tape l&apos;écran pour sauter</span> par-dessus
-                la malbouffe. Ça va de plus en plus vite… jusqu&apos;où iras-tu ?
+            {/* Décor */}
+            <span className="absolute text-3xl" style={{ left: '78%', top: '10%' }}>☀️</span>
+            <span className="absolute text-xl opacity-70" style={{ left: '18%', top: '18%' }}>☁️</span>
+            <span className="absolute text-lg opacity-60" style={{ left: '55%', top: '28%' }}>☁️</span>
+
+            {/* Sol */}
+            <div className="absolute left-0 right-0 bg-emerald-300/70 border-t-2 border-emerald-400"
+              style={{ top: groundY, bottom: 0 }} />
+
+            {/* Waty */}
+            <img src="/waty-sport.png" alt="Waty"
+              className="absolute object-contain drop-shadow-md"
+              style={{ left: WATY_X, top: watyY, width: WATY_SIZE, height: WATY_SIZE }} />
+
+            {/* Obstacles */}
+            {obs.map((o, i) => (
+              <span key={i} className="absolute leading-none"
+                style={{ left: o.x, top: groundY - o.size, fontSize: o.size }}>
+                {o.emoji}
+              </span>
+            ))}
+
+            {/* HUD */}
+            <div className="absolute inset-x-0 top-0 px-3 flex items-center justify-between gap-2" style={safeTop}>
+              <button onPointerDown={e => e.stopPropagation()} onClick={quit}
+                className="w-9 h-9 rounded-full bg-white/75 backdrop-blur text-zinc-600 flex items-center justify-center active:scale-95">
+                <X size={17} />
+              </button>
+              <div className="flex items-center gap-2 text-[13px] font-bold">
+                <span className="bg-white/75 backdrop-blur rounded-full px-2.5 py-1 text-tta-mid">🏃 {meters} m</span>
+                <span className="bg-white/75 backdrop-blur rounded-full px-2.5 py-1 text-zinc-500">🏆 {best} m</span>
+              </div>
+            </div>
+
+            {meters < 15 && (
+              <p className="absolute inset-x-0 text-center text-sm font-bold text-indigo-400 animate-pulse" style={{ top: '42%' }}>
+                👆 Tape pour sauter !
               </p>
-            </>
-          ) : (
-            <>
-              <h1 className="text-xl font-extrabold text-zinc-900">
-                {newRecord ? '🏆 NOUVEAU RECORD !' : 'Aïe, un obstacle ! 💥'}
-              </h1>
-              <p className="text-4xl font-black text-tta-mid">{meters} <span className="text-sm text-zinc-400 font-semibold">mètres</span></p>
-              {!newRecord && best > 0 && <p className="text-xs text-zinc-400">Record : {best} m</p>}
-            </>
-          )}
-          <button onClick={start}
-            className="flex items-center gap-2 px-8 py-3.5 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98] transition-all"
-            style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
-            {phase === 'intro' ? <><Play size={16} fill="currentColor" /> Jouer</> : <><RotateCcw size={16} /> Rejouer</>}
-          </button>
-        </div>
-      )}
+            )}
+          </div>
+        )}
 
-      {/* ── Monde du jeu ── */}
-      {phase === 'play' && (
-        <div
-          ref={worldRef}
-          onPointerDown={jump}
-          className="relative w-full rounded-3xl overflow-hidden shadow-sm border-2 border-indigo-100 cursor-pointer touch-none"
-          style={{
-            height: WORLD_H,
-            background: 'linear-gradient(180deg, #e0f2fe 0%, #f0f9ff 65%, #dcfce7 100%)',
-          }}>
+        {/* ── Intro / Game over ── */}
+        {(phase === 'intro' || phase === 'over') && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center"
+               style={{ background: 'linear-gradient(180deg,#e0f2fe 0%,#f0f9ff 60%,#dcfce7 100%)' }}>
+            <button onClick={quit}
+              className="absolute left-3 flex items-center gap-1 text-sm text-zinc-400 active:text-zinc-600"
+              style={{ ...safeTop, top: 0 }}>
+              <ArrowLeft size={15} /> Mini-jeux
+            </button>
 
-          {/* Décor */}
-          <span className="absolute text-lg" style={{ left: '78%', top: '8%' }}>☀️</span>
-          <span className="absolute text-sm opacity-70" style={{ left: '20%', top: '14%' }}>☁️</span>
-          <span className="absolute text-xs opacity-60" style={{ left: '55%', top: '22%' }}>☁️</span>
+            <img src="/waty-sport.png" alt="Waty" className="w-20 h-20 object-contain" />
 
-          {/* Sol */}
-          <div className="absolute left-0 right-0 bg-emerald-300/70 border-t-2 border-emerald-400"
-            style={{ top: GROUND_Y, bottom: 0 }} />
+            {phase === 'intro' ? (
+              <>
+                <h1 className="text-2xl font-extrabold text-zinc-900">🏃 Waty Runner</h1>
+                <p className="text-sm text-zinc-600 leading-relaxed max-w-xs">
+                  Waty court vers ses objectifs ! <span className="font-bold">Tape l&apos;écran pour sauter</span> par-dessus
+                  la malbouffe. Ça va de plus en plus vite… jusqu&apos;où iras-tu ?
+                </p>
+              </>
+            ) : (
+              <>
+                <h1 className="text-2xl font-extrabold text-zinc-900">
+                  {newRecord ? '🏆 NOUVEAU RECORD !' : 'Aïe, un obstacle ! 💥'}
+                </h1>
+                <p className="text-5xl font-black text-tta-mid">{meters} <span className="text-sm text-zinc-400 font-semibold">m</span></p>
+                {!newRecord && best > 0 && <p className="text-xs text-zinc-400">Record : {best} m</p>}
+              </>
+            )}
 
-          {/* Waty */}
-          <img src="/waty-sport.png" alt="Waty"
-            className="absolute object-contain drop-shadow-md"
-            style={{ left: WATY_X, top: watyY, width: WATY_SIZE, height: WATY_SIZE }} />
+            <button onClick={start}
+              className="flex items-center gap-2 px-9 py-3.5 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98] transition-transform"
+              style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
+              {phase === 'intro' ? <><Play size={16} fill="currentColor" /> Jouer</> : <><RotateCcw size={16} /> Rejouer</>}
+            </button>
 
-          {/* Obstacles */}
-          {obs.map((o, i) => (
-            <span key={i} className="absolute leading-none"
-              style={{ left: o.x, top: GROUND_Y - o.size, fontSize: o.size }}>
-              {o.emoji}
-            </span>
-          ))}
-
-          {/* Consigne */}
-          {meters < 15 && (
-            <p className="absolute inset-x-0 top-2 text-center text-xs font-bold text-indigo-400 animate-pulse">
-              👆 Tape pour sauter !
-            </p>
-          )}
-        </div>
-      )}
-    </div>
+            <p className="flex items-center gap-1 text-xs text-zinc-400"><Trophy size={12} /> Record : {best} m</p>
+          </div>
+        )}
+      </div>
+    </GameShell>
   )
 }

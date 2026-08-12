@@ -9,12 +9,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Lock, Play, RotateCcw, Trophy, Loader2 } from 'lucide-react'
+import { ArrowLeft, Lock, Play, RotateCcw, Trophy, Loader2, X } from 'lucide-react'
 import { saveBestScore, useGameUnlocks } from '@/lib/games'
+import { GameShell, safeTop } from '@/components/ui/GameShell'
 
 type Phase = 'intro' | 'play' | 'over'
 
-const VIEW_H     = 440
 const WATY_W     = 58
 const WATY_H     = 58
 const FLOOR_PAD  = 14          // marge sous Waty
@@ -107,6 +107,12 @@ export default function TriGamePage() {
     }
   }
 
+  function quit() {
+    runningRef.current = false
+    cancelAnimationFrame(rafRef.current)
+    router.push('/games')
+  }
+
   async function endGame() {
     setPhaseBoth('over')
     const record = await saveBestScore('tri', scoreRef.current)
@@ -124,6 +130,7 @@ export default function TriGamePage() {
     const canvas = canvasRef.current
     if (!canvas) return
     const w = canvas.clientWidth
+    const VIEW_H = canvas.clientHeight
     const t = ++tRef.current
 
     // ── Déplacement de Waty (suit le doigt / flèches) ──
@@ -202,7 +209,7 @@ export default function TriGamePage() {
     const canvas = canvasRef.current
     if (!canvas) return
     const dpr = window.devicePixelRatio || 1
-    const w = canvas.clientWidth, h = VIEW_H
+    const w = canvas.clientWidth, h = canvas.clientHeight
     if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
       canvas.width = w * dpr; canvas.height = h * dpr
     }
@@ -297,71 +304,80 @@ export default function TriGamePage() {
   )
 
   return (
-    <div className="page select-none">
+    <GameShell>
+      <div className="relative mx-auto h-full w-full max-w-[520px]">
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <button onClick={() => router.push('/games')} className="flex items-center gap-1 text-sm text-zinc-400 hover:text-zinc-600">
-          <ArrowLeft size={15} /> Mini-jeux
-        </button>
-        <div className="flex items-center gap-3 text-sm font-bold">
-          <span className="text-green-600">🥗 {score}</span>
-          <span className="text-red-500">{'❤️'.repeat(Math.max(0, lives))}{'🖤'.repeat(Math.max(0, 3 - lives))}</span>
-          <span className="flex items-center gap-1 text-zinc-400"><Trophy size={13} /> {best}</span>
-        </div>
-      </div>
-
-      {/* ── Intro / Game over ── */}
-      {(phase === 'intro' || phase === 'over') && (
-        <div className="card flex flex-col items-center gap-4 py-8 text-center">
-          <img src="/waty-nutrition.png" alt="Waty" className="w-20 h-20 object-contain" />
-          {phase === 'intro' ? (
-            <>
-              <h1 className="text-xl font-extrabold text-zinc-900">🥗 Le Grand Tri</h1>
-              <p className="text-sm text-zinc-500 leading-relaxed max-w-xs">
-                Les aliments pleuvent ! <span className="font-bold">Glisse ton doigt</span> pour déplacer Waty :
-                attrape les aliments <span className="font-bold text-green-600">sains</span> (+10, combo ×5 = bonus 🔥)
-                et <span className="font-bold text-pink-500">évite la malbouffe</span> (-1 ❤️).
-                Ça tombe de plus en plus vite…
-              </p>
-            </>
-          ) : (
-            <>
-              <h1 className="text-xl font-extrabold text-zinc-900">
-                {newRecord ? '🏆 NOUVEAU RECORD !' : 'Plus de vies ! 💔'}
-              </h1>
-              <p className="text-4xl font-black text-green-600">{score} <span className="text-sm text-zinc-400 font-semibold">points</span></p>
-              {!newRecord && best > 0 && <p className="text-xs text-zinc-400">Record : {best} points</p>}
-            </>
-          )}
-          <button onClick={startGame}
-            className="flex items-center gap-2 px-8 py-3.5 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98] transition-all"
-            style={{ background: 'linear-gradient(90deg, #16a34a, #2BA8B0)' }}>
-            {phase === 'intro' ? <><Play size={16} fill="currentColor" /> Jouer</> : <><RotateCcw size={16} /> Rejouer</>}
-          </button>
-        </div>
-      )}
-
-      {/* ── Zone de jeu ── */}
-      {phase === 'play' && (
-        <div className="relative rounded-3xl overflow-hidden shadow-md border-2 border-green-200 touch-none">
-          <canvas
-            ref={canvasRef}
-            className="block w-full cursor-pointer"
-            style={{ height: VIEW_H }}
-            onPointerMove={pointerMove}
-            onPointerDown={pointerMove}
-          />
-          {combo >= 3 && (
-            <div className="absolute top-2 right-2 bg-orange-500 text-white text-xs font-black px-3 py-1 rounded-full animate-pulse">
-              🔥 COMBO ×{combo}
+        {/* ── Zone de jeu ── */}
+        {phase === 'play' && (
+          <>
+            <canvas
+              ref={canvasRef}
+              className="absolute inset-0 w-full h-full cursor-pointer"
+              onPointerMove={pointerMove}
+              onPointerDown={pointerMove}
+            />
+            <div className="absolute inset-x-0 top-0 px-3 flex items-center justify-between gap-2" style={safeTop}>
+              <button onClick={quit}
+                className="w-9 h-9 rounded-full bg-black/35 backdrop-blur text-white flex items-center justify-center active:scale-95">
+                <X size={17} />
+              </button>
+              <div className="flex items-center gap-2 text-[13px] font-bold text-white">
+                <span className="bg-black/35 backdrop-blur rounded-full px-2.5 py-1">🥗 {score}</span>
+                <span className="bg-black/35 backdrop-blur rounded-full px-2.5 py-1">
+                  {'❤️'.repeat(Math.max(0, lives))}{'🖤'.repeat(Math.max(0, 3 - lives))}
+                </span>
+              </div>
             </div>
-          )}
-          <div className="absolute top-2 left-2 bg-black/40 text-white text-[10px] font-bold px-3 py-1 rounded-full">
-            🥗 à attraper · 🍩 à éviter
+            {combo >= 3 && (
+              <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-orange-500 text-white text-sm font-black px-4 py-1.5 rounded-full animate-pulse shadow-lg">
+                🔥 COMBO ×{combo}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Intro / Game over ── */}
+        {(phase === 'intro' || phase === 'over') && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center"
+               style={{ background: 'linear-gradient(180deg,#e0f2fe 0%,#f0fdf4 65%,#dcfce7 100%)' }}>
+            <button onClick={quit}
+              className="absolute left-3 flex items-center gap-1 text-sm text-zinc-400 active:text-zinc-600"
+              style={{ ...safeTop, top: 0 }}>
+              <ArrowLeft size={15} /> Mini-jeux
+            </button>
+
+            <img src="/waty-nutrition.png" alt="Waty" className="w-20 h-20 object-contain" />
+
+            {phase === 'intro' ? (
+              <>
+                <h1 className="text-2xl font-extrabold text-zinc-900">🥗 Le Grand Tri</h1>
+                <p className="text-sm text-zinc-600 leading-relaxed max-w-xs">
+                  Les aliments pleuvent ! <span className="font-bold">Glisse ton doigt</span> pour déplacer Waty :
+                  attrape les aliments <span className="font-bold text-green-600">sains</span> (+10, combo ×5 = bonus 🔥)
+                  et <span className="font-bold text-pink-500">évite la malbouffe</span> (-1 ❤️).
+                  Ça tombe de plus en plus vite…
+                </p>
+              </>
+            ) : (
+              <>
+                <h1 className="text-2xl font-extrabold text-zinc-900">
+                  {newRecord ? '🏆 NOUVEAU RECORD !' : 'Plus de vies ! 💔'}
+                </h1>
+                <p className="text-5xl font-black text-green-600">{score}</p>
+                {!newRecord && best > 0 && <p className="text-xs text-zinc-400">Record : {best} points</p>}
+              </>
+            )}
+
+            <button onClick={startGame}
+              className="flex items-center gap-2 px-9 py-3.5 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98] transition-transform"
+              style={{ background: 'linear-gradient(90deg, #16a34a, #2BA8B0)' }}>
+              {phase === 'intro' ? <><Play size={16} fill="currentColor" /> Jouer</> : <><RotateCcw size={16} /> Rejouer</>}
+            </button>
+
+            <p className="flex items-center gap-1 text-xs text-zinc-400"><Trophy size={12} /> Record : {best}</p>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </GameShell>
   )
 }

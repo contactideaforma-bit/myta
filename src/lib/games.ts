@@ -26,7 +26,7 @@ export interface GameDef {
 export const GAMES: GameDef[] = [
   {
     key: 'lava', title: 'Floor is Lava', emoji: '🌋',
-    desc: 'Un vrai platformer ! 5 niveaux au-dessus de la lave : saute, ramasse les étoiles et atteins le drapeau.',
+    desc: 'La lave monte ! Grimpe les 5 tours, esquive les pierres et les boules de feu, attrape les fruits magiques.',
     unlockDays: 7, href: '/games/lava', scoreUnit: '⭐', color: '#f97316',
   },
   {
