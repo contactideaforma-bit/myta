@@ -152,11 +152,51 @@ function adaptMacrosForHealth(
   return { cal: c, prot: p, carb: g, fat: l, notes }
 }
 
+/**
+ * Bornes officielles de l'IMC (OMS). Servent à la fois au libellé, à la
+ * position du curseur et aux graduations — une seule source de vérité, pour
+ * qu'ils ne puissent plus se contredire.
+ */
+const IMC_MIN = 16
+const IMC_MAX = 40
+/** Position en % sur la jauge, échelle linéaire 16 → 40. */
+export function imcPct(bmi: number) {
+  return Math.min(Math.max(((bmi - IMC_MIN) / (IMC_MAX - IMC_MIN)) * 100, 0), 100)
+}
+
+/**
+ * Ton des messages — règles tenues volontairement :
+ *  · on TUTOIE, comme partout ailleurs dans l'app ;
+ *  · on SITUE, on ne note pas : l'IMC est un repère, pas une évaluation ;
+ *  · aucune injonction à changer de poids — ce n'est pas le rôle d'une app ;
+ *  · en bas de fourchette, on n'encourage JAMAIS à continuer de perdre.
+ */
 function imcCategory(bmi: number) {
-  if (bmi < 18.5) return { label: 'Insuffisance pondérale', color: 'text-orange-600', bg: 'bg-orange-100', advice: 'En dessous du poids santé. Enrichissement calorique progressif conseillé.' }
-  if (bmi < 25)   return { label: 'Poids normal',           color: 'text-green-700',  bg: 'bg-green-50',   advice: 'Vous êtes dans la fourchette de poids sain. Continuez votre équilibre.' }
-  if (bmi < 30)   return { label: 'Surpoids',               color: 'text-orange-600', bg: 'bg-orange-100', advice: 'Légère surcharge pondérale. Rééquilibrage alimentaire conseillé.' }
-  return           { label: 'Obésité',                      color: 'text-red-600',    bg: 'bg-red-100',    advice: 'Consultation avec un médecin ou diététicien conseillée.' }
+  if (bmi < 18.5) return {
+    label: 'Sous la fourchette de référence',
+    color: 'text-amber-700', bg: 'bg-amber-50',
+    advice: "Ton IMC est sous la fourchette de référence de l'OMS. Cela peut être normal selon ta morphologie, mais c'est le bon moment pour en parler à un médecin ou un diététicien, qui pourra regarder l'ensemble de ta situation.",
+  }
+  if (bmi < 20) return {
+    label: 'Dans la fourchette de référence',
+    color: 'text-emerald-700', bg: 'bg-emerald-50',
+    advice: "Ton IMC se situe dans la fourchette de référence de l'OMS, dans sa partie basse. Si tu as perdu du poids récemment, l'objectif utile maintenant est plutôt de stabiliser que de continuer — et d'en parler à un professionnel si tu as un doute.",
+  }
+  if (bmi < 25) return {
+    label: 'Dans la fourchette de référence',
+    color: 'text-emerald-700', bg: 'bg-emerald-50',
+    advice: "Ton IMC se situe dans la fourchette de référence de l'OMS. Il n'y a rien de particulier à en conclure : c'est un repère parmi d'autres, pas un objectif à optimiser.",
+  }
+  if (bmi < 30) return {
+    label: 'Au-dessus de la fourchette de référence',
+    color: 'text-amber-700', bg: 'bg-amber-50',
+    advice: "Ton IMC est au-dessus de la fourchette de référence de l'OMS. Ce chiffre seul ne dit rien de ta santé — il ne distingue pas muscle et graisse. Un médecin ou un diététicien saura le remettre dans son contexte.",
+  }
+  return {
+    label: 'Nettement au-dessus de la fourchette',
+    color: 'text-amber-800', bg: 'bg-amber-50',
+    advice: "Ton IMC est nettement au-dessus de la fourchette de référence de l'OMS. C'est un signal qui mérite d'être regardé avec un médecin, qui pourra prendre en compte ton histoire, ton activité et tes analyses — ce qu'un simple calcul ne peut pas faire.",
+  }
 }
 
 // ─── Sous-composants ──────────────────────────────────────────────────────────
@@ -1237,7 +1277,7 @@ export default function ProfilePage() {
               </div>
               {imcResult !== null && (() => {
                 const cat = imcCategory(imcResult)
-                const pct = Math.min(Math.max(((imcResult - 16) / (40 - 16)) * 100, 0), 100)
+                const pct = imcPct(imcResult)
                 return (
                   <div className="card flex flex-col gap-4">
                     <div className="text-center py-3">
@@ -1246,17 +1286,40 @@ export default function ProfilePage() {
                       <p className="text-zinc-400 text-sm mt-1">kg/m²</p>
                       <span className={`inline-block mt-2 px-3 py-1 rounded-full text-sm font-bold ${cat.bg} ${cat.color}`}>{cat.label}</span>
                     </div>
-                    <div>
-                      <div className="relative h-3 rounded-full overflow-hidden" style={{ background: 'linear-gradient(to right, #dc2626 0%, #f97316 20%, #22c55e 35%, #22c55e 60%, #f97316 75%, #ef4444 90%)' }}>
-                        <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-zinc-400 rounded-full shadow -translate-x-1/2" style={{ left: `${pct}%` }} />
+                    {/* Échelle neutre : pas de rouge/vert qui note la personne.
+                        On teinte seulement la fourchette de référence, et le
+                        curseur est calculé avec la MÊME formule que le libellé,
+                        donc les deux ne peuvent plus se contredire. */}
+                    <div className="pb-5">
+                      <div className="relative h-3 rounded-full bg-zinc-100 dark:bg-zinc-700">
+                        <div
+                          className="absolute inset-y-0 bg-emerald-200/80 dark:bg-emerald-500/30"
+                          style={{ left: `${imcPct(18.5)}%`, width: `${imcPct(25) - imcPct(18.5)}%` }}
+                        />
+                        <div
+                          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-white shadow-md"
+                          style={{ left: `${pct}%`, border: '3px solid #4B47A0' }}
+                        />
                       </div>
-                      <div className="flex justify-between text-[10px] text-zinc-400 mt-1">
-                        {['16', '18.5', '25', '30', '35', '40+'].map(v => <span key={v}>{v}</span>)}
+                      <div className="relative h-4 mt-1.5">
+                        {[16, 18.5, 25, 30, 40].map(v => (
+                          <span key={v}
+                            className="absolute -translate-x-1/2 text-[10px] text-zinc-400 tabular-nums"
+                            style={{ left: `${imcPct(v)}%` }}>
+                            {v === 40 ? '40+' : v}
+                          </span>
+                        ))}
                       </div>
+                      <p className="text-[10px] text-zinc-400 mt-1 text-center">
+                        Zone verte : fourchette de référence de l&apos;OMS (18,5 – 25)
+                      </p>
                     </div>
                     <div className={`rounded-xl p-3 text-sm ${cat.bg} ${cat.color}`}>{cat.advice}</div>
-                    <p className="text-xs text-zinc-400 bg-amber-50 border border-amber-200 rounded-xl p-3">
-                      ⚠️ L'IMC est un indicateur limité. Il ne tient pas compte de la masse musculaire.
+                    <p className="text-xs text-zinc-500 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl p-3 leading-relaxed">
+                      L&apos;IMC ne distingue pas le muscle de la graisse et ignore la répartition
+                      des masses. Un sportif musclé et une personne sédentaire peuvent afficher
+                      le même chiffre. C&apos;est un repère de population, pas un diagnostic
+                      individuel.
                     </p>
                   </div>
                 )

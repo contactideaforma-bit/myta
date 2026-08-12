@@ -398,9 +398,10 @@ export function Navbar() {
           style={{ background: BRAND_BAR }}
         >
           <div className="flex items-center">
-            <div className="bg-white/90 rounded-2xl px-3 py-1 shadow-sm">
-              <Logo size="md" tone="light" />
-            </div>
+            {/* Pas de pastille blanche : le logo est lisible nativement sur la
+                barre de marque. L'ancienne pastille existait pour rattraper un
+                PNG violet illisible sur fond coloré. */}
+            <Logo size="md" tone="light" />
           </div>
           <button onClick={() => setSidebarOpen(false)}
             className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/20 text-white hover:bg-white/30">
