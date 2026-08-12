@@ -420,7 +420,7 @@ export default function DashboardPage() {
 
       {/* ── Bilan IA 7j ── */}
       <button
-        onClick={() => router.push('/profile?section=rapport')}
+        onClick={() => router.push('/bilan?section=rapport')}
         className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left hover:opacity-90 active:scale-[0.98] transition-all shadow-sm"
         style={{ background: 'linear-gradient(90deg, #4B47A0, #7b7fd4)' }}
       >

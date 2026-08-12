@@ -531,6 +531,24 @@ export function Navbar() {
           <div className="px-3 pt-3 pb-1">
             <p className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-300">Profil</p>
           </div>
+          {/* Bilan et Profil sont deux destinations distinctes : consulter ses
+              chiffres et modifier ses informations sont deux intentions
+              différentes, elles ne partagent plus la même entrée. */}
+          <button onClick={() => handleNavClick('/bilan')}
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-all',
+              pathname === '/bilan' ? 'bg-tta-light' : 'hover:bg-zinc-50 text-zinc-600'
+            )}>
+            <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center',
+              pathname === '/bilan' ? 'bg-tta-mid/20' : 'bg-zinc-100')}>
+              <BarChart3 size={16} className={pathname === '/bilan' ? 'text-tta-mid' : 'text-zinc-400'} />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-zinc-700">Bilan</p>
+              <p className="text-[10px] text-zinc-400">Statistiques & calculateurs</p>
+            </div>
+          </button>
+
           <button onClick={() => handleNavClick('/profile')}
             className={cn(
               'w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-all',
@@ -541,8 +559,8 @@ export function Navbar() {
               <User size={16} className={pathname === '/profile' ? 'text-tta-mid' : 'text-zinc-400'} />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-bold text-zinc-700">Profil & Bilan</p>
-              <p className="text-[10px] text-zinc-400">Objectifs & statistiques</p>
+              <p className="text-sm font-bold text-zinc-700">Profil</p>
+              <p className="text-[10px] text-zinc-400">Tes informations & objectifs</p>
             </div>
           </button>
 
