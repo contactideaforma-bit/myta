@@ -8,7 +8,10 @@ import {
   ChevronLeft, ChevronRight, Flame,
   Search, X, Trash2, Loader2,
   Scale, BarChart3, Mic, Camera, Pencil,
+  Plus, Beef, Wheat, Droplet, Pill, Utensils, NotebookPen,
+  Microscope, Cigarette, Trophy, Heart, AlertTriangle, Zap, Check, Circle,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { getSmokingWatyMessage } from '@/lib/gamification'
 import { todayISO, round1 } from '@/lib/utils'
 import { searchFoods, type FoodItem } from '@/lib/foods-db'
@@ -103,8 +106,8 @@ function NutrientDetailModal({ title, color, entries, onClose }: {
 }
 
 // ─── Composant MacroCard cliquable ─────────────────────────────────────────
-function MacroCard({ label, icon, value, unit, goal, color, onClick }: {
-  label: string; icon: string; value: number; unit: string; goal: number; color: string
+function MacroCard({ label, Icon, tint, value, unit, goal, color, onClick }: {
+  label: string; Icon: LucideIcon; tint: string; value: number; unit: string; goal: number; color: string
   onClick?: () => void
 }) {
   const pct = Math.min(100, goal > 0 ? Math.round((value / goal) * 100) : 0)
@@ -112,7 +115,7 @@ function MacroCard({ label, icon, value, unit, goal, color, onClick }: {
     <button onClick={onClick} className="card text-left w-full hover:shadow-md transition-all active:scale-[0.98]">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-bold uppercase tracking-wide text-zinc-400">{label}</span>
-        <span className="text-lg">{icon}</span>
+        <Icon size={17} style={{ color: tint }} />
       </div>
       <div className="text-2xl font-black text-zinc-900">
         {value} <span className="text-sm font-semibold text-zinc-400">{unit}</span>
@@ -136,7 +139,7 @@ function AddFoodModal({ food, onConfirm, onClose }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-        <h3 className="font-bold text-zinc-900 mb-1">➕ Ajouter</h3>
+        <h3 className="font-bold text-zinc-900 mb-1 inline-flex items-center gap-1.5"><Plus size={15} /> Ajouter</h3>
         <p className="text-sm text-nutri-dark font-semibold mb-4 truncate">{food.name}</p>
 
         <div className="grid grid-cols-2 gap-2 mb-4">
@@ -184,7 +187,7 @@ function EditQtyModal({ entry, onConfirm, onClose }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-        <h3 className="font-bold text-zinc-900 mb-1">✏️ Modifier la quantité</h3>
+        <h3 className="font-bold text-zinc-900 mb-1 inline-flex items-center gap-1.5"><Pencil size={14} /> Modifier la quantité</h3>
         <p className="text-sm text-nutri-dark font-semibold mb-4 truncate">{entry.food_name}</p>
 
         <div className="grid grid-cols-2 gap-2 mb-4">
@@ -484,13 +487,13 @@ export default function JournalPage() {
         method: 'POST', headers,
         body: JSON.stringify({ child_id: ap.childId, ...entryBase }),
       })
-      if (res.ok) { await loadDay(currentDate); showToast(`✓ ${supp.emoji} ${supp.name} ajouté`, 'ok') }
+      if (res.ok) { await loadDay(currentDate); showToast(`${supp.emoji} ${supp.name} ajouté`, 'ok') }
       else { showToast('Erreur ajout complément', 'err') }
     } else {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { setAddingSuppl(false); return }
       const { error } = await supabase.from('journal_entries').insert({ user_id: user.id, ...entryBase })
-      if (!error) { await loadDay(currentDate); showToast(`✓ ${supp.emoji} ${supp.name} ajouté`, 'ok') }
+      if (!error) { await loadDay(currentDate); showToast(`${supp.emoji} ${supp.name} ajouté`, 'ok') }
       else { showToast('Erreur ajout complément', 'err') }
     }
 
@@ -567,7 +570,7 @@ export default function JournalPage() {
     setResults([])
     await loadDay(currentDate)
     setWeekCal(prev => ({ ...prev, [currentDate]: (prev[currentDate] ?? 0) + entryBase.cal }))
-    showToast(`✓ ${selectedFood.name} ajouté`, 'ok')
+    showToast(`${selectedFood.name} ajouté`, 'ok')
   }
 
   async function handleVoiceMealConfirm(foods: DetectedFood[]) {
@@ -607,7 +610,7 @@ export default function JournalPage() {
     await loadDay(currentDate)
     const totalCal = foodEntries.reduce((s, e) => s + e.cal, 0)
     setWeekCal(prev => ({ ...prev, [currentDate]: (prev[currentDate] ?? 0) + totalCal }))
-    showToast(`✓ ${foods.length} aliment${foods.length > 1 ? 's' : ''} ajouté${foods.length > 1 ? 's' : ''}`, 'ok')
+    showToast(`${foods.length} aliment${foods.length > 1 ? 's' : ''} ajouté${foods.length > 1 ? 's' : ''}`, 'ok')
   }
 
   async function handlePhotoCapture(e: React.ChangeEvent<HTMLInputElement>) {
@@ -674,7 +677,7 @@ export default function JournalPage() {
     }
     setEditingEntry(null)
     await loadDay(currentDate)
-    showToast('Quantité mise à jour ✓', 'ok')
+    showToast('Quantité mise à jour', 'ok')
   }
 
   async function deleteEntry(id: string) {
@@ -704,7 +707,7 @@ export default function JournalPage() {
     setWeights(data ?? [])
     setWeightInput('')
     setSavingWeight(false)
-    showToast(`⚖️ ${val} kg enregistré`, 'ok')
+    showToast(`${val} kg enregistré`, 'ok')
   }
 
   function showToast(msg: string, type: 'ok' | 'err') {
@@ -728,7 +731,7 @@ export default function JournalPage() {
       {obStep === 'journal' && (
         <OnboardingCoach
           mode="nutrition"
-          title="Ton premier repas 🥗"
+          title="Ton premier repas"
           message="Ajoute un repas comme tu veux : à la voix, en photo de ton assiette, ou en texte. Waty détecte les aliments et calcule calories, macros ET micronutriments — le tout comparé à TES objectifs personnalisés (issus de ton profil)."
           onSkip={obSkip}
         />
@@ -781,17 +784,17 @@ export default function JournalPage() {
 
       {/* Macros */}
       <div className="grid grid-cols-2 gap-3">
-        <MacroCard label="Calories" icon="🔥" value={totals.cal}  unit="kcal" goal={g.cal}  color="bg-orange-400"
-          onClick={() => setNutriModal({ title: '🔥 Calories par aliment', color: '#f97316',
+        <MacroCard label="Calories" Icon={Flame} tint="#f97316" value={totals.cal}  unit="kcal" goal={g.cal}  color="bg-orange-400"
+          onClick={() => setNutriModal({ title: 'Calories par aliment', color: '#f97316',
             entries: foodEntries.map(e => ({ food_name: e.food_name, value: Number(e.cal), unit: 'kcal' })) })} />
-        <MacroCard label="Protéines" icon="💪" value={totals.prot} unit="g" goal={g.prot} color="bg-blue-400"
-          onClick={() => setNutriModal({ title: '💪 Protéines par aliment', color: '#3b82f6',
+        <MacroCard label="Protéines" Icon={Beef} tint="#3b82f6" value={totals.prot} unit="g" goal={g.prot} color="bg-blue-400"
+          onClick={() => setNutriModal({ title: 'Protéines par aliment', color: '#3b82f6',
             entries: foodEntries.map(e => ({ food_name: e.food_name, value: Number(e.prot), unit: 'g' })).filter(e => e.value > 0) })} />
-        <MacroCard label="Glucides"  icon="🌾" value={totals.carb} unit="g" goal={g.carb} color="bg-yellow-400"
-          onClick={() => setNutriModal({ title: '🌾 Glucides par aliment', color: '#eab308',
+        <MacroCard label="Glucides"  Icon={Wheat} tint="#eab308" value={totals.carb} unit="g" goal={g.carb} color="bg-yellow-400"
+          onClick={() => setNutriModal({ title: 'Glucides par aliment', color: '#eab308',
             entries: foodEntries.map(e => ({ food_name: e.food_name, value: Number(e.carb), unit: 'g' })).filter(e => e.value > 0) })} />
-        <MacroCard label="Lipides"   icon="🥑" value={totals.fat}  unit="g" goal={g.fat}  color="bg-purple-400"
-          onClick={() => setNutriModal({ title: '🥑 Lipides par aliment', color: '#a855f7',
+        <MacroCard label="Lipides"   Icon={Droplet} tint="#a855f7" value={totals.fat}  unit="g" goal={g.fat}  color="bg-purple-400"
+          onClick={() => setNutriModal({ title: 'Lipides par aliment', color: '#a855f7',
             entries: foodEntries.map(e => ({ food_name: e.food_name, value: Number(e.fat), unit: 'g' })).filter(e => e.value > 0) })} />
       </div>
 
@@ -832,7 +835,7 @@ export default function JournalPage() {
           <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl max-h-[90vh] overflow-y-auto">
             {/* Header */}
             <div className="sticky top-0 bg-white px-5 py-4 border-b border-zinc-100 flex items-center justify-between rounded-t-3xl sm:rounded-t-3xl">
-              <h3 className="font-extrabold text-zinc-900">📸 Analyse de la photo</h3>
+              <h3 className="font-extrabold text-zinc-900 inline-flex items-center gap-1.5"><Camera size={15} className="text-tta-mid" /> Analyse de la photo</h3>
               <button onClick={() => { setPhotoFoods(null); setPhotoPreview(null); setPhotoAnalyzing(false) }}
                 className="w-8 h-8 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-400">
                 <X size={14} />
@@ -884,7 +887,7 @@ export default function JournalPage() {
                         setPhotoPreview(null)
                       }}
                       className="flex-1 py-2.5 rounded-xl bg-nutri text-white text-sm font-bold hover:bg-nutri-dark">
-                      ✓ Ajouter au journal
+                      <Check size={15} /> Ajouter au journal
                     </button>
                   </div>
                 </>
@@ -897,7 +900,7 @@ export default function JournalPage() {
       {/* Toast erreur photo */}
       {photoError && !photoAnalyzing && (
         <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center gap-2">
-          <span className="text-red-500">⚠️</span>
+          <AlertTriangle size={14} className="flex-shrink-0 mt-0.5 text-red-500" />
           <p className="text-xs text-red-700 flex-1">{photoError}</p>
           <button onClick={() => setPhotoError('')} className="text-red-300 hover:text-red-500"><X size={14} /></button>
         </div>
@@ -939,7 +942,7 @@ export default function JournalPage() {
           onClick={() => { setShowSupplPanel(v => !v); setSupplQuery(''); setSupplResults([]) }}
           className="w-full flex items-center gap-3 bg-gradient-to-r from-violet-500 to-purple-600 rounded-2xl px-4 py-3 text-left hover:opacity-90 transition-all active:scale-[0.98] shadow-sm"
         >
-          <div className="w-9 h-9 bg-white/25 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">💊</div>
+          <div className="w-9 h-9 bg-white/25 rounded-xl flex items-center justify-center flex-shrink-0"><Pill size={17} className="text-white" /></div>
           <div className="flex-1">
             <p className="text-sm font-bold text-white">Compléments alimentaires</p>
             <p className="text-xs text-white/70">Moringa, spiruline, magnésium, oméga-3…</p>
@@ -983,7 +986,7 @@ export default function JournalPage() {
                       <p className="text-sm font-semibold text-zinc-900 truncate">{s.name}</p>
                       <p className="text-xs text-zinc-400 truncate">{s.dose}</p>
                       {s.antiInflam === true && (
-                        <span className="text-[10px] text-green-600 font-semibold">✓ Anti-inflammatoire</span>
+                        <span className="text-[10px] text-green-600 font-semibold inline-flex items-center gap-1"><Check size={11} /> Anti-inflammatoire</span>
                       )}
                     </div>
                     <button
@@ -1030,7 +1033,7 @@ export default function JournalPage() {
                     const def = SUPPLEMENTS.find(s => s.id === (e.food_id ?? '').replace('supp-', ''))
                     return (
                       <div key={e.id} className="flex items-center gap-2 bg-violet-50 rounded-xl px-3 py-2">
-                        <span className="text-base flex-shrink-0">{def?.emoji ?? '💊'}</span>
+                        <span className="text-base flex-shrink-0">{def?.emoji ?? <Pill size={14} className='text-violet-500' />}</span>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-semibold text-violet-900 truncate">{e.food_name}</p>
                           {def?.antiInflam === true && <p className="text-[9px] text-green-600">Anti-inflammatoire</p>}
@@ -1051,7 +1054,7 @@ export default function JournalPage() {
       {/* ── Aliments récents — accès rapide ── */}
       {recentFoods.length > 0 && !query && (
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-bold text-zinc-400 uppercase tracking-wide">⚡ Récents</p>
+          <p className="text-xs font-bold text-zinc-400 uppercase tracking-wide inline-flex items-center gap-1.5"><Zap size={12} /> Récents</p>
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
             {recentFoods.map((food, i) => (
               <button
@@ -1071,7 +1074,7 @@ export default function JournalPage() {
                 <div className="w-10 h-10 rounded-xl bg-nutri-light flex items-center justify-center text-lg flex-shrink-0">
                   {food.image_url
                     ? <img src={food.image_url} alt="" className="w-full h-full object-cover rounded-xl" />
-                    : '🍴'}
+                    : <Utensils size={16} className='text-nutri-mid' />}
                 </div>
                 <p className="text-[10px] font-semibold text-zinc-700 text-center leading-tight line-clamp-2 w-full">{food.food_name}</p>
                 <p className="text-[9px] text-orange-400 font-bold">{Math.round(Number(food.cal))} kcal</p>
@@ -1086,13 +1089,13 @@ export default function JournalPage() {
       {/* Journal du jour */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-zinc-700">📝 Journal du jour</h2>
+          <h2 className="text-sm font-semibold text-zinc-700 inline-flex items-center gap-2"><NotebookPen size={14} className="text-tta-mid" /> Journal du jour</h2>
           <span className="text-xs text-zinc-400">{foodEntries.length} aliment{foodEntries.length > 1 ? 's' : ''}</span>
         </div>
 
         {foodEntries.length === 0 ? (
           <div className="card text-center py-10 text-zinc-400">
-            <p className="text-2xl mb-2">🍽️</p>
+            <Utensils size={22} className="mx-auto mb-2 text-zinc-300" />
             <p className="text-sm">Aucun aliment enregistré.</p>
             <p className="text-xs mt-1">Recherchez un aliment ci-dessus.</p>
           </div>
@@ -1103,7 +1106,7 @@ export default function JournalPage() {
                 <div className="w-9 h-9 rounded-xl bg-nutri-light flex items-center justify-center flex-shrink-0 text-base">
                   {e.image_url
                     ? <img src={e.image_url} alt="" className="w-full h-full object-cover rounded-xl" onError={ev => { (ev.target as HTMLImageElement).style.display = 'none' }} />
-                    : '🍴'}
+                    : <Utensils size={16} className='text-nutri-mid' />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold truncate">{e.food_name}</p>
@@ -1135,7 +1138,7 @@ export default function JournalPage() {
         const glutenItems = foodEntries.filter(e => hasGluten(e.food_name))
         return (
           <div className="card flex flex-col gap-3">
-            <h3 className="text-sm font-semibold text-zinc-700">🔥 Inflammation & gluten du jour</h3>
+            <h3 className="text-sm font-semibold text-zinc-700 inline-flex items-center gap-2"><Flame size={14} className="text-orange-500" /> Inflammation &amp; gluten du jour</h3>
 
             {/* Jauge */}
             <div>
@@ -1151,31 +1154,31 @@ export default function JournalPage() {
             {/* Résumé — badges cliquables */}
             <div className="flex flex-wrap gap-2 text-xs">
               {s.veryInflam > 0 && (
-                <button onClick={() => setNutriModal({ title: '🔴 Aliments très inflammatoires', color: '#ef4444',
+                <button onClick={() => setNutriModal({ title: 'Aliments très inflammatoires', color: '#ef4444',
                   entries: foodEntries.filter(e => classifyInflam(e.food_name) === -2).map(e => ({ food_name: e.food_name, value: Number(e.cal), unit: 'kcal' })) })}
                   className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium hover:bg-red-200 transition-colors">
-                  🔴 {s.veryInflam} très inflam.
+                  <Circle size={9} fill="#ef4444" strokeWidth={0} /> {s.veryInflam} très inflam.
                 </button>
               )}
               {s.inflam > 0 && (
-                <button onClick={() => setNutriModal({ title: '🟠 Aliments inflammatoires', color: '#f97316',
+                <button onClick={() => setNutriModal({ title: 'Aliments inflammatoires', color: '#f97316',
                   entries: foodEntries.filter(e => classifyInflam(e.food_name) === -1).map(e => ({ food_name: e.food_name, value: Number(e.cal), unit: 'kcal' })) })}
                   className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium hover:bg-orange-200 transition-colors">
-                  🟠 {s.inflam} inflammatoire{s.inflam > 1 ? 's' : ''}
+                  <Circle size={9} fill="#f97316" strokeWidth={0} /> {s.inflam} inflammatoire{s.inflam > 1 ? 's' : ''}
                 </button>
               )}
               {s.anti > 0 && (
-                <button onClick={() => setNutriModal({ title: '🟢 Aliments anti-inflammatoires', color: '#22c55e',
+                <button onClick={() => setNutriModal({ title: 'Aliments anti-inflammatoires', color: '#22c55e',
                   entries: foodEntries.filter(e => classifyInflam(e.food_name) === 1).map(e => ({ food_name: e.food_name, value: Number(e.cal), unit: 'kcal' })) })}
                   className="px-2 py-0.5 rounded-full bg-nutri-light text-nutri-dark font-medium hover:bg-nutri/20 transition-colors">
-                  🟢 {s.anti} anti-inflam.
+                  <Circle size={9} fill="#22c55e" strokeWidth={0} /> {s.anti} anti-inflam.
                 </button>
               )}
               {s.neutral > 0 && (
-                <button onClick={() => setNutriModal({ title: '⚪ Aliments neutres', color: '#71717a',
+                <button onClick={() => setNutriModal({ title: 'Aliments neutres', color: '#71717a',
                   entries: foodEntries.filter(e => classifyInflam(e.food_name) === 0).map(e => ({ food_name: e.food_name, value: Number(e.cal), unit: 'kcal' })) })}
                   className="px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-500 font-medium hover:bg-zinc-200 transition-colors">
-                  ⚪ {s.neutral} neutre{s.neutral > 1 ? 's' : ''}
+                  <Circle size={9} fill="#a1a1aa" strokeWidth={0} /> {s.neutral} neutre{s.neutral > 1 ? 's' : ''}
                 </button>
               )}
               {/* Compléments anti-inflam du jour */}
@@ -1184,7 +1187,7 @@ export default function JournalPage() {
                 return def?.antiInflam === true
               }).length > 0 && (
                 <span className="px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 font-medium">
-                  💊 {supplEntries.filter(e => {
+                  <Pill size={12} className="inline" /> {supplEntries.filter(e => {
                     const def = SUPPLEMENTS.find(s => s.id === (e.food_id ?? '').replace('supp-', ''))
                     return def?.antiInflam === true
                   }).length} complément{supplEntries.length > 1 ? 's' : ''} anti-inflam.
@@ -1200,7 +1203,7 @@ export default function JournalPage() {
             {/* Gluten */}
             {glutenItems.length > 0 && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-                <p className="text-xs font-semibold text-amber-700 mb-1.5">🌾 Aliments contenant du gluten</p>
+                <p className="text-xs font-semibold text-amber-700 mb-1.5 inline-flex items-center gap-1.5"><Wheat size={13} /> Aliments contenant du gluten</p>
                 <div className="flex flex-wrap gap-1.5">
                   {glutenItems.map(e => (
                     <span key={e.id} className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full">{e.food_name}</span>
@@ -1240,7 +1243,7 @@ export default function JournalPage() {
 
         if (!hasAnything) return (
           <div className="card">
-            <h3 className="text-sm font-semibold text-zinc-700 mb-2">🔬 Micronutriments du jour</h3>
+            <h3 className="text-sm font-semibold text-zinc-700 mb-2 inline-flex items-center gap-2"><Microscope size={14} className="text-tta-mid" /> Micronutriments du jour</h3>
             <p className="text-xs text-zinc-400">Données insuffisantes — ajoutez des aliments CIQUAL ou des compléments pour visualiser vos apports.</p>
           </div>
         )
@@ -1250,7 +1253,7 @@ export default function JournalPage() {
         return (
           <div className="card flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-zinc-700">🔬 Micronutriments du jour</h3>
+              <h3 className="text-sm font-semibold text-zinc-700 inline-flex items-center gap-2"><Microscope size={14} className="text-tta-mid" /> Micronutriments du jour</h3>
               <div className="flex items-center gap-2 text-[10px] text-zinc-400">
                 {hasSuppContrib && <span className="flex items-center gap-0.5"><span className="inline-block w-2 h-2 rounded-full bg-violet-400" /> Compléments</span>}
                 <span>% AJR</span>
@@ -1271,7 +1274,7 @@ export default function JournalPage() {
                     <button key={m.name} onClick={() => {
                       if (!m.hasData && !suppPct) return
                       setNutriModal({
-                        title: `🔬 ${m.name} — aliments du jour`,
+                        title: `${m.name} — aliments du jour`,
                         color: m.color,
                         entries: foodEntries.map(e => ({ food_name: e.food_name, value: Number(e.cal), unit: 'kcal' })).filter(e => e.value > 0),
                       })
@@ -1314,7 +1317,7 @@ export default function JournalPage() {
             {suppOnlyRows.length > 0 && (
               <div className={withData.length > 0 ? 'border-t border-zinc-100 pt-3' : ''}>
                 {withData.length > 0 && (
-                  <p className="text-[10px] font-bold text-violet-500 uppercase tracking-wide mb-2">💊 Compléments uniquement</p>
+                  <p className="text-[10px] font-bold text-violet-500 uppercase tracking-wide mb-2 inline-flex items-center gap-1.5"><Pill size={12} /> Compléments uniquement</p>
                 )}
                 <div className="grid grid-cols-1 gap-2">
                   {suppOnlyRows.map(({ key, val, def }) => {
@@ -1339,12 +1342,12 @@ export default function JournalPage() {
             {/* Compléments du jour en badges */}
             {supplDefs.length > 0 && (
               <div className="bg-violet-50 rounded-xl px-3 py-2.5">
-                <p className="text-[10px] font-semibold text-violet-700 mb-1">💊 Compléments du jour :</p>
+                <p className="text-[10px] font-semibold text-violet-700 mb-1 inline-flex items-center gap-1.5"><Pill size={12} /> Compléments du jour</p>
                 <div className="flex flex-wrap gap-1">
                   {supplDefs.map(({ supplement }) => (
                     <span key={supplement.id} className="text-[10px] bg-white border border-violet-200 text-violet-700 px-2 py-0.5 rounded-full">
                       {supplement.emoji} {supplement.name}
-                      {supplement.antiInflam === true && ' ✓'}
+                      {supplement.antiInflam === true && ' — anti-inflammatoire'}
                     </span>
                   ))}
                 </div>
@@ -1361,11 +1364,11 @@ export default function JournalPage() {
         <div className="card flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h2 className="font-extrabold text-zinc-900 text-sm flex items-center gap-1.5">
-              🚭 Suivi tabac
+              <span className="inline-flex items-center gap-1.5"><Cigarette size={14} /> Suivi tabac</span>
             </h2>
             {smokingStreak > 0 && (
               <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                🏆 {smokingStreak}j à 0 cig.
+                <span className="inline-flex items-center gap-1.5"><Trophy size={12} /> {smokingStreak}j à 0 cig.</span>
               </span>
             )}
           </div>
@@ -1440,7 +1443,7 @@ export default function JournalPage() {
 
           {/* Message Waty */}
           <div className="bg-blue-50 rounded-2xl px-4 py-3 flex items-start gap-2">
-            <span className="flex-shrink-0">💙</span>
+            <Heart size={14} className="flex-shrink-0 mt-0.5 text-tta-mid" />
             <p className="text-xs text-blue-700 leading-relaxed">
               {getSmokingWatyMessage(smokingCount, smokingYesterday, smokingStreak)}
             </p>
