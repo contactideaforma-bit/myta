@@ -5,10 +5,12 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { format, subDays, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
+import type { LucideIcon } from 'lucide-react'
 import {
   Check, Loader2, User, Scale,
   Dumbbell, LogOut, Layers, BarChart3, CreditCard, Calculator,
   Target, Sparkles, SlidersHorizontal, ChevronDown, Info, Cigarette,
+  Flame, Moon, TrendingDown, TrendingUp, Ruler, Zap, Heart,
 } from 'lucide-react'
 import { Waty } from '@/components/ui/Waty'
 import OnboardingCoach from '@/components/ui/OnboardingCoach'
@@ -51,11 +53,11 @@ const ACTIVITY_LEVELS = [
 ]
 
 const SPORT_GOALS = [
-  { value: 'perte de poids', label: '🔥 Perte de poids' },
-  { value: 'prise de masse', label: '💪 Prise de masse' },
-  { value: 'endurance',      label: '🏃 Endurance' },
-  { value: 'forme generale', label: '⚡ Forme générale' },
-  { value: 'performance',    label: '🏆 Performance' },
+  { value: 'perte de poids', label: 'Perte de poids' },
+  { value: 'prise de masse', label: 'Prise de masse' },
+  { value: 'endurance',      label: 'Endurance' },
+  { value: 'forme generale', label: 'Forme générale' },
+  { value: 'performance',    label: 'Performance' },
 ]
 
 const PERIODS = [
@@ -66,35 +68,35 @@ const PERIODS = [
 ]
 
 const MACRO_GOALS = [
-  { key: 'perte',    label: '🔥 Perte de poids' },
-  { key: 'maintien', label: '⚖️ Maintien' },
-  { key: 'masse',    label: '💪 Prise de masse' },
-  { key: 'sport',    label: '🏆 Performance' },
-  { key: 'keto',     label: '🥑 Cétogène' },
+  { key: 'perte',    label: 'Perte de poids' },
+  { key: 'maintien', label: 'Maintien' },
+  { key: 'masse',    label: 'Prise de masse' },
+  { key: 'sport',    label: 'Performance' },
+  { key: 'keto',     label: 'Cétogène' },
 ]
 
 const HEALTH_CONDITIONS = [
-  { value: 'diabete_type2',      label: '🩸 Diabète type 2',          color: 'bg-red-50 border-red-200 text-red-700',
+  { value: 'diabete_type2',      label: 'Diabète type 2',          color: 'bg-red-50 border-red-200 text-red-700',
     note: 'Glucides limités, index glycémique bas, répartition des repas régulière' },
-  { value: 'diabete_type1',      label: '🩸 Diabète type 1',          color: 'bg-red-50 border-red-200 text-red-700',
+  { value: 'diabete_type1',      label: 'Diabète type 1',          color: 'bg-red-50 border-red-200 text-red-700',
     note: 'Suivi glycémique, adaptation des glucides aux insulines' },
-  { value: 'inflammatoire',      label: '🔥 Maladie inflammatoire',    color: 'bg-orange-50 border-orange-200 text-orange-700',
+  { value: 'inflammatoire',      label: 'Maladie inflammatoire',    color: 'bg-orange-50 border-orange-200 text-orange-700',
     note: 'Régime anti-inflammatoire, oméga-3++, éviter sucres raffinés' },
-  { value: 'allergie_gluten',    label: '🌾 Allergie / Intolérance gluten', color: 'bg-amber-50 border-amber-200 text-amber-700',
+  { value: 'allergie_gluten',    label: 'Allergie / Intolérance gluten', color: 'bg-amber-50 border-amber-200 text-amber-700',
     note: 'Aliments sans gluten uniquement : riz, quinoa, sarrasin, patate douce' },
-  { value: 'intolerance_lactose',label: '🥛 Intolérance au lactose',   color: 'bg-blue-50 border-blue-200 text-blue-700',
+  { value: 'intolerance_lactose',label: 'Intolérance au lactose',   color: 'bg-blue-50 border-blue-200 text-blue-700',
     note: 'Produits laitiers sans lactose ou alternatives végétales' },
-  { value: 'hypertension',       label: '❤️ Hypertension',            color: 'bg-rose-50 border-rose-200 text-rose-700',
+  { value: 'hypertension',       label: 'Hypertension',            color: 'bg-rose-50 border-rose-200 text-rose-700',
     note: 'Sel limité à 5g/jour, potassium augmenté, hydratation++' },
-  { value: 'hypothyroidie',      label: '🦋 Hypothyroïdie',           color: 'bg-purple-50 border-purple-200 text-purple-700',
+  { value: 'hypothyroidie',      label: 'Hypothyroïdie',           color: 'bg-purple-50 border-purple-200 text-purple-700',
     note: 'Iode et sélénium, éviter soja et chou cru en excès' },
 ]
 
 const CONDITIONS_FEMME = [
   { value: '',                   label: '— Aucune' },
-  { value: 'enceinte',           label: '🤰 Enceinte' },
-  { value: 'post-partum',        label: '👶 Post-partum' },
-  { value: 'post-partum-allait', label: '🤱 Post-partum + allaitement' },
+  { value: 'enceinte',           label: 'Enceinte' },
+  { value: 'post-partum',        label: 'Post-partum' },
+  { value: 'post-partum-allait', label: 'Post-partum + allaitement' },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -125,29 +127,29 @@ function adaptMacrosForHealth(
       g = maxCarb
       l = Math.round((c - p * 4 - g * 4) / 9)
     }
-    notes.push('🩸 Glucides limités à 40% — privilégie riz complet, légumineuses, légumes')
+    notes.push('Glucides limités à 40% — privilégie riz complet, légumineuses, légumes')
   }
 
   if (healthConditions?.includes('inflammatoire')) {
     // Protéines légèrement augmentées, lipides anti-inflam
     p = Math.round(p * 1.1)
-    notes.push('🔥 Protéines + 10% — oméga-3, curcuma, gingembre conseillés')
+    notes.push('Protéines + 10% — oméga-3, curcuma, gingembre conseillés')
   }
 
   if (healthConditions?.includes('allergie_gluten')) {
-    notes.push('🌾 Sources de glucides : riz, quinoa, patate douce, sarrasin uniquement')
+    notes.push('Sources de glucides : riz, quinoa, patate douce, sarrasin uniquement')
   }
 
   if (healthConditions?.includes('hypertension')) {
-    notes.push('❤️ Sel < 5g/jour — potassium++ : banane, avocat, haricots')
+    notes.push('Sel < 5g/jour — potassium++ : banane, avocat, haricots')
   }
 
   if (healthConditions?.includes('hypothyroidie')) {
-    notes.push('🦋 Sélénium++ : noix du Brésil. Évite soja et crucifères crus en excès')
+    notes.push('Sélénium++ : noix du Brésil. Évite soja et crucifères crus en excès')
   }
 
   if (healthConditions?.includes('intolerance_lactose')) {
-    notes.push("🥛 Substituts : lait d'amande, soja, avoine. Fromages affinés tolérés")
+    notes.push("Substituts : lait d'amande, soja, avoine. Fromages affinés tolérés")
   }
 
   return { cal: c, prot: p, carb: g, fat: l, notes }
@@ -201,12 +203,12 @@ function imcCategory(bmi: number) {
 }
 
 // ─── Sous-composants ──────────────────────────────────────────────────────────
-function KpiCard({ label, value, sub, icon, color = 'text-zinc-900' }: {
-  label: string; value: string | number; sub?: string; icon: string; color?: string
+function KpiCard({ label, value, sub, Icon, color = 'text-zinc-900' }: {
+  label: string; value: string | number; sub?: string; Icon: LucideIcon; color?: string
 }) {
   return (
     <div className="kpi-card">
-      <span className="text-lg">{icon}</span>
+      <Icon size={17} className={color} strokeWidth={2} />
       <p className={`text-xl font-black ${color}`}>{value}</p>
       <p className="text-xs text-zinc-500 font-medium">{label}</p>
       {sub && <p className="text-[10px] text-zinc-400">{sub}</p>}
@@ -217,7 +219,7 @@ function KpiCard({ label, value, sub, icon, color = 'text-zinc-900' }: {
 function ConditionBanner({ condition }: { condition: string }) {
   if (condition === 'enceinte') return (
     <div className="flex items-start gap-2 bg-pink-50 border border-pink-200 rounded-2xl p-3">
-      <span className="text-lg">🤰</span>
+      <Info size={16} className="text-rose-500" />
       <div>
         <p className="text-xs font-bold text-pink-700">Mode Grossesse activé</p>
         <p className="text-[11px] text-pink-500 leading-relaxed mt-0.5">
@@ -228,7 +230,7 @@ function ConditionBanner({ condition }: { condition: string }) {
   )
   if (condition === 'post-partum') return (
     <div className="flex items-start gap-2 bg-purple-50 border border-purple-200 rounded-2xl p-3">
-      <span className="text-lg">👶</span>
+      <Info size={16} className="text-sky-500" />
       <div>
         <p className="text-xs font-bold text-purple-700">Mode Post-partum activé</p>
         <p className="text-[11px] text-purple-500 leading-relaxed mt-0.5">
@@ -239,7 +241,7 @@ function ConditionBanner({ condition }: { condition: string }) {
   )
   if (condition === 'post-partum-allait') return (
     <div className="flex items-start gap-2 bg-rose-50 border border-rose-200 rounded-2xl p-3">
-      <span className="text-lg">🤱</span>
+      <Info size={16} className="text-emerald-500" />
       <div>
         <p className="text-xs font-bold text-rose-700">Mode Post-partum + Allaitement</p>
         <p className="text-[11px] text-rose-500 leading-relaxed mt-0.5">
@@ -660,7 +662,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
       {obStep === 'profile' && (
         <OnboardingCoach
           mode="nutrition"
-          title="Complétons ton profil 🙌"
+          title="Complétons ton profil"
           message="Renseigne ton poids, ta taille, ton âge, ton sexe, ton niveau d'activité et ton objectif. Ces infos permettent à Waty de calculer des calories, des macros et des conseils vraiment adaptés à TOI. Quand c'est bon, appuie sur « Enregistrer » en bas."
           onSkip={obSkip}
         />
@@ -734,11 +736,11 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
             <>
               {/* KPIs */}
               <div className="grid grid-cols-2 gap-3">
-                <KpiCard label="Moy. calories/jour" value={`${bilanStats.avgCal} kcal`} icon="🔥" color="text-orange-500"
+                <KpiCard label="Moy. calories/jour" value={`${bilanStats.avgCal} kcal`} Icon={Flame} color="text-orange-500"
                   sub={profile?.calorie_target ? `Objectif : ${profile.calorie_target} kcal` : undefined} />
-                <KpiCard label="Cal. brûlées sport" value={Math.round(bilanStats.totalCalBurned)} icon="🏋️" color="text-tta-mid" sub="total période" />
+                <KpiCard label="Cal. brûlées sport" value={Math.round(bilanStats.totalCalBurned)} Icon={Dumbbell} color="text-tta-mid" sub="total période" />
                 {bilanStats.avgDeficit !== null && (
-                  <KpiCard label="Déficit moy." icon={bilanStats.avgDeficit < 0 ? '📉' : '📈'}
+                  <KpiCard label="Déficit moy." Icon={bilanStats.avgDeficit < 0 ? TrendingDown : TrendingUp}
                     value={`${bilanStats.avgDeficit > 0 ? '+' : ''}${bilanStats.avgDeficit} kcal`}
                     color={bilanStats.avgDeficit < 0 ? 'text-nutri-dark' : 'text-orange-500'}
                     sub={bilanStats.avgDeficit < 0 ? 'Déficit — perte de poids' : 'Surplus calorique'} />
@@ -746,12 +748,12 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
                 {bilanStats.avgSleepMin > 0 && (
                   <KpiCard
                     label="Sommeil moy."
-                    icon="🌙"
+                    Icon={Moon}
                     value={`${Math.floor(bilanStats.avgSleepMin / 60)}h${bilanStats.avgSleepMin % 60 > 0 ? (bilanStats.avgSleepMin % 60) + 'm' : ''}`}
                     color={bilanStats.avgSleepMin >= 420 ? 'text-nutri-dark' : bilanStats.avgSleepMin >= 360 ? 'text-yellow-500' : 'text-red-500'}
                     sub={bilanStats.sleepDebtMin > 0
                       ? `Dette : -${Math.floor(bilanStats.sleepDebtMin / 60)}h${bilanStats.sleepDebtMin % 60 > 0 ? (bilanStats.sleepDebtMin % 60) + 'm' : ''}/nuit`
-                      : '✨ Sommeil optimal'}
+                      : 'Sommeil optimal'}
                   />
                 )}
               </div>
@@ -766,13 +768,13 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
 
                     <div className="flex items-start gap-4 relative z-10">
                       <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
-                        <span className="text-3xl">🚭</span>
+                        <Cigarette size={26} className="text-zinc-400" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-white font-extrabold text-base leading-tight">Suivi tabac — 7 jours</p>
                         <p className="text-white/70 text-sm mt-0.5">
                           {smokingWeek.total === 0
-                            ? '🏆 Aucune cigarette cette semaine !'
+                            ? 'Aucune cigarette cette semaine'
                             : `${smokingWeek.total} cigarette${smokingWeek.total > 1 ? 's' : ''} cette semaine`}
                         </p>
                       </div>
@@ -800,7 +802,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
 
                     {/* Message Waty */}
                     <p className="relative z-10 text-white/80 text-xs italic leading-relaxed mt-3 border-t border-white/20 pt-3">
-                      💬 {smokingWeek.total === 0
+                      {smokingWeek.total === 0
                         ? "Aucune cigarette cette semaine — tu es une inspiration ! Continue comme ça, je suis tellement fier de toi."
                         : smokingWeek.total <= 5
                           ? `${smokingWeek.total} cigarettes en 7 jours, c'est déjà un bel effort. Chaque cigarette en moins est une victoire.`
@@ -860,7 +862,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
               {/* Sommeil */}
               {sleepLogs.length > 0 && (
                 <div className="card flex flex-col gap-3">
-                  <h3 className="text-sm font-semibold text-zinc-700">🌙 Sommeil</h3>
+                  <h3 className="text-sm font-semibold text-zinc-700 flex items-center gap-2"><Moon size={14} className="text-tta-mid" /> Sommeil</h3>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="kpi-card text-center p-3">
                       <p className="text-xl font-extrabold text-tta-mid">{sleepLogs.length}</p>
@@ -890,7 +892,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
                   <h3 className="text-sm font-semibold text-zinc-700">Rapport IA — 7 jours</h3>
                   <button onClick={generateAIReport} disabled={loadingReport}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-tta-mid text-white text-xs font-bold hover:bg-tta transition-all disabled:opacity-60">
-                    {loadingReport ? <><Loader2 size={12} className="animate-spin" />Analyse…</> : '✨ Générer'}
+                    {loadingReport ? <><Loader2 size={12} className="animate-spin" />Analyse…</> : <><Sparkles size={12} /> Générer</>}
                   </button>
                 </div>
                 {aiReport ? (
@@ -935,7 +937,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
                 {['homme', 'femme'].map(s => (
                   <button key={s} onClick={() => setForm(f => ({ ...f, sex: s, condition: s === 'homme' ? '' : f.condition }))}
                     className={`flex-1 py-2 rounded-lg text-xs font-medium border capitalize transition-colors ${form.sex === s ? 'bg-tta-mid text-white border-tta-mid' : 'border-zinc-200 text-zinc-500'}`}>
-                    {s === 'homme' ? '♂ Homme' : '♀ Femme'}
+                    {s === 'homme' ? 'Homme' : 'Femme'}
                   </button>
                 ))}
               </div>
@@ -954,9 +956,9 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
                 </div>
                 {form.condition !== '' && (
                   <p className="text-[10px] text-pink-500 mt-1.5">
-                    {form.condition === 'enceinte'           ? '✓ +300 kcal/j, protéines augmentées'
-                    : form.condition === 'post-partum'       ? '✓ +500 kcal/j, récupération post-partum'
-                    : '✓ +600 kcal/j, allaitement — pas de régime restrictif'}
+                    {form.condition === 'enceinte'           ? '+300 kcal/j, protéines augmentées'
+                    : form.condition === 'post-partum'       ? '+500 kcal/j, récupération post-partum'
+                    : '+600 kcal/j, allaitement — pas de régime restrictif'}
                   </p>
                 )}
               </div>
@@ -998,7 +1000,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
               </div>
               {((form as any).health_conditions as string[] ?? []).length > 0 && (
                 <p className="text-[10px] text-tta-mid font-semibold">
-                  ✓ Tes objectifs nutritionnels seront adaptés lors du calcul TDEE
+                  Tes objectifs nutritionnels seront adaptés lors du calcul TDEE
                 </p>
               )}
             </div>
@@ -1027,7 +1029,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
               </div>
               <div className="col-span-2">
                 <label className="text-xs text-zinc-400 mb-1 block">
-                  🎯 Poids cible (kg)
+                  Poids cible (kg)
                   <span className="font-normal text-zinc-300 ml-1">— affiché sur ta courbe de poids</span>
                 </label>
                 <input type="number" min="30" max="250" step="0.1" className="input w-full" placeholder="ex: 65"
@@ -1234,7 +1236,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
           <div className="card flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-lg">🚭</span>
+                <Cigarette size={18} className="text-zinc-400" />
                 <div>
                   <h2 className="text-sm font-semibold text-zinc-700">Objectif : Arrêter de fumer</h2>
                   <p className="text-[11px] text-zinc-400">Active le suivi tabac dans le journal alimentaire</p>
@@ -1250,7 +1252,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
 
             {(form as any).smoking_goal && (
               <div className="bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 flex items-start gap-2">
-                <span className="text-base flex-shrink-0">💙</span>
+                <Heart size={15} className="flex-shrink-0 mt-0.5 text-tta-mid" />
                 <div>
                   <p className="text-xs font-bold text-orange-700">Suivi tabac activé</p>
                   <p className="text-[10px] text-orange-600 mt-0.5 leading-relaxed">
@@ -1280,9 +1282,9 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
           {/* Sous-onglets */}
           <div className="flex gap-2">
             {([
-              { key: 'tdee',   label: '🔥 TDEE' },
-              { key: 'imc',    label: '📏 IMC' },
-              { key: 'macros', label: '⚖️ Macros' },
+              { key: 'tdee',   label: 'TDEE' },
+              { key: 'imc',    label: 'IMC' },
+              { key: 'macros', label: 'Macros' },
             ] as { key: CalcTab; label: string }[]).map(t => (
               <button key={t.key} onClick={() => setCalcTab(t.key)}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${calcTab === t.key ? 'bg-tta-mid text-white' : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'}`}>
@@ -1295,7 +1297,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
           {calcTab === 'tdee' && (
             <div className="flex flex-col gap-4">
               <div className="card flex flex-col gap-4">
-                <h2 className="text-sm font-semibold text-zinc-700">🔥 Calcul du TDEE</h2>
+                <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-2"><Flame size={14} className="text-tta-mid" /> Calcul du TDEE</h2>
                 <Waty
                   mode="nutrition"
                   message="Le TDEE (Total Daily Energy Expenditure) est ta dépense énergétique totale journalière. C'est le nombre de calories que ton corps brûle en une journée. Ces données sont indicatives — consulte un professionnel de santé pour un suivi personnalisé. 📊"
@@ -1308,7 +1310,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
                     {(['homme', 'femme'] as const).map(s => (
                       <button key={s} onClick={() => setCalcSex(s)}
                         className={`flex-1 py-2 rounded-lg text-xs font-medium border capitalize transition-colors ${calcSex === s ? 'bg-tta-mid text-white border-tta-mid' : 'border-zinc-200 text-zinc-500'}`}>
-                        {s === 'homme' ? '♂ Homme' : '♀ Femme'}
+                        {s === 'homme' ? 'Homme' : 'Femme'}
                       </button>
                     ))}
                   </div>
@@ -1326,7 +1328,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
                     </select></div>
                 </div>
                 <button onClick={computeTDEE} disabled={savingCalc} className="btn-primary justify-center py-2.5">
-                  {savingCalc ? <Loader2 size={15} className="animate-spin" /> : '⚡'} Calculer mon TDEE
+                  {savingCalc ? <Loader2 size={15} className="animate-spin" /> : <Zap size={15} />} Calculer mon TDEE
                 </button>
               </div>
               {tdeeResult && (
@@ -1349,7 +1351,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
                     ))}
                   </div>
                   <p className="text-xs text-zinc-400 bg-zinc-50 rounded-xl p-3">
-                    💡 MB : {tdeeResult.bmr} kcal · Formule Mifflin-St Jeor. Ajustez selon vos résultats sur 2–4 semaines.
+                    MB : {tdeeResult.bmr} kcal · Formule Mifflin-St Jeor. Ajustez selon vos résultats sur 2–4 semaines.
                   </p>
                 </div>
               )}
@@ -1360,7 +1362,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
           {calcTab === 'imc' && (
             <div className="flex flex-col gap-4">
               <div className="card flex flex-col gap-4">
-                <h2 className="text-sm font-semibold text-zinc-700">📏 Calcul de l'IMC</h2>
+                <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-2"><Ruler size={14} className="text-tta-mid" /> Calcul de l'IMC</h2>
                 <Waty
                   mode="nutrition"
                   message="L'IMC (Indice de Masse Corporelle) est un indicateur général. Il ne tient pas compte de la masse musculaire ni de la répartition des graisses. À utiliser à titre indicatif uniquement — ton médecin reste le meilleur interlocuteur. 💡"
@@ -1373,7 +1375,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
                   <div><label className="text-xs text-zinc-400 mb-1 block">Poids (kg)</label>
                     <input type="number" step="0.1" placeholder="70" value={imcWeight} onChange={e => setImcWeight(e.target.value)} className="input" /></div>
                 </div>
-                <button onClick={computeIMC} className="btn-primary justify-center py-2.5">📏 Calculer mon IMC</button>
+                <button onClick={computeIMC} className="btn-primary justify-center py-2.5"><Ruler size={15} /> Calculer mon IMC</button>
               </div>
               {imcResult !== null && (() => {
                 const cat = imcCategory(imcResult)
@@ -1431,7 +1433,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
           {calcTab === 'macros' && (
             <div className="flex flex-col gap-4">
               <div className="card flex flex-col gap-4">
-                <h2 className="text-sm font-semibold text-zinc-700">⚖️ Répartition des macros</h2>
+                <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-2"><Scale size={14} className="text-tta-mid" /> Répartition des macros</h2>
                 <Waty
                   mode="nutrition"
                   message="Les macronutriments (protéines, glucides, lipides) sont calculés selon des formules standard. Ces recommandations sont indicatives et peuvent varier selon ton métabolisme, ta santé et tes objectifs précis. Consulte un diététicien pour un plan sur mesure. 🥗"
@@ -1455,7 +1457,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
                   <div><label className="text-xs text-zinc-400 mb-1 block">Poids (kg)</label>
                     <input type="number" step="0.1" placeholder="70" value={macroWeight} onChange={e => setMacroWeight(e.target.value)} className="input" /></div>
                 </div>
-                <button onClick={computeMacros} className="btn-primary justify-center py-2.5">⚖️ Calculer mes macros</button>
+                <button onClick={computeMacros} className="btn-primary justify-center py-2.5"><Scale size={15} /> Calculer mes macros</button>
               </div>
               {macroResult && (
                 <div className="card flex flex-col gap-4">
@@ -1472,7 +1474,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
                     ))}
                   </div>
                   <p className="text-xs text-zinc-400 bg-zinc-50 rounded-xl p-3">
-                    💡 Calculé pour <strong>{MACRO_GOALS.find(g => g.key === macroGoalKey)?.label}</strong>.
+                    Calculé pour <strong>{MACRO_GOALS.find(g => g.key === macroGoalKey)?.label}</strong>.
                     Enregistre tes aliments dans le journal pour voir ta progression.
                   </p>
                 </div>
