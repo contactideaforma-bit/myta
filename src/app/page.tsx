@@ -6,162 +6,137 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { hasActiveAccess } from '@/lib/access'
 import { isIosApp } from '@/lib/app-platform'
+import {
+  Camera, Mic, Moon, LineChart, UtensilsCrossed, Flame,
+  ClipboardList, Dumbbell, Target, UserRound,
+  Check, Minus, CreditCard, Users, Trophy, MessageCircle, Lock,
+  UserPlus, ScanLine, Rocket, ArrowRight, ArrowDown,
+} from 'lucide-react'
+import { StoreBadges } from '@/components/ui/StoreBadges'
+import { TrustBand } from '@/components/ui/TrustBand'
 
 // ─── Tarifs ────────────────────────────────────────────────────────────────────
+interface PlanFeature { ok: boolean; text: string }
+
+const F = {
+  journal:   { ok: true,  text: 'Journal alimentaire & sport' },
+  sommeil:   { ok: true,  text: 'Suivi du sommeil' },
+  defis:     { ok: true,  text: "Défis & groupes d'amis" },
+  repas3:    { ok: true,  text: '3 analyses repas IA / jour' },
+  sport2:    { ok: true,  text: '2 analyses séance IA / jour' },
+  repasMax:  { ok: true,  text: 'Analyses repas IA illimitées' },
+  sportMax:  { ok: true,  text: 'Analyses séance IA illimitées' },
+  recettes:  { ok: true,  text: 'Recettes IA personnalisées' },
+  rapport:   { ok: true,  text: 'Rapport santé IA 7 jours' },
+  noRecette: { ok: false, text: 'Recettes IA' },
+  noRapport: { ok: false, text: 'Rapport santé IA 7j' },
+} satisfies Record<string, PlanFeature>
+
 const PLANS = {
   solo: [
     {
-      id: 'essentiel',
-      label: 'Essentiel',
-      price: 2.99,
-      highlight: false,
-      features: [
-        '📋 Journal alimentaire & sport',
-        '🌙 Suivi du sommeil',
-        '📸 3 analyses repas IA / jour',
-        '🎙️ 2 analyses séance IA / jour',
-        '🏆 Défis & groupes d\'amis',
-        '❌ Recettes IA',
-        '❌ Rapport santé IA 7j',
-      ],
-      cta: 'Commencer',
-      href: '/pricing',
+      id: 'essentiel', label: 'Essentiel', price: 2.99, highlight: false,
+      features: [F.journal, F.sommeil, F.repas3, F.sport2, F.defis, F.noRecette, F.noRapport],
+      cta: 'Commencer', href: '/pricing',
     },
     {
-      id: 'premium',
-      label: 'Premium',
-      price: 4.99,
-      highlight: true,
-      badge: '⭐ Populaire',
-      features: [
-        '📋 Journal alimentaire & sport',
-        '🌙 Suivi du sommeil',
-        '📸 Analyses repas IA illimitées',
-        '🎙️ Analyses séance IA illimitées',
-        '🍽️ Recettes IA personnalisées',
-        '📊 Rapport santé IA 7 jours',
-        '🏆 Défis & groupes d\'amis',
-      ],
-      cta: 'Essayer Premium',
-      href: '/pricing',
+      id: 'premium', label: 'Premium', price: 4.99, highlight: true, badge: 'Populaire',
+      features: [F.journal, F.sommeil, F.repasMax, F.sportMax, F.recettes, F.rapport, F.defis],
+      cta: 'Essayer Premium', href: '/pricing',
     },
   ],
   couple: [
     {
-      id: 'essentiel_couple',
-      label: 'Essentiel Couple',
-      price: 5.99,
-      highlight: false,
+      id: 'essentiel_couple', label: 'Essentiel Couple', price: 5.99, highlight: false,
       features: [
-        '👫 2 profils adultes',
-        '📸 3 analyses repas IA / jour chacun',
-        '🎙️ 2 analyses séance IA / jour chacun',
-        '🌙 Suivi sommeil pour chacun',
-        '🏆 Défis communs',
-        '❌ Recettes IA',
-        '❌ Rapport santé IA 7j',
+        { ok: true, text: '2 profils adultes' },
+        { ok: true, text: '3 analyses repas IA / jour chacun' },
+        { ok: true, text: '2 analyses séance IA / jour chacun' },
+        { ok: true, text: 'Suivi sommeil pour chacun' },
+        { ok: true, text: 'Défis communs' },
+        F.noRecette, F.noRapport,
       ],
-      cta: 'Commencer',
-      href: '/pricing',
+      cta: 'Commencer', href: '/pricing',
     },
     {
-      id: 'premium_couple',
-      label: 'Premium Couple',
-      price: 8.99,
-      highlight: true,
-      badge: '⭐ Populaire',
+      id: 'premium_couple', label: 'Premium Couple', price: 8.99, highlight: true, badge: 'Populaire',
       features: [
-        '👫 2 profils adultes',
-        '📸 Analyses repas IA illimitées',
-        '🎙️ Analyses séance IA illimitées',
-        '🍽️ Recettes IA personnalisées',
-        '📊 Rapport santé IA 7 jours',
-        '🌙 Suivi sommeil pour chacun',
-        '🏆 Défis communs',
+        { ok: true, text: '2 profils adultes' },
+        F.repasMax, F.sportMax, F.recettes, F.rapport,
+        { ok: true, text: 'Suivi sommeil pour chacun' },
+        { ok: true, text: 'Défis communs' },
       ],
-      cta: 'Essayer Premium',
-      href: '/pricing',
+      cta: 'Essayer Premium', href: '/pricing',
     },
   ],
   famille: [
     {
-      id: 'essentiel_famille',
-      label: 'Essentiel Famille',
-      price: 9.99,
-      highlight: false,
+      id: 'essentiel_famille', label: 'Essentiel Famille', price: 9.99, highlight: false,
       features: [
-        '👨‍👩‍👧‍👦 2 adultes + jusqu\'à 3 enfants',
-        '📸 3 analyses repas IA / jour / adulte',
-        '🎙️ 2 analyses séance IA / jour / adulte',
-        '🌙 Suivi sommeil pour tous',
-        '🏆 Défis famille',
-        '❌ Recettes IA',
-        '❌ Rapport santé IA 7j',
+        { ok: true, text: "2 adultes + jusqu'à 3 enfants" },
+        { ok: true, text: '3 analyses repas IA / jour / adulte' },
+        { ok: true, text: '2 analyses séance IA / jour / adulte' },
+        { ok: true, text: 'Suivi sommeil pour tous' },
+        { ok: true, text: 'Défis famille' },
+        F.noRecette, F.noRapport,
       ],
-      cta: 'Commencer',
-      href: '/pricing',
+      cta: 'Commencer', href: '/pricing',
     },
     {
-      id: 'premium_famille',
-      label: 'Premium Famille',
-      price: 13.99,
-      highlight: true,
-      badge: '⭐ Meilleure valeur',
+      id: 'premium_famille', label: 'Premium Famille', price: 13.99, highlight: true, badge: 'Meilleure valeur',
       features: [
-        '👨‍👩‍👧‍👦 2 adultes + jusqu\'à 3 enfants',
-        '📸 Analyses repas IA illimitées (adultes)',
-        '🎙️ Analyses séance IA illimitées (adultes)',
-        '🍽️ Recettes IA personnalisées',
-        '📊 Rapport santé IA 7 jours',
-        '🌙 Suivi sommeil pour tous',
-        '🏆 Défis famille',
+        { ok: true, text: "2 adultes + jusqu'à 3 enfants" },
+        { ok: true, text: 'Analyses repas IA illimitées (adultes)' },
+        { ok: true, text: 'Analyses séance IA illimitées (adultes)' },
+        F.recettes, F.rapport,
+        { ok: true, text: 'Suivi sommeil pour tous' },
+        { ok: true, text: 'Défis famille' },
       ],
-      cta: 'Essayer Premium',
-      href: '/pricing',
+      cta: 'Essayer Premium', href: '/pricing',
     },
   ],
 }
 
 // ─── Captures d'écran ──────────────────────────────────────────────────────────
 const SCREENSHOTS = [
-  { src: '/screenshots/journal.png',   label: '📋 Journal alimentaire', desc: 'Loggez vos repas en un clic ou par photo' },
-  { src: '/screenshots/sport.png',     label: '🏋️ Séance sport vocale',  desc: "Décrivez votre séance à voix haute, l'IA l'analyse" },
-  { src: '/screenshots/sommeil.png',   label: '🌙 Suivi sommeil',        desc: 'Qualité, durée, score chaque matin' },
-  { src: '/screenshots/dashboard.png', label: '🎯 Tableau de bord',      desc: 'Défis, objectifs et progression en temps réel' },
-  { src: '/screenshots/profil.png',    label: '👤 Profil santé',         desc: 'Conditions médicales, objectifs, personnalisation IA' },
+  { src: '/screenshots/journal.png',   Icon: ClipboardList, label: 'Journal alimentaire', desc: 'Loggez vos repas en un clic ou par photo' },
+  { src: '/screenshots/sport.png',     Icon: Dumbbell,      label: 'Séance sport vocale', desc: "Décrivez votre séance à voix haute, l'IA l'analyse" },
+  { src: '/screenshots/sommeil.png',   Icon: Moon,          label: 'Suivi sommeil',       desc: 'Qualité, durée, score chaque matin' },
+  { src: '/screenshots/dashboard.png', Icon: Target,        label: 'Tableau de bord',     desc: 'Défis, objectifs et progression en temps réel' },
+  { src: '/screenshots/profil.png',    Icon: UserRound,     label: 'Profil santé',        desc: 'Conditions médicales, objectifs, personnalisation IA' },
 ]
 
 // ─── Features ─────────────────────────────────────────────────────────────────
 const FEATURES = [
   {
-    emoji: '📸', title: 'Photo de ton assiette',
+    Icon: Camera, title: 'Photo de ton assiette',
     desc: "Prends ton assiette en photo. Waty détecte les aliments, estime les calories et les macros instantanément.",
-    color: 'from-orange-50 to-yellow-50 border-orange-100',
+    tint: 'bg-orange-50 text-orange-600',
   },
   {
-    emoji: '🎙️', title: 'Vocal sport & nutrition',
+    Icon: Mic, title: 'Vocal sport & nutrition',
     desc: '"J\'ai fait 30 min de vélo et mangé une salade composée" — Waty transcrit et logue tout automatiquement.',
-    color: 'from-blue-50 to-sky-50 border-blue-100',
+    tint: 'bg-sky-50 text-sky-600',
   },
   {
-    emoji: '🌙', title: 'Suivi du sommeil',
+    Icon: Moon, title: 'Suivi du sommeil',
     desc: "Heure de coucher, de réveil, qualité ressentie. Analyse l'impact de ton sommeil sur ta forme.",
-    color: 'from-purple-50 to-violet-50 border-purple-100',
+    tint: 'bg-violet-50 text-violet-600',
   },
   {
-    emoji: '📊', title: 'Rapport santé IA 7j',
+    Icon: LineChart, title: 'Rapport santé IA 7j',
     desc: 'Waty analyse tes 7 derniers jours et te donne des conseils personnalisés concrets, chaque semaine.',
-    color: 'from-green-50 to-emerald-50 border-green-100', premium: true,
+    tint: 'bg-emerald-50 text-emerald-600', premium: true,
   },
   {
-    emoji: '🍽️', title: 'Recettes personnalisées',
+    Icon: UtensilsCrossed, title: 'Recettes personnalisées',
     desc: "Des recettes générées selon tes objectifs caloriques, tes goûts et tes conditions de santé.",
-    color: 'from-rose-50 to-pink-50 border-rose-100', premium: true,
+    tint: 'bg-rose-50 text-rose-600', premium: true,
   },
   {
-    emoji: '🔥', title: 'Série & badges',
+    Icon: Flame, title: 'Série & badges',
     desc: "Chaque jour noté fait grandir ta série — elle ne retombe jamais à zéro. Débloque 5 badges jusqu'à la Légende.",
-    color: 'from-amber-50 to-orange-50 border-amber-100',
+    tint: 'bg-amber-50 text-amber-600',
   },
 ]
 
@@ -284,22 +259,28 @@ export default function HomePage() {
                 href="/auth?mode=signup"
                 className="bg-white text-[#2D2A5E] font-extrabold px-8 py-4 rounded-full text-base shadow-2xl hover:scale-[1.04] active:scale-[0.98] transition-transform"
               >
-                Démarrer — 3 jours gratuits →
+                <span className="inline-flex items-center gap-1.5">Démarrer — 3 jours gratuits <ArrowRight size={16} strokeWidth={2.5} /></span>
               </Link>
               <a
                 href="#screenshots"
-                className="border-2 border-white/30 text-white px-6 py-4 rounded-full text-base font-semibold hover:bg-white/10 transition-colors"
+                className="inline-flex items-center justify-center gap-1.5 border-2 border-white/30 text-white px-6 py-4 rounded-full text-base font-semibold hover:bg-white/10 transition-colors"
               >
-                Découvrir l&apos;app ↓
+                Découvrir l&apos;app <ArrowDown size={16} strokeWidth={2.5} />
               </a>
             </div>
-            <div className="mt-5 flex items-center gap-4 justify-center md:justify-start text-white/70 text-sm">
-              <span>✓ Dès 2,99 €/mois</span>
-              <span>✓ Sans engagement</span>
-              <span>✓ Hébergé en Europe</span>
+
+            {/* Téléchargement — la preuve la plus forte : l'app existe vraiment */}
+            <StoreBadges className="mt-7 flex flex-col items-center md:items-start" />
+
+            <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 justify-center md:justify-start text-white/70 text-sm">
+              {['Dès 2,99 €/mois', 'Sans engagement', 'Hébergé en Europe'].map(t => (
+                <span key={t} className="inline-flex items-center gap-1.5">
+                  <Check size={14} strokeWidth={3} className="text-emerald-300" />{t}
+                </span>
+              ))}
             </div>
             <div className="mt-4 inline-flex items-start gap-2.5 bg-white/10 border border-white/20 backdrop-blur rounded-2xl px-4 py-3 text-left max-w-md">
-              <span className="text-base flex-shrink-0">💳</span>
+              <CreditCard size={16} className="flex-shrink-0 mt-0.5 text-white/80" />
               <p className="text-xs text-white/85 leading-relaxed">
                 Une carte bancaire est demandée pour activer l&apos;essai gratuit, mais{' '}
                 <strong className="text-white">aucun prélèvement pendant les 3 jours</strong>.
@@ -322,7 +303,8 @@ export default function HomePage() {
                   </div>
                 ))}
                 <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/60 to-transparent" />
-                <div className="absolute bottom-3 left-0 right-0 text-center text-white text-xs font-semibold">
+                <div className="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-1.5 text-white text-xs font-semibold">
+                  {(() => { const I = SCREENSHOTS[screenIdx].Icon; return <I size={13} /> })()}
                   {SCREENSHOTS[screenIdx].label}
                 </div>
               </div>
@@ -366,6 +348,9 @@ export default function HomePage() {
         ))}
       </section>
 
+      {/* CONFIANCE */}
+      <TrustBand />
+
       {/* SCREENSHOTS */}
       <section id="screenshots" className="py-14 px-4 max-w-5xl mx-auto">
         <h2 className="text-2xl md:text-4xl font-black text-center text-zinc-900 mb-2 tracking-tight">
@@ -385,7 +370,9 @@ export default function HomePage() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={s.src} alt={s.label} className="w-full h-full object-cover" />
               </div>
-              <p className="text-center text-xs font-bold text-zinc-700 mt-2">{s.label}</p>
+              <p className="flex items-center justify-center gap-1.5 text-xs font-bold text-zinc-700 mt-2">
+                <s.Icon size={13} className="text-[#4B47A0]" />{s.label}
+              </p>
               <p className="text-center text-xs text-zinc-400">{s.desc}</p>
             </div>
           ))}
@@ -402,14 +389,16 @@ export default function HomePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {FEATURES.map((f) => (
               <div key={f.title}
-                className={`relative bg-gradient-to-br ${f.color} border rounded-3xl p-6 transition-all hover:-translate-y-1 hover:shadow-lg`}>
+                className="relative bg-white border border-zinc-200/80 rounded-3xl p-6 transition-all hover:-translate-y-1 hover:shadow-lg hover:border-zinc-300">
                 {f.premium && (
                   <span className="absolute top-4 right-4 text-[10px] text-white px-2.5 py-1 rounded-full font-bold"
                     style={{ background: BRAND_GRADIENT }}>
                     PREMIUM
                   </span>
                 )}
-                <div className="text-4xl mb-3">{f.emoji}</div>
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${f.tint}`}>
+                  <f.Icon size={22} strokeWidth={2} />
+                </div>
                 <h3 className="font-extrabold text-zinc-900 mb-1.5">{f.title}</h3>
                 <p className="text-sm text-zinc-600 leading-relaxed">{f.desc}</p>
               </div>
@@ -429,7 +418,7 @@ export default function HomePage() {
             <div className="flex-1 text-center md:text-left">
               <p className="text-xs font-black uppercase tracking-widest text-pink-200 mb-2">Jouez en équipe</p>
               <h2 className="text-2xl md:text-4xl font-black mb-4 tracking-tight">
-                Sauvez Waty de la lave 🌋
+                Sauvez Waty de la lave
               </h2>
               <p className="text-white/85 leading-relaxed mb-6">
                 Créez un groupe avec vos amis ou votre famille. Chaque jour à minuit, Waty retombe
@@ -438,9 +427,14 @@ export default function HomePage() {
                 classement : la santé devient un jeu d&apos;équipe.
               </p>
               <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-                {['🤝 Jusqu\'à 10 amis', '🏆 Coupes hebdomadaires', '💬 Messages de groupe', '🔥 Séries & badges'].map(t => (
-                  <span key={t} className="bg-white/15 border border-white/20 rounded-full px-3.5 py-1.5 text-xs font-bold">
-                    {t}
+                {[
+                  { Icon: Users,         t: "Jusqu'à 10 amis" },
+                  { Icon: Trophy,        t: 'Coupes hebdomadaires' },
+                  { Icon: MessageCircle, t: 'Messages de groupe' },
+                  { Icon: Flame,         t: 'Séries & badges' },
+                ].map(({ Icon, t }) => (
+                  <span key={t} className="inline-flex items-center gap-1.5 bg-white/15 border border-white/20 rounded-full px-3.5 py-1.5 text-xs font-bold">
+                    <Icon size={13} strokeWidth={2.5} />{t}
                   </span>
                 ))}
               </div>
@@ -457,17 +451,17 @@ export default function HomePage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
             {
-              step: '1', icon: '📝',
+              step: '1', Icon: UserPlus,
               title: 'Crée ton profil',
               desc: "Ton objectif (perte de poids, maintien, prise de masse), tes mensurations — MYTA calcule tes besoins.",
             },
             {
-              step: '2', icon: '📸',
+              step: '2', Icon: ScanLine,
               title: 'Logue sans effort',
               desc: "Photo de ton assiette, message vocal pour ton sport ou ton sommeil — Waty se charge du reste.",
             },
             {
-              step: '3', icon: '🚀',
+              step: '3', Icon: Rocket,
               title: "Progresse avec Waty",
               desc: "Recettes adaptées, rapport hebdo, défis entre amis et badges pour rester motivé jour après jour.",
             },
@@ -477,7 +471,9 @@ export default function HomePage() {
                 style={{ background: BRAND_GRADIENT }}>
                 {s.step}
               </div>
-              <div className="text-4xl mb-3">{s.icon}</div>
+              <div className="w-12 h-12 rounded-2xl bg-zinc-100 flex items-center justify-center mx-auto mb-3">
+                <s.Icon size={22} className="text-zinc-600" strokeWidth={2} />
+              </div>
               <h3 className="font-extrabold text-zinc-900 text-lg mb-2">{s.title}</h3>
               <p className="text-zinc-500 text-sm leading-relaxed">{s.desc}</p>
             </div>
@@ -538,9 +534,11 @@ export default function HomePage() {
                 </div>
                 <ul className="space-y-2 mb-6">
                   {plan.features.map((f) => (
-                    <li key={f} className={`text-sm flex items-start gap-2 ${f.startsWith('❌') ? 'text-zinc-300' : 'text-zinc-700'}`}>
-                      <span className="flex-shrink-0 text-base leading-none mt-0.5">{f.slice(0, 2)}</span>
-                      <span>{f.slice(2).trim()}</span>
+                    <li key={f.text} className={`text-sm flex items-start gap-2 ${f.ok ? 'text-zinc-700' : 'text-zinc-400'}`}>
+                      {f.ok
+                        ? <Check size={16} strokeWidth={3} className="flex-shrink-0 mt-0.5 text-emerald-500" />
+                        : <Minus size={16} strokeWidth={3} className="flex-shrink-0 mt-0.5 text-zinc-300" />}
+                      <span>{f.text}</span>
                     </li>
                   ))}
                 </ul>
@@ -557,7 +555,7 @@ export default function HomePage() {
             ))}
           </div>
           <div className="max-w-lg mx-auto mt-6 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 flex items-start gap-2.5">
-            <span className="text-base flex-shrink-0">🔒</span>
+            <Lock size={15} className="flex-shrink-0 mt-0.5 text-blue-500" />
             <p className="text-xs text-blue-900 leading-relaxed">
               <strong>Bon à savoir :</strong> une carte bancaire est demandée pour démarrer
               l&apos;essai gratuit — c&apos;est sécurisé par <strong>Stripe</strong>, et{' '}
@@ -568,28 +566,31 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* PWA INSTALL */}
-      <section className="py-16 px-4 max-w-5xl mx-auto">
-        <div className="rounded-[2rem] p-8 md:p-10 text-white text-center relative overflow-hidden"
+      {/* TÉLÉCHARGEMENT */}
+      <section id="telecharger" className="py-16 px-4 max-w-5xl mx-auto">
+        <div className="rounded-[2rem] p-8 md:p-12 text-white relative overflow-hidden"
           style={{ background: BRAND_GRADIENT }}>
-          <div className="text-5xl mb-4">📱</div>
-          <h2 className="text-2xl md:text-3xl font-black mb-2 tracking-tight">Installe MYTA sur ton téléphone</h2>
-          <p className="text-white/85 mb-7 max-w-md mx-auto">
-            MYTA fonctionne comme une vraie appli — ajoute-la à ton écran d&apos;accueil en 10 secondes.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto text-left">
-            <div className="bg-white/15 border border-white/20 backdrop-blur rounded-2xl p-4">
-              <p className="font-bold mb-1">🍎 iPhone / Safari</p>
-              <p className="text-sm text-white/85">
-                mytwinapp.fr → <strong>Partager</strong> (↑) → <strong>&quot;Sur l&apos;écran d&apos;accueil&quot;</strong>
+          <div className="absolute -top-16 -right-10 w-72 h-72 rounded-full opacity-20"
+            style={{ background: 'radial-gradient(circle, #7BCB8E, transparent 70%)' }} />
+
+          <div className="relative flex flex-col md:flex-row items-center gap-8 md:gap-12">
+            <div className="flex-1 text-center md:text-left">
+              <p className="text-xs font-black uppercase tracking-widest text-white/70 mb-2">
+                Disponible maintenant
               </p>
-            </div>
-            <div className="bg-white/15 border border-white/20 backdrop-blur rounded-2xl p-4">
-              <p className="font-bold mb-1">🤖 Android / Chrome</p>
-              <p className="text-sm text-white/85">
-                mytwinapp.fr → Menu (⋮) → <strong>&quot;Ajouter à l&apos;écran d&apos;accueil&quot;</strong>
+              <h2 className="text-2xl md:text-4xl font-black mb-3 tracking-tight">
+                Télécharge MYTA
+              </h2>
+              <p className="text-white/85 leading-relaxed mb-7 max-w-md mx-auto md:mx-0">
+                Sur iPhone et sur Android. Ton compte, tes données et ton abonnement
+                te suivent d&apos;un appareil à l&apos;autre.
               </p>
+              <StoreBadges className="flex flex-col items-center md:items-start" />
             </div>
+
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/store_icon.png" alt="Icône de l'application MYTA"
+              className="w-32 md:w-40 rounded-[1.75rem] shadow-2xl ring-1 ring-white/25 flex-shrink-0" />
           </div>
         </div>
       </section>
@@ -646,9 +647,14 @@ export default function HomePage() {
           href="/auth?mode=signup"
           className="relative inline-block bg-white text-[#2D2A5E] font-black px-10 py-4 rounded-full text-lg hover:scale-[1.04] active:scale-[0.98] transition-transform shadow-2xl"
         >
-          Commencer gratuitement →
+          <span className="inline-flex items-center gap-2">Commencer gratuitement <ArrowRight size={18} strokeWidth={2.5} /></span>
         </Link>
         <p className="mt-4 text-white/60 text-sm relative">Dès 2,99 €/mois ensuite · Annulable à tout moment</p>
+
+        <div className="relative mt-10 pt-8 border-t border-white/15 max-w-md mx-auto">
+          <p className="text-white/70 text-sm mb-4">Ou télécharge l&apos;application</p>
+          <StoreBadges showRating={false} className="flex justify-center" />
+        </div>
       </section>
 
       {/* FOOTER */}
@@ -656,7 +662,7 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm">
           <div className="flex items-center gap-2">
             <Image src="/logo_my_twin_app.png" alt="MYTA" width={90} height={22} className="object-contain opacity-70" />
-            <span>© 2026 · Fait avec ❤️ en France</span>
+            <span>© 2026 IDEAFORMA · Conçu en France</span>
           </div>
           <div className="flex gap-4">
             <Link href="/legal" className="hover:text-white transition-colors">Mentions légales</Link>
