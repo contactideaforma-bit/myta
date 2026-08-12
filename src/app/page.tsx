@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { hasActiveAccess } from '@/lib/access'
@@ -13,6 +12,7 @@ import {
   UserPlus, ScanLine, Rocket, ArrowRight, ArrowDown,
 } from 'lucide-react'
 import { StoreBadges } from '@/components/ui/StoreBadges'
+import { Logo } from '@/components/ui/Logo'
 import { TrustBand } from '@/components/ui/TrustBand'
 
 // ─── Tarifs ────────────────────────────────────────────────────────────────────
@@ -198,7 +198,7 @@ export default function HomePage() {
   if (iosRedirecting) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
-        <img src="/logo_my_twin_app.png" alt="MYTA" className="w-40 object-contain animate-pulse" />
+        <div className="animate-pulse"><Logo size="lg" /></div>
       </div>
     )
   }
@@ -209,9 +209,9 @@ export default function HomePage() {
       {/* NAV */}
       <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-zinc-100">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Image src="/logo_my_twin_app.png" alt="MYTA" width={110} height={28} className="object-contain" />
-          </div>
+          <Link href="/" aria-label="MYTA — accueil">
+            <Logo size="sm" />
+          </Link>
           <div className="flex items-center gap-3">
             <Link href="/auth" className="text-sm font-semibold text-zinc-500 hover:text-zinc-900 transition-colors">
               Connexion
@@ -660,9 +660,9 @@ export default function HomePage() {
       {/* FOOTER */}
       <footer className="bg-[#1a1825] text-zinc-400 py-10 px-4">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <Image src="/logo_my_twin_app.png" alt="MYTA" width={90} height={22} className="object-contain opacity-70" />
-            <span>© 2026 IDEAFORMA · Conçu en France</span>
+          <div className="flex items-center gap-3">
+            <Logo size="sm" tone="light" />
+            <span className="text-zinc-500">© 2026 IDEAFORMA · Conçu en France</span>
           </div>
           <div className="flex gap-4">
             <Link href="/legal" className="hover:text-white transition-colors">Mentions légales</Link>
