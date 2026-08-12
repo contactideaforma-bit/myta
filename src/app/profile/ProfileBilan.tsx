@@ -8,6 +8,7 @@ import { fr } from 'date-fns/locale'
 import {
   Check, Loader2, User, Scale,
   Dumbbell, LogOut, Layers, BarChart3, CreditCard, Calculator,
+  Target, Sparkles, SlidersHorizontal, ChevronDown, Info, Cigarette,
 } from 'lucide-react'
 import { Waty } from '@/components/ui/Waty'
 import OnboardingCoach from '@/components/ui/OnboardingCoach'
@@ -301,6 +302,8 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
     health_conditions: [] as string[],
     smoking_goal: false,
   })
+  /** Les champs manuels restent repliés : la plupart des gens gardent le calcul. */
+  const [showManualTargets, setShowManualTargets] = useState(false)
 
   // ── États calculateur ───────────────────────────────────────────────────────
   const [calcTab, setCalcTab]         = useState<CalcTab>('tdee')
@@ -1055,90 +1058,176 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
             </div>
           </div>
 
-          <div className="card flex flex-col gap-3">
-            <h2 className="text-sm font-semibold text-zinc-700">🎯 Objectifs nutritionnels</h2>
+          <div className="card flex flex-col gap-4">
+            <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-200 flex items-center gap-2">
+              <Target size={15} className="text-tta-mid" /> Objectifs nutritionnels
+            </h2>
+
             {form.goal && (
-              <div className="flex items-center gap-2 bg-zinc-50 rounded-xl px-3 py-2.5">
-                <span className="text-sm">{SPORT_GOALS.find(g => g.value === form.goal)?.label ?? form.goal}</span>
-                <span className="text-[10px] text-zinc-400 ml-auto">Objectif actuel</span>
+              <div className="flex items-center gap-2 bg-zinc-50 dark:bg-zinc-800 rounded-xl px-3 py-2.5">
+                <span className="text-sm text-zinc-700 dark:text-zinc-200">
+                  {SPORT_GOALS.find(g => g.value === form.goal)?.label ?? form.goal}
+                </span>
+                <span className="text-[10px] text-zinc-500 ml-auto">Objectif actuel</span>
               </div>
             )}
 
-            {/* Suggestions automatiques selon profil + conditions */}
-            {tdee && (() => {
+            {(() => {
+              // ── Ce que MYTA calcule pour ce profil ──────────────────────────
               const hc = (form as any).health_conditions as string[] ?? []
-              const adapted = adaptMacrosForHealth(
-                tdee,
-                form.weight_kg ? Math.round(parseFloat(form.weight_kg) * 1.4) : Math.round(tdee * 0.25 / 4),
-                Math.round(tdee * 0.40 / 4),
-                Math.round(tdee * 0.30 / 9),
-                hc
-              )
-              // Ajuster selon objectif
-              const goalAdjust = form.goal === 'perte de poids' ? -300
-                : form.goal === 'prise de masse' ? +300
-                : 0
-              const suggestedCal = adapted.cal + goalAdjust
+              const w  = parseFloat(form.weight_kg)
+              const h  = parseInt(form.height_cm)
+              const bmi = w && h ? w / ((h / 100) ** 2) : null
+
+              let suggested: { cal: number; prot: number; carb: number; fat: number; notes: string[] } | null = null
+              let deficitBlocked = false
+
+              if (tdee) {
+                const adapted = adaptMacrosForHealth(
+                  tdee,
+                  w ? Math.round(w * 1.4) : Math.round(tdee * 0.25 / 4),
+                  Math.round(tdee * 0.40 / 4),
+                  Math.round(tdee * 0.30 / 9),
+                  hc
+                )
+                // Un déficit n'est proposé que s'il reste raisonnable. Sous un
+                // IMC de 20, on ne suggère PAS de manger moins — ce n'est pas le
+                // rôle d'une app, et le risque n'est pas symétrique.
+                deficitBlocked = form.goal === 'perte de poids' && bmi !== null && bmi < 20
+                const goalAdjust = deficitBlocked ? 0
+                  : form.goal === 'perte de poids' ? -300
+                  : form.goal === 'prise de masse' ? +300
+                  : 0
+                suggested = { cal: adapted.cal + goalAdjust, prot: adapted.prot, carb: adapted.carb, fat: adapted.fat, notes: adapted.notes }
+              }
+
+              // ── Ce qui est réellement appliqué aujourd'hui ──────────────────
+              const current = {
+                cal:  parseInt(form.calorie_target) || null,
+                prot: parseInt(form.prot_target)    || null,
+                carb: parseInt(form.carb_target)    || null,
+                fat:  parseInt(form.fat_target)     || null,
+              }
+              const hasCurrent = current.cal !== null
+              const isCustom = !!(suggested && hasCurrent && (
+                current.cal !== suggested.cal || current.prot !== suggested.prot ||
+                current.carb !== suggested.carb || current.fat !== suggested.fat
+              ))
+
+              const applyAll = () => {
+                if (!suggested) return
+                setForm(f => ({
+                  ...f,
+                  calorie_target: String(suggested!.cal),
+                  prot_target:    String(suggested!.prot),
+                  carb_target:    String(suggested!.carb),
+                  fat_target:     String(suggested!.fat),
+                }))
+              }
+
+              const shown = hasCurrent ? current : (suggested && { cal: suggested.cal, prot: suggested.prot, carb: suggested.carb, fat: suggested.fat })
+
               return (
-                <div className="bg-tta-light border border-tta-mid/20 rounded-2xl p-3 flex flex-col gap-2">
-                  <p className="text-xs font-bold text-tta-mid">
-                    ✨ Objectifs suggérés pour ton profil
-                    {hc.length > 0 && <span className="font-normal"> · adaptés à tes conditions</span>}
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { label: 'Calories', val: suggestedCal, unit: 'kcal', key: 'calorie_target' },
-                      { label: 'Protéines', val: adapted.prot, unit: 'g', key: 'prot_target' },
-                      { label: 'Glucides', val: adapted.carb, unit: 'g', key: 'carb_target' },
-                      { label: 'Lipides', val: adapted.fat, unit: 'g', key: 'fat_target' },
-                    ].map(({ label, val, unit, key }) => (
-                      <button key={key}
-                        onClick={() => setForm(f => ({ ...f, [key]: String(val) }))}
-                        className="flex items-center justify-between bg-white rounded-xl px-3 py-2 hover:bg-tta-mid hover:text-white transition-all group">
-                        <span className="text-xs text-zinc-500 group-hover:text-white/80">{label}</span>
-                        <span className="text-sm font-extrabold text-tta-mid group-hover:text-white">{val}<span className="text-[10px] font-normal ml-0.5">{unit}</span></span>
-                      </button>
-                    ))}
-                  </div>
-                  {adapted.notes.length > 0 && (
-                    <div className="flex flex-col gap-1 pt-1 border-t border-tta-mid/10">
-                      {adapted.notes.map((n, i) => (
-                        <p key={i} className="text-[10px] text-tta-mid leading-relaxed">{n}</p>
-                      ))}
+                <>
+                  {/* ── UN seul jeu de valeurs : celui qui s'applique ── */}
+                  {shown && (
+                    <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+                      <div className="flex items-center gap-2 px-3 py-2 bg-zinc-50 dark:bg-zinc-800">
+                        <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200">Tes objectifs du jour</span>
+                        <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          isCustom
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-tta-light text-tta-mid'
+                        }`}>
+                          {isCustom ? 'Personnalisés' : 'Calculés pour toi'}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-4 divide-x divide-zinc-100 dark:divide-zinc-700">
+                        {[
+                          { l: 'kcal', v: shown.cal },
+                          { l: 'prot.', v: shown.prot },
+                          { l: 'gluc.', v: shown.carb },
+                          { l: 'lip.',  v: shown.fat },
+                        ].map(({ l, v }) => (
+                          <div key={l} className="px-2 py-3 text-center">
+                            <p className="text-lg font-extrabold text-zinc-900 dark:text-white tabular-nums leading-none">{v ?? '—'}</p>
+                            <p className="text-[10px] text-zinc-500 mt-1">{l}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
-                  <p className="text-[10px] text-zinc-400">Clique sur une valeur pour l'appliquer</p>
-                </div>
+
+                  {/* ── La suggestion n'apparaît QUE si elle diffère ── */}
+                  {suggested && isCustom && (
+                    <button type="button" onClick={applyAll}
+                      className="flex items-center gap-2.5 text-left rounded-2xl border border-tta-mid/25 bg-tta-light px-3 py-2.5 hover:bg-tta-mid/10 transition-colors">
+                      <Sparkles size={15} className="flex-shrink-0 text-tta-mid" />
+                      <span className="flex-1 text-[11px] leading-relaxed text-tta-mid">
+                        MYTA calcule <strong>{suggested.cal} kcal</strong> pour ton profil.
+                      </span>
+                      <span className="text-[11px] font-bold text-tta-mid underline whitespace-nowrap">Utiliser</span>
+                    </button>
+                  )}
+
+                  {/* ── Pourquoi ces chiffres : une seule zone d'explication ── */}
+                  {(deficitBlocked || (suggested?.notes.length ?? 0) > 0) && (
+                    <div className="flex gap-2.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800 px-3 py-2.5">
+                      <Info size={14} className="flex-shrink-0 mt-0.5 text-zinc-500" />
+                      <div className="flex flex-col gap-1 text-[11px] leading-relaxed text-zinc-600 dark:text-zinc-300">
+                        {deficitBlocked && (
+                          <p>
+                            Ton IMC étant déjà dans la partie basse de la fourchette de référence,
+                            MYTA ne propose pas de réduire tes apports. Si tu souhaites poursuivre
+                            une perte de poids, parles-en d&apos;abord à un médecin ou un diététicien.
+                          </p>
+                        )}
+                        {suggested?.notes.map((n, i) => <p key={i}>{n}</p>)}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Réglage manuel : replié par défaut ── */}
+                  <button type="button" onClick={() => setShowManualTargets(v => !v)}
+                    className="flex items-center gap-2 text-xs font-semibold text-zinc-500 hover:text-zinc-700 transition-colors">
+                    <SlidersHorizontal size={13} />
+                    Ajuster manuellement
+                    <ChevronDown size={13} className={`transition-transform ${showManualTargets ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {showManualTargets && (
+                    <div className="flex flex-col gap-3">
+                      <div>
+                        <label className="text-xs text-zinc-500 mb-1 block">Calories par jour (kcal)</label>
+                        <input type="number" min="1000" max="6000" className="input"
+                          placeholder={tdee ? `Calcul MYTA : ${tdee}` : 'ex : 2000'}
+                          value={form.calorie_target} onChange={e => setForm(f => ({ ...f, calorie_target: e.target.value }))} />
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { label: 'Protéines (g)', key: 'prot_target', min: 50, max: 400, ph: '120' },
+                          { label: 'Glucides (g)',  key: 'carb_target', min: 50, max: 600, ph: '225' },
+                          { label: 'Lipides (g)',   key: 'fat_target',  min: 20, max: 300, ph: '65'  },
+                        ].map(f0 => (
+                          <div key={f0.key}>
+                            <label className="text-[11px] text-zinc-500 mb-1 block">{f0.label}</label>
+                            <input type="number" min={f0.min} max={f0.max} className="input" placeholder={f0.ph}
+                              value={(form as any)[f0.key]}
+                              onChange={e => setForm(f => ({ ...f, [f0.key]: e.target.value }))} />
+                          </div>
+                        ))}
+                      </div>
+                      {suggested && (
+                        <button type="button" onClick={applyAll}
+                          className="self-start text-[11px] font-bold text-tta-mid hover:underline">
+                          Revenir au calcul de MYTA
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </>
               )
             })()}
-
-            <p className="text-[11px] text-zinc-400 leading-relaxed bg-zinc-50 rounded-xl px-3 py-2.5">
-              💡 Ton objectif est calculé automatiquement selon ton profil. Tu peux modifier manuellement ci-dessous.
-            </p>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <label className="text-xs text-zinc-400 mb-1 block">Calories/jour (kcal)</label>
-                <input type="number" min="1000" max="6000" className="input"
-                  placeholder={tdee ? `TDEE calculé : ${tdee}` : 'ex: 2000'}
-                  value={form.calorie_target} onChange={e => setForm(f => ({ ...f, calorie_target: e.target.value }))} />
-              </div>
-              <div>
-                <label className="text-xs text-zinc-400 mb-1 block">Protéines (g)</label>
-                <input type="number" min="50" max="400" className="input" placeholder="ex: 120"
-                  value={form.prot_target} onChange={e => setForm(f => ({ ...f, prot_target: e.target.value }))} />
-              </div>
-              <div>
-                <label className="text-xs text-zinc-400 mb-1 block">Glucides (g)</label>
-                <input type="number" min="50" max="600" className="input" placeholder="ex: 225"
-                  value={form.carb_target} onChange={e => setForm(f => ({ ...f, carb_target: e.target.value }))} />
-              </div>
-              <div>
-                <label className="text-xs text-zinc-400 mb-1 block">Lipides (g)</label>
-                <input type="number" min="20" max="300" className="input" placeholder="ex: 65"
-                  value={form.fat_target} onChange={e => setForm(f => ({ ...f, fat_target: e.target.value }))} />
-              </div>
-            </div>
           </div>
 
           {/* ── Objectif arrêter de fumer ── */}
