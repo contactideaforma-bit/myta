@@ -5,7 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } from 'date-fns'
 // WeightChart et MonthProgress déplacés vers journal/profil
 import { fr } from 'date-fns/locale'
-import { ArrowRight, Loader2, Baby } from 'lucide-react'
+import {
+  ArrowRight, Loader2, Baby, Salad, Dumbbell, Zap, Flame,
+  Target, BarChart3, Newspaper, Beef, Moon, UserPlus, Users,
+} from 'lucide-react'
 import { todayISO, minutesToHuman } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { Waty } from '@/components/ui/Waty'
@@ -54,9 +57,9 @@ function MonthProgress({ calConsumed, calTarget, sessions, sessionTarget, calBur
   const burnPct     = Math.min(150, Math.round((calBurned / Math.max(1, 6000 * prorata)) * 100))
 
   const items = [
-    { label: 'Nutrition',    pct: calPct,  icon: '🥗', color: '#f97316' },
-    { label: 'Séances',      pct: sesPct,  icon: '🏋️', color: '#7b7fd4' },
-    { label: 'Cal. brûlées', pct: burnPct, icon: '⚡',  color: '#22c55e' },
+    { label: 'Nutrition',    pct: calPct,  Icon: Salad,    color: '#f97316' },
+    { label: 'Séances',      pct: sesPct,  Icon: Dumbbell, color: '#7b7fd4' },
+    { label: 'Cal. brûlées', pct: burnPct, Icon: Zap,      color: '#22c55e' },
   ]
 
   return (
@@ -71,10 +74,12 @@ function MonthProgress({ calConsumed, calTarget, sessions, sessionTarget, calBur
         </div>
         <p className="text-[10px] text-zinc-400 text-right">{monthPct}% du mois écoulé</p>
       </div>
-      {items.map(({ label, pct, icon, color }) => (
+      {items.map(({ label, pct, Icon, color }) => (
         <div key={label}>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-zinc-600">{icon} {label}</span>
+            <span className="text-xs text-zinc-600 inline-flex items-center gap-1.5">
+              <Icon size={13} style={{ color }} /> {label}
+            </span>
             <span className={`text-xs font-bold ${pct >= 100 ? 'text-nutri-mid' : pct >= 70 ? 'text-yellow-500' : 'text-zinc-400'}`}>
               {pct}%
             </span>
@@ -107,7 +112,7 @@ function ChildDashboard({ cs, router }: { cs: ChildStats; router: ReturnType<typ
             {format(new Date(), 'EEEE d MMMM yyyy', { locale: fr })}
           </p>
           <h1 className="text-2xl font-extrabold text-zinc-900">
-            Bonjour{cs.firstName ? `, ${cs.firstName}` : ''} 👋
+            Bonjour{cs.firstName ? `, ${cs.firstName}` : ''}
           </h1>
         </div>
       </div>
@@ -117,7 +122,7 @@ function ChildDashboard({ cs, router }: { cs: ChildStats; router: ReturnType<typ
         className="w-full text-left bg-gradient-to-br from-nutri to-nutri-mid rounded-3xl p-5 shadow-sm hover:shadow-md transition-all active:scale-[0.98] group">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 bg-white/25 rounded-2xl flex items-center justify-center text-xl">🥗</div>
+            <div className="w-10 h-10 bg-white/25 rounded-2xl flex items-center justify-center"><Salad size={19} className="text-white" /></div>
             <span className="font-extrabold text-white text-lg">Nutrition</span>
           </div>
           <span className="text-xs font-bold bg-white/25 text-white px-3 py-1 rounded-full">Aujourd'hui</span>
@@ -140,7 +145,7 @@ function ChildDashboard({ cs, router }: { cs: ChildStats; router: ReturnType<typ
       {/* Protéines */}
       {cs.prot > 0 && (
         <div className="card flex items-center gap-4">
-          <div className="text-3xl">💪</div>
+          <Dumbbell size={26} className="text-tta-mid" />
           <div className="flex-1">
             <p className="text-sm font-bold text-zinc-800">Protéines aujourd'hui</p>
             <p className="text-2xl font-black text-blue-600">{Math.round(cs.prot)} <span className="text-sm font-semibold text-zinc-400">g</span></p>
@@ -149,7 +154,7 @@ function ChildDashboard({ cs, router }: { cs: ChildStats; router: ReturnType<typ
       )}
 
       <div className="card text-center py-6 text-zinc-400">
-        <p className="text-4xl mb-3">👨‍👩‍👧</p>
+        <Users size={34} className="mx-auto mb-3 text-tta-mid" />
         <p className="text-sm font-semibold text-zinc-600">Tu consultes le profil de {cs.firstName}</p>
         <p className="text-xs mt-1">Le journal alimentaire ci-dessus est propre à {cs.firstName}.</p>
       </div>
@@ -160,19 +165,19 @@ function ChildDashboard({ cs, router }: { cs: ChildStats; router: ReturnType<typ
 /** Messages du « hub » d'onboarding affichés sur le dashboard selon l'étape. */
 const ONBOARDING_HUB: Record<Exclude<OnboardingStep, 'done'>,
   { mode: 'nutrition' | 'sport'; title: string; message: string; cta: string }> = {
-  profile: { mode: 'nutrition', title: 'Bienvenue sur MYTA ! 👋',
+  profile: { mode: 'nutrition', title: 'Bienvenue sur MYTA',
     message: "Commençons par compléter ton profil : c'est lui qui personnalise tes calories, tes macros et les conseils de Waty.",
     cta: 'Compléter mon profil' },
-  journal: { mode: 'nutrition', title: 'Profil prêt ✓',
+  journal: { mode: 'nutrition', title: 'Profil prêt',
     message: 'Note ton premier repas (voix, photo ou texte) et regarde tes scores macro & micro s’adapter à toi.',
     cta: 'Aller au journal' },
-  sport:   { mode: 'sport', title: 'Et côté sport ? 🏋️',
+  sport:   { mode: 'sport', title: 'Et côté sport ?',
     message: 'Enregistre ta première séance — décris-la simplement, Waty s’occupe du reste.',
     cta: 'Nouvelle séance' },
-  sleep:   { mode: 'nutrition', title: 'Le sommeil compte aussi 😴',
+  sleep:   { mode: 'nutrition', title: 'Le sommeil compte aussi',
     message: 'Suis tes nuits pour un bilan complet de ta forme.',
     cta: 'Suivre mon sommeil' },
-  account: { mode: 'nutrition', title: 'Dernière étape 🎯',
+  account: { mode: 'nutrition', title: 'Dernière étape',
     message: 'Découvre ton compte et la gestion de ton abonnement.',
     cta: 'Voir mon compte' },
 }
@@ -360,7 +365,7 @@ export default function DashboardPage() {
           {format(new Date(), 'EEEE d MMMM yyyy', { locale: fr })}
         </p>
         <h1 className="text-2xl font-extrabold text-zinc-900 mt-0.5">
-          Bonjour{firstName ? `, ${firstName}` : ''} 👋
+          Bonjour{firstName ? `, ${firstName}` : ''}
         </h1>
       </div>
 
@@ -379,7 +384,7 @@ export default function DashboardPage() {
       {/* ── Série + Badge ── */}
       <div className="card flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-extrabold text-zinc-900 text-sm">🔥 Ma série</h2>
+          <h2 className="font-extrabold text-zinc-900 text-sm inline-flex items-center gap-1.5"><Flame size={15} className="text-orange-500" /> Ma série</h2>
           <span className={`text-xl font-black ${s.streak > 0 ? 'text-orange-500' : 'text-zinc-300'}`}>
             {s.streak} jour{s.streak > 1 ? 's' : ''}
           </span>
@@ -394,7 +399,7 @@ export default function DashboardPage() {
           onClick={() => router.push('/nutrition/journal')}
           className="flex flex-col items-center gap-2.5 px-4 py-5 rounded-3xl bg-orange-50 border-2 border-orange-100 hover:bg-orange-100 active:scale-[0.97] transition-all shadow-sm"
         >
-          <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center text-3xl">🥗</div>
+          <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center"><Salad size={26} className="text-orange-600" /></div>
           <div className="text-center">
             <p className="text-sm font-extrabold text-orange-700">Journal</p>
             <p className="text-xs text-orange-500 font-medium">alimentaire</p>
@@ -407,7 +412,7 @@ export default function DashboardPage() {
           onClick={() => router.push('/sport/session')}
           className="flex flex-col items-center gap-2.5 px-4 py-5 rounded-3xl bg-indigo-50 border-2 border-indigo-100 hover:bg-indigo-100 active:scale-[0.97] transition-all shadow-sm"
         >
-          <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center text-3xl">🏋️</div>
+          <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center"><Dumbbell size={26} className="text-indigo-600" /></div>
           <div className="text-center">
             <p className="text-sm font-extrabold text-indigo-700">Séance</p>
             <p className="text-xs text-indigo-500 font-medium">de sport</p>
@@ -424,7 +429,7 @@ export default function DashboardPage() {
         className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left hover:opacity-90 active:scale-[0.98] transition-all shadow-sm"
         style={{ background: 'linear-gradient(90deg, #4B47A0, #7b7fd4)' }}
       >
-        <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">📊</div>
+        <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0"><BarChart3 size={17} className="text-white" /></div>
         <div className="flex-1">
           <p className="text-sm font-bold text-white">Bilan santé 7 jours — Waty IA</p>
           <p className="text-xs text-white/70">Analyse personnalisée de ta semaine</p>
@@ -443,7 +448,7 @@ export default function DashboardPage() {
       <div className="card flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="font-extrabold text-zinc-900 text-sm flex items-center gap-1.5">
-            📰 Actu du jour
+            <Newspaper size={14} className="text-tta-mid" /> Actu du jour
           </h2>
           <span className="text-[10px] text-zinc-400 bg-zinc-50 px-2 py-1 rounded-full">
             {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
@@ -465,7 +470,10 @@ export default function DashboardPage() {
       <div id="tour-objectives" className="card flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="font-extrabold text-zinc-900">
-            {period === 'semaine' ? '🎯 Mes objectifs de la semaine' : '🎯 Mes objectifs du mois'}
+            <span className="inline-flex items-center gap-2">
+              <Target size={16} className="text-tta-mid" />
+              {period === 'semaine' ? 'Mes objectifs de la semaine' : 'Mes objectifs du mois'}
+            </span>
           </h2>
           <div className="flex bg-zinc-100 rounded-2xl p-0.5 gap-0.5">
             {(['semaine', 'mois'] as Period[]).map(p => (
@@ -496,14 +504,16 @@ export default function DashboardPage() {
               const burnPct  = Math.min(150, Math.round((s.calBurned / 1500) * 100))
 
               return [
-                { label: 'Calories consommées', current: Math.round(s.calConsumed), target: calObj,   pct: calPct2,  unit: 'kcal',    color: '#f97316', icon: '🔥' },
-                { label: 'Protéines',            current: Math.round(s.totalProt),  target: protObj,  pct: protPct,  unit: 'g',       color: '#3b82f6', icon: '💪' },
-                { label: 'Séances sport',         current: s.weekSessions,          target: 3,        pct: sportPct, unit: 'séances', color: '#7b7fd4', icon: '🏋️' },
-                { label: 'Calories brûlées',      current: Math.round(s.calBurned), target: 1500,     pct: burnPct,  unit: 'kcal',    color: '#22c55e', icon: '⚡' },
+                { label: 'Calories consommées', current: Math.round(s.calConsumed), target: calObj,   pct: calPct2,  unit: 'kcal',    color: '#f97316', Icon: Flame },
+                { label: 'Protéines',            current: Math.round(s.totalProt),  target: protObj,  pct: protPct,  unit: 'g',       color: '#3b82f6', Icon: Beef },
+                { label: 'Séances sport',         current: s.weekSessions,          target: 3,        pct: sportPct, unit: 'séances', color: '#7b7fd4', Icon: Dumbbell },
+                { label: 'Calories brûlées',      current: Math.round(s.calBurned), target: 1500,     pct: burnPct,  unit: 'kcal',    color: '#22c55e', Icon: Zap },
               ].map(obj => (
                 <div key={obj.label}>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs font-semibold text-zinc-600">{obj.icon} {obj.label}</span>
+                    <span className="text-xs font-semibold text-zinc-600 inline-flex items-center gap-1.5">
+                      <obj.Icon size={13} style={{ color: obj.color }} /> {obj.label}
+                    </span>
                     <span className="text-xs text-zinc-400">
                       <span className="font-bold" style={{ color: obj.color }}>{obj.current}</span> / {obj.target} {obj.unit}
                     </span>
