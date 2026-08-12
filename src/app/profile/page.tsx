@@ -160,7 +160,7 @@ function adaptMacrosForHealth(
 const IMC_MIN = 16
 const IMC_MAX = 40
 /** Position en % sur la jauge, échelle linéaire 16 → 40. */
-export function imcPct(bmi: number) {
+function imcPct(bmi: number) {
   return Math.min(Math.max(((bmi - IMC_MIN) / (IMC_MAX - IMC_MIN)) * 100, 0), 100)
 }
 
