@@ -2,13 +2,15 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { Logo } from '@/components/ui/Logo'
 import {
   LayoutDashboard,
   BookOpen, ChefHat, Lightbulb,
   Dumbbell, Timer, History, User,
   LogOut, AlertTriangle, Menu, X,
   ChevronRight, Sun, Moon, MessageSquareWarning, Send, CheckCircle,
-  HelpCircle, Users, Settings, ArrowLeft, Gamepad2,
+  HelpCircle, Users, Settings, ArrowLeft, Gamepad2, Eye,
+  Bug, BarChart3, CreditCard, PenLine, Salad,
 } from 'lucide-react'
 import { ProfileSwitcher } from './ProfileSwitcher'
 import { logActivityToday } from '@/lib/games'
@@ -16,6 +18,22 @@ import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
 import { useTheme } from '@/components/ui/ThemeProvider'
 import type { Module } from '@/types'
+
+/**
+ * Couleur de marque unique pour tout le chrome de l'app.
+ * Règle : la barre ne change JAMAIS de couleur selon la page — c'est la même
+ * identité partout, exactement comme sur mytwinapp.fr. Le repère de section est
+ * porté par un liseré fin sous l'en-tête (ACCENT), pas par un repeinturlurage
+ * complet, qui donnait l'impression de trois applis différentes.
+ */
+const BRAND_BAR = 'linear-gradient(90deg, #4B47A0 0%, #2BA8B0 100%)'
+
+/** Accent de section : la couleur ne décore pas, elle indique où l'on est. */
+const ACCENT: Record<'dashboard' | 'nutrition' | 'sport', string> = {
+  dashboard: '#7BCB8E',   // vert MYTA — vue d'ensemble
+  nutrition: '#22C55E',   // vert nutrition
+  sport:     '#A78BFA',   // violet sport
+}
 
 const NAV_NUTRI = [
   { href: '/nutrition/journal',    label: 'Journal',     icon: BookOpen,   desc: 'Suivi alimentaire du jour',  color: 'text-green-600',  bg: 'bg-green-50'  },
@@ -59,11 +77,11 @@ function QuitModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: (
 }
 
 const REPORT_CATEGORIES = [
-  { value: 'Bug technique',        icon: '🐛' },
-  { value: 'Erreur de données',    icon: '📊' },
-  { value: 'Problème de paiement', icon: '💳' },
-  { value: 'Suggestion',           icon: '💡' },
-  { value: 'Autre',                icon: '📝' },
+  { value: 'Bug technique',        Icon: Bug },
+  { value: 'Erreur de données',    Icon: BarChart3 },
+  { value: 'Problème de paiement', Icon: CreditCard },
+  { value: 'Suggestion',           Icon: Lightbulb },
+  { value: 'Autre',                Icon: PenLine },
 ]
 
 export function Navbar() {
@@ -277,8 +295,8 @@ export function Navbar() {
                           reportCategory === cat.value
                             ? 'bg-tta-mid text-white border-tta-mid'
                             : 'border-zinc-200 text-zinc-600 hover:border-zinc-300'
-                        }`}>
-                        {cat.icon} {cat.value}
+                        } inline-flex items-center gap-1.5`}>
+                        <cat.Icon size={12} /> {cat.value}
                       </button>
                     ))}
                   </div>
@@ -314,13 +332,8 @@ export function Navbar() {
 
       {/* ── Header coloré ── */}
       <header
-        className={cn(
-          'sticky top-0 z-50 border-b',
-          !isDashboard && (isNutri
-            ? 'bg-gradient-to-r from-nutri to-nutri-mid border-nutri-mid/50'
-            : 'bg-gradient-to-r from-tta-mid to-sport border-sport')
-        )}
-        style={isDashboard ? { background: 'linear-gradient(90deg, rgba(109,40,217,0.82) 0%, rgba(167,139,250,0.78) 100%)', borderColor: 'rgba(167,139,250,0.35)' } : {}}
+        className="sticky top-0 z-50"
+        style={{ background: BRAND_BAR }}
       >
         <div className="px-4 h-14 flex items-center justify-between">
 
@@ -330,10 +343,9 @@ export function Navbar() {
             <Menu size={20} />
           </button>
 
-          {/* Logo légèrement à gauche */}
-          <button onClick={() => router.push('/dashboard')}
-            className="ml-1 bg-white/90 rounded-xl px-2.5 py-1 shadow-sm">
-            <img src="/logo_my_twin_app.png" alt="MYTA" className="h-6 object-contain" />
+          {/* Logo */}
+          <button onClick={() => router.push('/dashboard')} className="ml-2" aria-label="Tableau de bord">
+            <Logo size="sm" tone="light" baseline={false} />
           </button>
 
           <div className="flex-1" />
@@ -341,13 +353,18 @@ export function Navbar() {
           {/* Switch profil (couple/famille) ou rien */}
           <ProfileSwitcher plan={userPlan} />
         </div>
+
+        {/* Liseré de section — remplace l'ancien changement de couleur de barre */}
+        <div className="h-[3px] w-full" style={{
+          background: ACCENT[isDashboard ? 'dashboard' : activeModule],
+        }} />
       </header>
 
       {/* ── Banner "Vous consultez le profil de…" ── */}
       {viewingAsId && viewingAsName && (
         <div className="sticky top-14 z-40 flex items-center justify-between gap-2 px-4 py-2 text-xs font-bold text-white"
           style={{ background: 'linear-gradient(90deg, #d97706, #f59e0b)' }}>
-          <span>👁️ Profil de {viewingAsName.split(' ')[0]}</span>
+          <span className="flex items-center gap-1.5"><Eye size={13} /> Profil de {viewingAsName.split(' ')[0]}</span>
           <button
             onClick={() => {
               localStorage.removeItem('myta_viewing_as_id')
@@ -376,15 +393,13 @@ export function Navbar() {
         <div
           className={cn(
             'px-5 py-5 flex items-center justify-between',
-            !isDashboard && (isNutri
-              ? 'bg-gradient-to-r from-nutri to-nutri-mid'
-              : 'bg-gradient-to-r from-tta-mid to-sport')
+
           )}
-          style={isDashboard ? { background: 'linear-gradient(135deg, rgba(109,40,217,0.9) 0%, rgba(167,139,250,0.85) 100%)' } : {}}
+          style={{ background: BRAND_BAR }}
         >
           <div className="flex items-center">
             <div className="bg-white/90 rounded-2xl px-3 py-1 shadow-sm">
-              <img src="/logo_my_twin_app.png" alt="MYTA" className="h-8 object-contain" />
+              <Logo size="md" tone="light" />
             </div>
           </div>
           <button onClick={() => setSidebarOpen(false)}
@@ -402,7 +417,7 @@ export function Navbar() {
                 'flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5',
                 sidebarIsNutri ? 'bg-gradient-to-r from-nutri to-nutri-mid text-white shadow-sm' : 'text-zinc-400'
               )}>
-              🥗 Nutrition
+              <Salad size={14} /> Nutrition
             </button>
             <button
               onClick={() => setSidebarModule('sport')}
@@ -410,7 +425,7 @@ export function Navbar() {
                 'flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5',
                 !sidebarIsNutri ? 'bg-gradient-to-r from-tta-mid to-sport text-white shadow-sm' : 'text-zinc-400'
               )}>
-              🏋️ Sport
+              <Dumbbell size={14} /> Sport
             </button>
           </div>
         </div>
@@ -441,7 +456,9 @@ export function Navbar() {
           <div className="px-3 pt-3 pb-1">
             <p className={cn('text-[10px] font-extrabold uppercase tracking-widest',
               sidebarIsNutri ? 'text-nutri-mid' : 'text-sport')}>
-              {sidebarIsNutri ? '🥗 Nutrition' : '🏋️ Sport'}
+              {sidebarIsNutri
+                ? <><Salad size={13} /> Nutrition</>
+                : <><Dumbbell size={13} /> Sport</>}
             </p>
           </div>
 
