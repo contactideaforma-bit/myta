@@ -13,13 +13,17 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { hasActiveAccess } from '@/lib/access'
 import { advanceOnboarding } from '@/lib/onboarding'
-import { ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-react'
+import {
+  ArrowLeft, ArrowRight, Check, Loader2,
+  Salad, Dumbbell, Moon, Bot, BarChart3, Target,
+  Flame, Beef, Wheat, Droplet,
+} from 'lucide-react'
 
 // ─── Étapes ───────────────────────────────────────────────────────────────────
 type StepId = 'welcome' | 'name' | 'about' | 'body' | 'goal' | 'activity' | 'ready'
 
 const STEPS: { id: StepId; title: string; subtitle: string }[] = [
-  { id: 'welcome',  title: 'Bienvenue sur MYTA 🎉',
+  { id: 'welcome',  title: 'Bienvenue sur MYTA',
     subtitle: 'Ton coach digital nutrition, sport & sommeil. 2 minutes pour tout personnaliser — tu peux passer chaque étape.' },
   { id: 'name',     title: 'Comment tu t’appelles ?',
     subtitle: 'Waty, ton coach IA, veut savoir comment t’appeler.' },
@@ -31,32 +35,32 @@ const STEPS: { id: StepId; title: string; subtitle: string }[] = [
     subtitle: 'On personnalise ton expérience en fonction de tes ambitions.' },
   { id: 'activity', title: 'Ton niveau d’activité ?',
     subtitle: 'Pour calculer tes besoins caloriques avec précision.' },
-  { id: 'ready',    title: 'Tout est prêt ! 🚀',
+  { id: 'ready',    title: 'Tout est prêt !',
     subtitle: 'Voici ce que MYTA a calculé pour toi. Modifiable à tout moment dans ton profil.' },
 ]
 
 const FEATURES = [
-  { icon: '🥗', label: 'Journal alimentaire avec IA' },
-  { icon: '🏋️', label: 'Suivi sportif et Tabata' },
-  { icon: '😴', label: 'Analyse du sommeil' },
-  { icon: '🤖', label: 'Coach Waty personnalisé' },
-  { icon: '📊', label: 'Bilan santé hebdomadaire' },
+  { Icon: Salad, label: 'Journal alimentaire avec IA' },
+  { Icon: Dumbbell, label: 'Suivi sportif et Tabata' },
+  { Icon: Moon, label: 'Analyse du sommeil' },
+  { Icon: Bot, label: 'Coach Waty personnalisé' },
+  { Icon: BarChart3, label: 'Bilan santé hebdomadaire' },
 ]
 
 const GOALS = [
-  { value: 'perte de poids', label: '🔥 Perdre du poids',     desc: 'Déficit calorique, cardio' },
-  { value: 'prise de masse', label: '💪 Prendre de la masse', desc: 'Surplus calorique, musculation' },
-  { value: 'forme generale', label: '⚡ Forme générale',       desc: 'Équilibre et bien-être' },
-  { value: 'endurance',      label: '🏃 Endurance',            desc: 'Cardio, résistance' },
-  { value: 'performance',    label: '🏆 Performance',          desc: 'Optimisation sportive' },
+  { value: 'perte de poids', label: 'Perdre du poids',     desc: 'Déficit calorique, cardio' },
+  { value: 'prise de masse', label: 'Prendre de la masse', desc: 'Surplus calorique, musculation' },
+  { value: 'forme generale', label: 'Forme générale',       desc: 'Équilibre et bien-être' },
+  { value: 'endurance',      label: 'Endurance',            desc: 'Cardio, résistance' },
+  { value: 'performance',    label: 'Performance',          desc: 'Optimisation sportive' },
 ]
 
 const ACTIVITIES = [
-  { value: 1.2,   label: '🪑 Sédentaire',       desc: 'Bureau, peu de sport' },
-  { value: 1.375, label: '🚶 Légèrement actif',  desc: '1 à 3 séances par semaine' },
-  { value: 1.55,  label: '🏃 Modérément actif',  desc: '3 à 5 séances par semaine' },
-  { value: 1.725, label: '⚡ Très actif',         desc: '6 à 7 séances par semaine' },
-  { value: 1.9,   label: '🔥 Extrêmement actif', desc: 'Sport intensif quotidien' },
+  { value: 1.2,   label: 'Sédentaire',       desc: 'Bureau, peu de sport' },
+  { value: 1.375, label: 'Légèrement actif',  desc: '1 à 3 séances par semaine' },
+  { value: 1.55,  label: 'Modérément actif',  desc: '3 à 5 séances par semaine' },
+  { value: 1.725, label: 'Très actif',         desc: '6 à 7 séances par semaine' },
+  { value: 1.9,   label: 'Extrêmement actif', desc: 'Sport intensif quotidien' },
 ]
 
 // ─── Calculs (mêmes formules que /profile : Mifflin-St Jeor) ──────────────────
@@ -219,7 +223,7 @@ export default function OnboardingPage() {
             <div className="flex flex-col gap-3">
               {FEATURES.map(f => (
                 <div key={f.label} className="flex items-center gap-3 bg-white rounded-2xl px-4 py-3 shadow-sm">
-                  <span className="text-xl">{f.icon}</span>
+                  <f.Icon size={19} className="text-tta-mid" />
                   <p className="text-sm font-semibold text-zinc-800">{f.label}</p>
                   <Check size={16} className="ml-auto text-nutri-mid" />
                 </div>
@@ -241,7 +245,7 @@ export default function OnboardingPage() {
                   <button key={s} onClick={() => setSex(s)}
                     className={`bg-white rounded-2xl px-4 py-4 shadow-sm border-2 transition-all text-sm font-bold text-zinc-900 ${
                       sex === s ? 'border-tta-mid bg-tta-light' : 'border-transparent hover:border-zinc-200'}`}>
-                    {s === 'homme' ? '👨 Homme' : '👩 Femme'}
+                    {s === 'homme' ? 'Homme' : 'Femme'}
                   </button>
                 ))}
               </div>
@@ -299,7 +303,7 @@ export default function OnboardingPage() {
           {/* ── ready ── */}
           {step.id === 'ready' && (
             <div className="flex flex-col items-center gap-5">
-              <div className="text-7xl animate-bounce">🎯</div>
+              <Target size={60} className="mx-auto text-tta-mid animate-bounce" strokeWidth={1.5} />
 
               {summary ? (
                 <div className="bg-white rounded-2xl p-5 shadow-sm w-full flex flex-col gap-3">
@@ -308,13 +312,13 @@ export default function OnboardingPage() {
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     {[
-                      { label: 'Calories',  val: `${summary.tdee}`,        unit: 'kcal', color: '#f97316', icon: '🔥' },
-                      { label: 'Protéines', val: `${summary.macros.prot}`, unit: 'g',    color: '#3b82f6', icon: '💪' },
-                      { label: 'Glucides',  val: `${summary.macros.carb}`, unit: 'g',    color: '#22c55e', icon: '🌾' },
-                      { label: 'Lipides',   val: `${summary.macros.fat}`,  unit: 'g',    color: '#eab308', icon: '🥑' },
+                      { label: 'Calories',  val: `${summary.tdee}`,        unit: 'kcal', color: '#f97316', Icon: Flame },
+                      { label: 'Protéines', val: `${summary.macros.prot}`, unit: 'g',    color: '#3b82f6', Icon: Beef },
+                      { label: 'Glucides',  val: `${summary.macros.carb}`, unit: 'g',    color: '#22c55e', Icon: Wheat },
+                      { label: 'Lipides',   val: `${summary.macros.fat}`,  unit: 'g',    color: '#eab308', Icon: Droplet },
                     ].map(m => (
                       <div key={m.label} className="bg-zinc-50 rounded-2xl p-3 text-center">
-                        <p className="text-lg">{m.icon}</p>
+                        <m.Icon size={17} style={{ color: m.color }} className="mx-auto mb-1" />
                         <p className="text-lg font-black" style={{ color: m.color }}>
                           {m.val}<span className="text-xs font-semibold text-zinc-400"> {m.unit}</span>
                         </p>

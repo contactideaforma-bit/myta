@@ -2,7 +2,11 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, Loader2, Crown, Shield, Star, Zap, Users, Baby, Info } from 'lucide-react'
+import {
+  Check, Loader2, Crown, Shield, Star, Zap, Users, Baby, Info,
+  Minus, Infinity as InfinityIcon, Gift, Frown, Utensils, Dumbbell, ChefHat, BarChart3,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { isIosApp } from '@/lib/app-platform'
 import { hasActiveAccess } from '@/lib/access'
@@ -244,20 +248,20 @@ function AiExplainer() {
             est plus coûteuse.
           </p>
           <p className="text-xs text-blue-700 leading-relaxed">
-            💡 Ces limites nous permettent de maintenir un prix accessible (2,99€/mois)
+            Ces limites nous permettent de maintenir un prix accessible (2,99€/mois)
             tout en gardant MYTA viable. Merci de votre compréhension !
           </p>
           <div className="bg-white rounded-xl px-3 py-2.5 border border-blue-100">
             <p className="text-[11px] font-bold text-blue-900 mb-1">Compteurs remis à zéro chaque jour à minuit</p>
             <div className="flex flex-col gap-0.5">
-              {[
-                ['🍽️ Analyse repas', '3 / jour', 'Essentiel'],
-                ['🏋️ Analyse séance', '2 / jour', 'Essentiel'],
-                ['🍳 Recettes IA', 'Illimité', 'Premium'],
-                ['📊 Rapport hebdo', 'Illimité', 'Premium'],
-              ].map(([feat, qty, plan]) => (
-                <div key={feat as string} className="flex items-center justify-between text-[11px]">
-                  <span className="text-zinc-600">{feat}</span>
+              {([
+                { Icon: Utensils,  feat: 'Analyse repas',  qty: '3 / jour', plan: 'Essentiel' },
+                { Icon: Dumbbell,  feat: 'Analyse séance', qty: '2 / jour', plan: 'Essentiel' },
+                { Icon: ChefHat,   feat: 'Recettes IA',    qty: 'Illimité', plan: 'Premium'   },
+                { Icon: BarChart3, feat: 'Rapport hebdo',  qty: 'Illimité', plan: 'Premium'   },
+              ] as { Icon: LucideIcon; feat: string; qty: string; plan: string }[]).map(({ Icon, feat, qty, plan }) => (
+                <div key={feat} className="flex items-center justify-between text-[11px]">
+                  <span className="text-zinc-600 inline-flex items-center gap-1.5"><Icon size={12} /> {feat}</span>
                   <span className="flex gap-2 items-center">
                     <span className="text-zinc-500">{qty}</span>
                     <span className={`font-bold px-1.5 py-0.5 rounded-full text-[10px] ${
@@ -426,7 +430,7 @@ function PricingContent() {
           {!rcLoading && rcProducts.length === 0 && (
             <div className="bg-white rounded-3xl p-6 shadow-lg border border-zinc-100 w-full flex flex-col gap-3">
               {/* Tap sur l'emoji = afficher le diagnostic technique (debug) */}
-              <p className="text-3xl select-none" onClick={() => setShowDiag(s => !s)}>😕</p>
+              <Frown size={30} className="text-zinc-400 select-none" onClick={() => setShowDiag(s => !s)} />
               <p className="text-sm text-zinc-500">
                 Les offres ne sont pas disponibles pour le moment.
               </p>
@@ -480,7 +484,7 @@ function PricingContent() {
                       </p>
                       {p.hasFreeTrial && (
                         <p className={`text-xs font-bold mt-2 ${isPrem ? 'text-white' : 'text-teal-700'}`}>
-                          🎁 3 jours gratuits
+                          <span className="inline-flex items-center gap-1.5"><Gift size={14} /> 3 jours gratuits</span>
                         </p>
                       )}
                       {rcBusy === p.packageId && (
@@ -654,21 +658,31 @@ function PricingContent() {
               </tr>
             </thead>
             <tbody>
-              {[
-                ['Journal alimentaire',  '✅',      '✅'],
-                ['Suivi sport',          '✅',      '✅'],
-                ['Suivi sommeil',        '✅',      '✅'],
-                ['Analyse repas IA',     '3/jour',  '♾️ illimitée'],
-                ['Analyse séance IA',    '2/jour',  '♾️ illimitée'],
-                ['Recettes IA',          '❌',      '♾️ illimitées'],
-                ['Rapport hebdo IA',     '❌',      '♾️ illimité'],
-              ].map(([feat, ess, prem]) => (
-                <tr key={feat} className="border-b border-zinc-50 last:border-0">
-                  <td className="px-4 py-2.5 text-zinc-600">{feat}</td>
-                  <td className="px-3 py-2.5 text-center text-zinc-500">{ess}</td>
-                  <td className="px-3 py-2.5 text-center font-medium text-[#4B47A0]">{prem}</td>
-                </tr>
-              ))}
+              {(() => {
+                // « oui », « non » et « illimité » sont des ÉTATS : ils méritent
+                // un signe constant, pas un emoji qui change selon l'appareil.
+                const yes = <Check size={15} className="mx-auto text-emerald-500" strokeWidth={3} />
+                const no  = <Minus size={15} className="mx-auto text-zinc-300" strokeWidth={3} />
+                const unlimited = (label: string) => (
+                  <span className="inline-flex items-center gap-1"><InfinityIcon size={14} /> {label}</span>
+                )
+                const rows: { feat: string; ess: React.ReactNode; prem: React.ReactNode }[] = [
+                  { feat: 'Journal alimentaire', ess: yes,        prem: yes },
+                  { feat: 'Suivi sport',         ess: yes,        prem: yes },
+                  { feat: 'Suivi sommeil',       ess: yes,        prem: yes },
+                  { feat: 'Analyse repas IA',    ess: '3 / jour', prem: unlimited('illimitée') },
+                  { feat: 'Analyse séance IA',   ess: '2 / jour', prem: unlimited('illimitée') },
+                  { feat: 'Recettes IA',         ess: no,         prem: unlimited('illimitées') },
+                  { feat: 'Rapport hebdo IA',    ess: no,         prem: unlimited('illimité') },
+                ]
+                return rows.map(({ feat, ess, prem }) => (
+                  <tr key={feat} className="border-b border-zinc-50 last:border-0">
+                    <td className="px-4 py-2.5 text-zinc-600">{feat}</td>
+                    <td className="px-3 py-2.5 text-center text-zinc-500">{ess}</td>
+                    <td className="px-3 py-2.5 text-center font-medium text-[#4B47A0]">{prem}</td>
+                  </tr>
+                ))
+              })()}
             </tbody>
           </table>
         </div>
@@ -677,11 +691,15 @@ function PricingContent() {
         <div className="bg-white rounded-2xl p-4 border border-zinc-100 shadow-sm flex flex-col gap-2">
           <p className="text-sm font-bold text-zinc-900 text-center">Tes garanties</p>
           {[
-            "✅ 3 jours d'essai gratuit — aucune CB débitée",
-            '✅ Annulation en 1 clic depuis Mon compte',
-            '✅ Données sécurisées hébergées en Europe',
-            '✅ Support par email sous 24h',
-          ].map(g => <p key={g} className="text-xs text-zinc-500">{g}</p>)}
+            "3 jours d'essai gratuit — aucune CB débitée",
+            'Annulation en 1 clic depuis Mon compte',
+            'Données sécurisées hébergées en Europe',
+            'Support par email sous 24h',
+          ].map(g => (
+            <p key={g} className="text-xs text-zinc-500 flex items-start gap-2">
+              <Check size={13} className="flex-shrink-0 mt-0.5 text-emerald-500" strokeWidth={3} />{g}
+            </p>
+          ))}
         </div>
 
         {/* Legal */}
