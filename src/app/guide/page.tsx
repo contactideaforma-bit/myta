@@ -91,19 +91,6 @@ const SECTIONS = [
     ],
   },
   {
-    id: 'famille',
-    emoji: '👨‍👩‍👧',
-    title: 'Couple & Famille',
-    color: '#db2777',
-    bg: '#FDF2F8',
-    description: 'Avec un forfait Couple ou Famille, lie jusqu\'à 2 adultes (et 3 enfants en Famille) sous un même abonnement.',
-    tips: [
-      'Invite ton partenaire depuis Mon compte → Gérer mes membres famille',
-      'Les enfants ont un journal simplifié, sans IA, que les parents peuvent suivre',
-      'Change de profil actif depuis le menu pour remplir le journal d\'un enfant',
-    ],
-  },
-  {
     id: 'waty',
     emoji: '🤖',
     title: 'Coach Waty & IA',

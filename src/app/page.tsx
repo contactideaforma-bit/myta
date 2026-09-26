@@ -32,8 +32,7 @@ const F = {
   noRapport: { ok: false, text: 'Rapport santé IA 7j' },
 } satisfies Record<string, PlanFeature>
 
-const PLANS = {
-  solo: [
+const PLANS = [
     {
       id: 'essentiel', label: 'Essentiel', price: 2.99, highlight: false,
       features: [F.journal, F.sommeil, F.repas3, F.sport2, F.defis, F.noRecette, F.noRapport],
@@ -44,58 +43,7 @@ const PLANS = {
       features: [F.journal, F.sommeil, F.repasMax, F.sportMax, F.recettes, F.rapport, F.defis],
       cta: 'Essayer Premium', href: '/pricing',
     },
-  ],
-  couple: [
-    {
-      id: 'essentiel_couple', label: 'Essentiel Couple', price: 5.99, highlight: false,
-      features: [
-        { ok: true, text: '2 profils adultes' },
-        { ok: true, text: '3 analyses repas IA / jour chacun' },
-        { ok: true, text: '2 analyses séance IA / jour chacun' },
-        { ok: true, text: 'Suivi sommeil pour chacun' },
-        { ok: true, text: 'Défis communs' },
-        F.noRecette, F.noRapport,
-      ],
-      cta: 'Commencer', href: '/pricing',
-    },
-    {
-      id: 'premium_couple', label: 'Premium Couple', price: 8.99, highlight: true, badge: 'Populaire',
-      features: [
-        { ok: true, text: '2 profils adultes' },
-        F.repasMax, F.sportMax, F.recettes, F.rapport,
-        { ok: true, text: 'Suivi sommeil pour chacun' },
-        { ok: true, text: 'Défis communs' },
-      ],
-      cta: 'Essayer Premium', href: '/pricing',
-    },
-  ],
-  famille: [
-    {
-      id: 'essentiel_famille', label: 'Essentiel Famille', price: 9.99, highlight: false,
-      features: [
-        { ok: true, text: "2 adultes + jusqu'à 3 enfants" },
-        { ok: true, text: '3 analyses repas IA / jour / adulte' },
-        { ok: true, text: '2 analyses séance IA / jour / adulte' },
-        { ok: true, text: 'Suivi sommeil pour tous' },
-        { ok: true, text: 'Défis famille' },
-        F.noRecette, F.noRapport,
-      ],
-      cta: 'Commencer', href: '/pricing',
-    },
-    {
-      id: 'premium_famille', label: 'Premium Famille', price: 13.99, highlight: true, badge: 'Meilleure valeur',
-      features: [
-        { ok: true, text: "2 adultes + jusqu'à 3 enfants" },
-        { ok: true, text: 'Analyses repas IA illimitées (adultes)' },
-        { ok: true, text: 'Analyses séance IA illimitées (adultes)' },
-        F.recettes, F.rapport,
-        { ok: true, text: 'Suivi sommeil pour tous' },
-        { ok: true, text: 'Défis famille' },
-      ],
-      cta: 'Essayer Premium', href: '/pricing',
-    },
-  ],
-}
+]
 
 // ─── Captures d'écran ──────────────────────────────────────────────────────────
 const SCREENSHOTS = [
@@ -140,12 +88,9 @@ const FEATURES = [
   },
 ]
 
-type TabKey = 'solo' | 'couple' | 'famille'
-
 const BRAND_GRADIENT = 'linear-gradient(90deg, #4B47A0 0%, #2BA8B0 100%)'
 
 export default function HomePage() {
-  const [tab, setTab] = useState<TabKey>('solo')
   const [screenIdx, setScreenIdx] = useState(0)
   // true = app iOS détectée → on masque la landing (redirection en cours)
   const [iosRedirecting, setIosRedirecting] = useState(false)
@@ -191,7 +136,7 @@ export default function HomePage() {
     return () => clearInterval(id)
   }, [])
 
-  const plans = PLANS[tab]
+  const plans = PLANS
 
   // App iOS : écran neutre pendant la redirection vers le paywall in-app
   // (évite tout flash de la landing web avec prix Stripe — Apple 3.1.1)
@@ -337,7 +282,7 @@ export default function HomePage() {
       <section className="max-w-5xl mx-auto px-4 py-8 grid grid-cols-3 gap-4 text-center">
         {[
           { v: 'Dès 2,99 €', l: 'par mois, sans engagement' },
-          { v: '6 formules', l: 'Solo · Couple · Famille' },
+          { v: '2 formules', l: 'Essentiel · Premium' },
           { v: 'IA Waty', l: 'photo, voix, recettes, rapport' },
         ].map((s) => (
           <div key={s.v} className="py-3">
@@ -491,22 +436,6 @@ export default function HomePage() {
             Journal, sport et sommeil inclus partout · 3 jours d&apos;essai gratuit
           </p>
 
-          {/* Tabs */}
-          <div className="flex bg-zinc-200/70 rounded-full p-1 max-w-xs mx-auto mb-10">
-            {(['solo', 'couple', 'famille'] as TabKey[]).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`flex-1 py-2.5 rounded-full text-sm font-bold transition-all ${
-                  tab === t ? 'text-white shadow-md' : 'text-zinc-500 hover:text-zinc-700'
-                }`}
-                style={tab === t ? { background: BRAND_GRADIENT } : {}}
-              >
-                {t === 'solo' ? 'Solo' : t === 'couple' ? 'Couple' : 'Famille'}
-              </button>
-            ))}
-          </div>
-
           {/* Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {plans.map((plan) => (
@@ -611,10 +540,6 @@ export default function HomePage() {
             {
               q: "L'IA a-t-elle des limites en formule Essentiel ?",
               a: "Oui : 3 analyses repas et 2 analyses séance sport par jour. Les recettes IA et le rapport hebdomadaire sont réservés au Premium. Les compteurs se remettent à zéro chaque nuit à minuit.",
-            },
-            {
-              q: 'Comment fonctionne le compte Famille ?',
-              a: "Le propriétaire du forfait invite son partenaire et ses enfants par email. Chaque membre a son propre espace, objectifs et données.",
             },
             {
               q: 'Mes données sont-elles sécurisées ?',

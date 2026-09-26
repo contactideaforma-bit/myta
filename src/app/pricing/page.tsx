@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Check, Loader2, Crown, Shield, Star, Zap, Users, Baby, Info,
+  Check, Loader2, Crown, Shield, Star, Zap, Info,
   Minus, Infinity as InfinityIcon, Gift, Frown, Utensils, Dumbbell, ChefHat, BarChart3,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -71,89 +71,6 @@ const SOLO_PLANS: PlanConfig[] = [
   },
 ]
 
-const COUPLE_PLANS: PlanConfig[] = [
-  {
-    id:       'essentiel_couple',
-    label:    'Essentiel Couple',
-    price:    5.99,
-    aiLabel:  'IA limitée × 2',
-    aiColor:  'text-amber-600 bg-amber-50',
-    features: [
-      '2 comptes adultes liés',
-      'Journal, sport, sommeil × 2',
-      'Défis entre vous',
-      '3 analyses repas IA/jour chacun',
-      '2 analyses séance IA/jour chacun',
-    ],
-    cta:      'Démarrer à 2',
-    gradient: 'from-pink-600 to-rose-700',
-  },
-  {
-    id:       'premium_couple',
-    label:    'Premium Couple',
-    price:    8.99,
-    badge:    'Populaire',
-    badgeColor: 'bg-gradient-to-r from-pink-500 to-rose-500',
-    aiLabel:  'IA illimitée × 2',
-    aiColor:  'text-teal-700 bg-teal-50',
-    features: [
-      '2 comptes adultes liés',
-      'Tout Premium × 2',
-      'IA illimitée pour chacun',
-      'Recettes & rapport hebdo IA',
-      'Partage des objectifs',
-    ],
-    cta:      'Premium à 2 — 3j gratuits',
-    gradient: 'from-pink-500 to-rose-500',
-    popular:  true,
-  },
-]
-
-const FAMILLE_PLANS: PlanConfig[] = [
-  {
-    id:       'essentiel_famille',
-    label:    'Essentiel Famille',
-    price:    9.99,
-    aiLabel:  'IA limitée (adultes)',
-    aiColor:  'text-amber-600 bg-amber-50',
-    features: [
-      '2 adultes + 3 enfants max',
-      'Journal simplifié pour enfants',
-      '3 analyses repas IA/jour / adulte',
-      '2 analyses séance IA/jour / adulte',
-      'Enfants : journal sans IA',
-    ],
-    cta:      'Démarrer en famille',
-    gradient: 'from-violet-600 to-purple-800',
-  },
-  {
-    id:       'premium_famille',
-    label:    'Premium Famille',
-    price:    13.99,
-    badge:    'Complet',
-    badgeColor: 'bg-gradient-to-r from-violet-500 to-purple-600',
-    aiLabel:  'IA illimitée pour les adultes',
-    aiColor:  'text-teal-700 bg-teal-50',
-    features: [
-      '2 adultes + 3 enfants max',
-      'Premium complet pour adultes',
-      'IA illimitée pour les adultes',
-      'Recettes & rapport hebdo IA',
-      'Journal enfants suivi par parents',
-    ],
-    cta:      'Premium famille — 3j gratuits',
-    gradient: 'from-violet-500 to-purple-600',
-    popular:  true,
-  },
-]
-
-const TABS = [
-  { key: 'solo',    label: 'Solo',    icon: <Zap size={13} />,   plans: SOLO_PLANS },
-  { key: 'couple',  label: 'Couple',  icon: <Users size={13} />, plans: COUPLE_PLANS },
-  { key: 'famille', label: 'Famille', icon: <Baby size={13} />,  plans: FAMILLE_PLANS },
-] as const
-
-type TabKey = (typeof TABS)[number]['key']
 
 // ─── Card plan ────────────────────────────────────────────────────────────────
 
@@ -283,7 +200,6 @@ function AiExplainer() {
 // ─── Page principale ──────────────────────────────────────────────────────────
 
 function PricingContent() {
-  const [activeTab, setActiveTab] = useState<TabKey>('solo')
   const [loading,   setLoading]   = useState<string | null>(null)
   // null = plateforme pas encore détectée → on n'affiche RIEN (évite le flash
   // de la page prix web/Stripe dans l'app iOS, interdit par Apple 3.1.1)
@@ -400,7 +316,6 @@ function PricingContent() {
     return () => { active = false }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const currentTab = TABS.find(t => t.key === activeTab)!
 
   // Plateforme pas encore détectée → loader (évite le flash de la page Stripe)
   if (iosApp === null) {
@@ -593,45 +508,9 @@ function PricingContent() {
           ))}
         </div>
 
-        {/* Tabs */}
-        <div className="flex bg-white rounded-2xl p-1 border border-zinc-100 shadow-sm gap-1">
-          {TABS.map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5
-                ${activeTab === tab.key ? 'text-white shadow-sm' : 'text-zinc-400'}`}
-              style={activeTab === tab.key
-                ? { background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }
-                : {}}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Note couple/famille */}
-        {activeTab === 'couple' && (
-          <div className="bg-pink-50 border border-pink-100 rounded-2xl px-4 py-3 flex gap-2 items-start">
-            <Users size={14} className="text-pink-500 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-pink-700">
-              <strong>2 adultes</strong> — après abonnement, invite ton partenaire depuis <em>Mon compte → Famille</em>
-            </p>
-          </div>
-        )}
-        {activeTab === 'famille' && (
-          <div className="bg-violet-50 border border-violet-100 rounded-2xl px-4 py-3 flex gap-2 items-start">
-            <Baby size={14} className="text-violet-500 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-violet-700">
-              <strong>2 adultes + 3 enfants max</strong> — les enfants ont accès au journal uniquement (sans IA). Gère les membres depuis <em>Mon compte → Famille</em>
-            </p>
-          </div>
-        )}
-
         {/* Cards */}
         <div className="flex flex-col gap-4">
-          {currentTab.plans.map(plan => (
+          {SOLO_PLANS.map(plan => (
             <PlanCard
               key={plan.id}
               plan={plan}
