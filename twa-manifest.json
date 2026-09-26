@@ -20,8 +20,8 @@
     "path": "/Users/moi/MYTA/android.keystore",
     "alias": "android"
   },
-  "appVersionName": "8",
-  "appVersionCode": 8,
+  "appVersionName": "9",
+  "appVersionCode": 9,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://mytwinapp.fr/manifest.json",
@@ -34,7 +34,7 @@
   "isChromeOSOnly": false,
   "isMetaQuest": false,
   "fullScopeUrl": "https://mytwinapp.fr/",
-  "minSdkVersion": 21,
+  "minSdkVersion": 24,
   "orientation": "portrait",
   "fingerprints": [],
   "additionalTrustedOrigins": [],
@@ -43,5 +43,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "8"
+  "appVersion": "9"
 }
