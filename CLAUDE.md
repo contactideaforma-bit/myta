@@ -11,6 +11,26 @@ Utilisateur : IDEA (contact.ideaforma@gmail.com)
 - Build local : `npm run build && npm start`, déploiement : `git push` → Vercel auto-deploy
 - Pas de confirmation inutile, on avance
 
+## Organisation des dossiers (réorganisé le 27/09/2026)
+Racine `~/MYTA` = projet Next.js (src/, public/, configs). **Aucun sous-dossier `MYTA/`** (anomalie supprimée).
+- `android/` — projet Android TWA (Bubblewrap) : app/, gradle, `twa-manifest.json` (seul fichier suivi par git), `android.keystore`, bundles dans `android/releases/`.
+- `ios/` + `capacitor-www/` + `capacitor.config.ts` — projet iOS Capacitor (restent à la racine, convention Capacitor).
+- `supabase/` — scripts SQL à exécuter dans le SQL Editor ; `supabase/email-templates/` — modèles d'emails Auth.
+- `docs/` — notes (rejet Apple, audit stores, IAP iOS, spec recettes).
+- `store-assets/` — visuels App Store / Play (captures, icônes, feature graphic, tablette).
+- `marketing/` — contenus réseaux sociaux (ex. `video-notebooklm/`).
+- `livraisons-claude/` — zips de correctifs à appliquer (ignoré par git, à vider une fois appliqués).
+
+**Build Android — désormais depuis `android/`** :
+```bash
+cd ~/MYTA/android
+export JAVA_HOME=/Users/moi/.bubblewrap/jdk/jdk-17.0.11+9/Contents/Home
+export ANDROID_HOME=/Users/moi/.bubblewrap/android_sdk
+./gradlew bundleRelease
+$JAVA_HOME/bin/jarsigner -sigalg SHA256withRSA -digestalg SHA-256 -keystore android.keystore -signedjar releases/app-release-bundle.aab app/build/outputs/bundle/release/app-release.aab android
+```
+État au 27/09 : version 9 (minSdk 24, targetSdk 36) envoyée en examen sur Play le 26/09.
+
 ## Architecture clé
 - `/src/app/` — pages Next.js App Router
 - `/src/app/api/` — routes API (auth via Bearer token + cookies @supabase/ssr)

@@ -4,23 +4,21 @@ node_modules/
 .DS_Store
 *.tsbuildinfo
 
-# Projet Android TWA (Bubblewrap) — local uniquement, jamais sur Vercel
-# (un dossier app/ à la racine remplacerait src/app dans Next.js !)
+# Projet Android TWA (Bubblewrap) — dossier android/, local uniquement
+# Seul android/twa-manifest.json est suivi par git.
+/android/*
+!/android/twa-manifest.json
+# Garde-fou : un dossier app/ à la racine remplacerait src/app dans Next.js !
 /app/
 /build/
-.gradle/
-/gradle/
-/gradlew
-gradlew.bat
-/build.gradle
-/settings.gradle
-/gradle.properties
 android.keystore
 *.aab
 *.apk
 *.apk.idsig
-manifest-checksum.txt
 .fuse_hidden*
+
+# Livraisons (zips) préparées par Claude — appliquées puis supprimées
+/livraisons-claude/
 
 # Projet iOS Capacitor — local uniquement (comme le projet Android)
 /ios/
