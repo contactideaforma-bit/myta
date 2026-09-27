@@ -470,6 +470,18 @@ export default function FriendsPage() {
     } catch {}
     loadGroups(oldLastVisit)
     loadLeaderboard()
+
+    // Progression de Waty à jour sans recharger la page : au retour dans
+    // l'app (appli remise au premier plan) et toutes les 60 s quand visible.
+    const refresh = () => { if (document.visibilityState === 'visible') loadGroups() }
+    document.addEventListener('visibilitychange', refresh)
+    window.addEventListener('focus', refresh)
+    const timer = setInterval(refresh, 60_000)
+    return () => {
+      document.removeEventListener('visibilitychange', refresh)
+      window.removeEventListener('focus', refresh)
+      clearInterval(timer)
+    }
   }, [])
 
   async function getToken(): Promise<string> {

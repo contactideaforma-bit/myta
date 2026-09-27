@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createServerClient } from '@supabase/ssr'
-import { format, startOfWeek } from 'date-fns'
+import { format, startOfWeek, addDays, differenceInCalendarDays, parseISO } from 'date-fns'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,25 +34,28 @@ async function calcDayScore(userId: string, localDate: string): Promise<number> 
   // Pas d'objectif défini → journal rempli = journée gagnée
   if (calorieTarget <= 0) return 100
 
-  const totalCal = (journal ?? []).reduce((s: number, e: any) => s + (e.cal ?? 0), 0)
+  const totalCal = (journal ?? []).reduce((s: number, e: any) => s + (Number(e.cal) || 0), 0)
   // Progression vers 70 % de l'objectif personnalisé (plafonnée à 100)
   return Math.min(100, Math.round((totalCal / (calorieTarget * 0.7)) * 100))
 }
 
-async function calcWeekScore(userId: string, joinedAt: string): Promise<number> {
-  const now       = new Date()
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 })
-  const joinDate  = new Date(joinedAt)
-
-  // La progression démarre au join ou au début de semaine, selon ce qui est le plus récent
-  const periodStart = joinDate > weekStart ? joinDate : weekStart
-  const fromStr     = format(periodStart, 'yyyy-MM-dd')
-  const toStr       = format(now, 'yyyy-MM-dd')
-
-  // Nombre de jours écoulés depuis le début du challenge (min 1)
-  const daysElapsed = Math.max(1,
-    Math.round((now.getTime() - periodStart.getTime()) / 86400000) + 1
-  )
+/**
+ * Score hebdo (0-100) d'un membre, calculé sur la semaine de `refDate`
+ * (date LOCALE du client, lundi → refDate inclus), à partir de son arrivée
+ * dans le groupe si elle est plus récente.
+ *  - Nutrition (60 %) : jours avec au moins un repas noté / jours écoulés.
+ *    Le jour en cours ne compte que s'il est déjà noté (plus de pénalité le matin).
+ *  - Sport (40 %) : séances vs cible proratée de 3 séances / 7 jours.
+ * Toutes les dates sont des chaînes "yyyy-MM-dd" locales : plus de décalage UTC
+ * entre minuit et 2 h (l'ancien calcul utilisait l'heure du serveur).
+ */
+async function calcWeekScore(userId: string, joinedAt: string, refDate: string, weekComplete = false): Promise<number | null> {
+  const ref       = parseISO(refDate)
+  const weekStart = format(startOfWeek(ref, { weekStartsOn: 1 }), 'yyyy-MM-dd')
+  const joinDay   = (joinedAt ?? '').slice(0, 10) || weekStart
+  const fromStr   = joinDay > weekStart ? joinDay : weekStart
+  const toStr     = refDate
+  if (fromStr > toStr) return null   // arrivé après la période évaluée
 
   const [{ data: journal }, { data: sessions }] = await Promise.all([
     supabaseAdmin.from('journal_entries').select('date').eq('user_id', userId)
@@ -61,16 +64,53 @@ async function calcWeekScore(userId: string, joinedAt: string): Promise<number> 
       .gte('session_date', fromStr).lte('session_date', toStr),
   ])
 
-  // Nutrition : % de jours où l'utilisateur a loggé au moins un repas
-  const uniqueNutriDays = new Set((journal ?? []).map((e: any) => e.date)).size
-  const nutritionScore  = Math.min(100, Math.round((uniqueNutriDays / daysElapsed) * 100))
+  const days          = new Set((journal ?? []).map((e: any) => e.date))
+  const calendarDays  = differenceInCalendarDays(parseISO(toStr), parseISO(fromStr)) + 1
+  const loggedLastDay = days.has(toStr)
+  // Jour en cours : compté seulement s'il est déjà noté (sauf semaine terminée)
+  const daysElapsed   = Math.max(1, weekComplete || loggedLastDay ? calendarDays : calendarDays - 1)
+  const nutritionScore = Math.min(100, Math.round((days.size / daysElapsed) * 100))
 
-  // Sport : sessions vs cible proratée (3 séances / 7 jours)
   const sessionCnt  = (sessions ?? []).length
-  const sportTarget = Math.max(1, (daysElapsed / 7) * 3)
+  const sportTarget = Math.max(1, (calendarDays / 7) * 3)
   const sportScore  = Math.min(100, Math.round((sessionCnt / sportTarget) * 100))
 
   return Math.round(nutritionScore * 0.6 + sportScore * 0.4)
+}
+
+/**
+ * Coupe d'équipe : attribuée une fois la semaine TERMINÉE (plus au premier
+ * jour de la semaine, où un seul jour noté suffisait à dépasser 70 %).
+ * Évaluée au premier chargement de la nouvelle semaine ; `last_cup_week`
+ * mémorise la dernière semaine évaluée. Mise à jour conditionnelle
+ * (verrou optimiste sur cups_won) : pas de double coupe si deux membres
+ * ouvrent la page en même temps.
+ */
+async function awardLastWeekCup(group: any, members: any[], localDate: string): Promise<number> {
+  const cups = group.cups_won ?? 0
+  if (group.mode !== 'equipe') return cups
+
+  const thisMonday = startOfWeek(parseISO(localDate), { weekStartsOn: 1 })
+  const prevWeek   = format(addDays(thisMonday, -7), 'yyyy-MM-dd')
+  const prevSunday = format(addDays(thisMonday, -1), 'yyyy-MM-dd')
+
+  // Déjà évaluée (ou coupe déjà donnée cette semaine par l'ancien calcul)
+  if (group.last_cup_week && group.last_cup_week >= prevWeek) return cups
+
+  const scores = (await Promise.all(
+    members.map(m => calcWeekScore(m.user_id, m.joined_at, prevSunday, true)),
+  )).filter((x): x is number => x !== null)
+
+  const won = scores.length > 0 && Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) >= 70
+
+  const { data: updated } = await supabaseAdmin
+    .from('friend_groups')
+    .update({ cups_won: won ? cups + 1 : cups, last_cup_week: prevWeek })
+    .eq('id', group.id)
+    .eq('cups_won', cups)
+    .select('cups_won')
+
+  return (updated?.[0] as any)?.cups_won ?? cups
 }
 
 async function getAuthUser(req: NextRequest): Promise<string | null> {
@@ -139,7 +179,8 @@ export async function GET(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
 
   // Utiliser la date locale du client si fournie (évite le décalage UTC)
-  const localDate = searchParams.get('localDate') ?? new Date().toISOString().split('T')[0]
+  const rawDate   = searchParams.get('localDate') ?? ''
+  const localDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : new Date().toISOString().split('T')[0]
 
   const { data: memberships } = await supabaseAdmin
     .from('group_members').select('group_id, privacy_level').eq('user_id', userId)
@@ -159,7 +200,7 @@ export async function GET(req: NextRequest) {
         .from('profiles').select('full_name').eq('id', m.user_id).single()
 
       const [score, dayScore] = await Promise.all([
-        calcWeekScore(m.user_id, m.joined_at),
+        calcWeekScore(m.user_id, m.joined_at, localDate),
         calcDayScore(m.user_id, localDate),
       ])
       const isMe  = m.user_id === userId
@@ -179,7 +220,7 @@ export async function GET(req: NextRequest) {
         displayName:  (prof as any)?.full_name
           ? (prof as any).full_name.split(' ')[0] + ' ' + ((prof as any).full_name.split(' ')[1]?.[0] ?? '') + '.'
           : 'Anonyme',
-        score,
+        score:        score ?? 0,
         dayScore,
         streak,
         privacyLevel: m.privacy_level,
@@ -194,15 +235,8 @@ export async function GET(req: NextRequest) {
       ? Math.round(membersWithScore.reduce((s, m) => s + (m as any).dayScore, 0) / membersWithScore.length)
       : 0
 
-    // ── Coupes : incrémenter si score hebdo >= 70% sur une nouvelle semaine ──
-    const currentWeek = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd')
-    if (group.mode === 'equipe' && teamScore >= 70 && group.last_cup_week !== currentWeek) {
-      await supabaseAdmin.from('friend_groups').update({
-        cups_won:      (group.cups_won ?? 0) + 1,
-        last_cup_week: currentWeek,
-      }).eq('id', group.id)
-      group.cups_won = (group.cups_won ?? 0) + 1
-    }
+    // ── Coupe : évaluée sur la semaine précédente, une fois terminée ──
+    group.cups_won = await awardLastWeekCup(group, members ?? [], localDate)
 
     return { ...group, members: membersWithScore.sort((a, b) => b.score - a.score), teamScore, teamDayScore, cupsWon: group.cups_won ?? 0 }
   }))
