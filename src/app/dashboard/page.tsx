@@ -19,7 +19,7 @@ import { useOnboarding, ONBOARDING_ROUTE, type OnboardingStep } from '@/lib/onbo
 import { BadgeDisplay } from '@/components/ui/BadgeDisplay'
 import { ChallengeCard } from '@/components/ui/ChallengeCard'
 import {
-  calcStreak, getBadgeFromStreak,
+  getBadgeFromStreak,
   getChallengesForToday, getWatyProactifMessage,
 } from '@/lib/gamification'
 import { getDailyTip } from '@/lib/daily-tips'
@@ -277,15 +277,17 @@ export default function DashboardPage() {
       { data: journalToday },
       { data: journalPeriod },
       { data: sessions },
-      { data: journalDates },
+      { data: loggedDays },
       { data: completions },
     ] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
       supabase.from('journal_entries').select('cal').eq('user_id', user.id).eq('date', today),
       supabase.from('journal_entries').select('cal,prot').eq('user_id', user.id).gte('date', dateFrom).lte('date', dateTo),
       supabase.from('sessions').select('*').eq('user_id', user.id).gte('session_date', dateFrom).lte('session_date', dateTo),
-      // Toutes les dates loggées — la série est cumulative (badges jusqu'à 150 j)
-      supabase.from('journal_entries').select('date').eq('user_id', user.id),
+      // Série cumulative = nombre de jours DISTINCTS loggés, compté côté base.
+      // (L'ancienne requête ramenait toutes les lignes : plafonnée à 1 000
+      //  lignes par Supabase → série figée et différente selon l'appareil.)
+      supabase.rpc('logged_days_count', { p_user: user.id }),
       supabase.from('challenge_completions').select('challenge_key').eq('user_id', user.id).eq('completed_date', today),
     ])
 
@@ -294,8 +296,7 @@ export default function DashboardPage() {
     const totalProt   = (journalPeriod ?? []).reduce((s, e) => s + Number(e.prot ?? 0), 0)
     const sessList    = sessions ?? []
     const calBurned   = sessList.reduce((s, e) => s + Number(e.calories_burned ?? 0), 0)
-    const dates       = (journalDates ?? []).map(r => r.date)
-    const streak      = calcStreak(dates)
+    const streak      = typeof loggedDays === 'number' ? loggedDays : 0
     const completed   = (completions ?? []).map(c => c.challenge_key)
 
     setStats({

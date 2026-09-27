@@ -167,9 +167,10 @@ export async function GET(req: NextRequest) {
       let streak = null
       if (m.privacy_level === 'standard' || isMe) {
         // Série cumulative : nombre total de jours loggés (jamais de reset)
-        const { data: jDates } = await supabaseAdmin
-          .from('journal_entries').select('date').eq('user_id', m.user_id)
-        streak = new Set((jDates ?? []).map((r: any) => r.date)).size
+        // Compté côté base (jours distincts) : pas de plafond de 1 000 lignes
+        const { data: days } = await supabaseAdmin
+          .rpc('logged_days_count', { p_user: m.user_id })
+        streak = typeof days === 'number' ? days : 0
       }
 
       return {
