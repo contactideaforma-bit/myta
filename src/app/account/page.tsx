@@ -15,6 +15,7 @@ import { isIosApp } from '@/lib/app-platform'
 import { restoreRcPurchases } from '@/lib/revenuecat'
 import OnboardingCoach from '@/components/ui/OnboardingCoach'
 import { useOnboarding } from '@/lib/onboarding'
+import { NotificationSettings } from '@/components/ui/NotificationSettings'
 
 /** Ouvre la gestion des abonnements Apple (résiliation côté App Store). */
 const APPLE_MANAGE_SUBS_URL = 'itms-apps://apps.apple.com/account/subscriptions'
@@ -563,6 +564,9 @@ export default function AccountPage() {
           )}
         </div>
       </Section>
+
+      {/* ── Rappels & notifications push ── */}
+      <NotificationSettings />
 
       {/* ── Famille (couple/famille uniquement) ── */}
       {hasFamilySwitch(userPlan) && (
