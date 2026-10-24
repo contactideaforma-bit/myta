@@ -193,6 +193,44 @@ const TIPS_POOL: DailyTip[] = [
     title: 'Manger en pleine conscience',
     body: "Évite les écrans pendant les repas. Les distractions font consommer 10 à 25% de calories de plus. Le repas devient aussi un moment de récupération.",
   },
+
+  // ── Périménopause / ménopause ─────────────────────────────
+  {
+    key: 'meno-proteines', emoji: '🥚', tags: ['perimenopause', 'menopause'],
+    title: 'Des protéines à chaque repas',
+    body: "À partir de la périménopause, le muscle fond plus vite. Vise 25 à 30 g de protéines par repas (2 œufs + yaourt grec, 120 g de poisson, 150 g de tofu) pour le préserver.",
+  },
+  {
+    key: 'meno-calcium', emoji: '🦴', tags: ['perimenopause', 'menopause'],
+    title: 'Calcium : 3 sources par jour',
+    body: "Laitage, sardines, amandes, brocoli, eau riche en calcium : trois sources réparties dans la journée couvrent l'essentiel des 1 000 à 1 200 mg dont tes os ont besoin.",
+  },
+  {
+    key: 'meno-renfo', emoji: '🏋️', tags: ['perimenopause', 'menopause'],
+    title: 'Le renforcement musculaire protège tes os',
+    body: "Deux séances de renforcement par semaine suffisent à freiner la perte osseuse et musculaire liée à la baisse des œstrogènes. Pas besoin de charges lourdes : la régularité compte plus.",
+    source: 'Menopause (NAMS), 2023',
+  },
+  {
+    key: 'meno-lin', emoji: '🌱', tags: ['perimenopause', 'menopause'],
+    title: 'Graines de lin moulues',
+    body: "Une cuillère à soupe de graines de lin moulues par jour apporte oméga-3, fibres et phytoestrogènes doux. À saupoudrer sur un yaourt, un porridge ou une salade.",
+  },
+  {
+    key: 'meno-bouffees', emoji: '🌡️', tags: ['perimenopause', 'menopause'],
+    title: 'Bouffées de chaleur : les déclencheurs',
+    body: "Alcool, caféine, plats très épicés et boissons très chaudes le soir sont les déclencheurs les plus fréquents. Les repérer dans ton journal aide à les espacer sans frustration.",
+  },
+  {
+    key: 'meno-sommeil', emoji: '🌙', tags: ['perimenopause', 'menopause'],
+    title: 'Sommeil et magnésium',
+    body: "Le sommeil se fragmente souvent à cette période. Un dîner léger, riche en magnésium (légumes verts, oléagineux, chocolat noir) et pris tôt, aide à mieux dormir.",
+  },
+  {
+    key: 'meno-deficit', emoji: '⚖️', tags: ['perimenopause', 'menopause'],
+    title: 'Pas de régime strict',
+    body: "Un déficit sévère accélère la fonte musculaire, déjà favorisée par la baisse des œstrogènes. Si tu veux perdre du poids, un déficit modéré et des protéines élevées font mieux le travail.",
+  },
 ]
 
 // ── Sélection du tip du jour ──────────────────────────────────
@@ -200,14 +238,17 @@ export function getDailyTip(params: {
   goal?:             string | null
   healthConditions?: string[] | null
   smokingGoal?:      boolean
+  /** Condition particulière du profil (enceinte, post-partum, perimenopause, menopause…) */
+  condition?:        string | null
 }): DailyTip {
-  const { goal, healthConditions = [], smokingGoal } = params
+  const { goal, healthConditions = [], smokingGoal, condition } = params
   const today = new Date().toISOString().split('T')[0]
   const seed  = parseInt(today.replace(/-/g, '')) % 1000
 
   const tags: string[] = ['general']
   if (goal)          tags.push(goal)
   if (smokingGoal)   tags.push('tabac')
+  if (condition)     tags.push(condition)
   if (healthConditions?.length) tags.push(...(healthConditions as string[]))
 
   const relevant = TIPS_POOL.filter(t => t.tags.some(tag => tags.includes(tag)))

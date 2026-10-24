@@ -339,6 +339,7 @@ export default function DashboardPage() {
     goal:             s.profile?.goal ?? null,
     healthConditions: (s.profile as any)?.health_conditions ?? [],
     smokingGoal:      (s.profile as any)?.smoking_goal ?? false,
+    condition:        (s.profile as any)?.condition ?? null,
   })
 
   const watyMsg = getWatyProactifMessage({

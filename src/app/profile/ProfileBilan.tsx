@@ -16,6 +16,7 @@ import { Waty } from '@/components/ui/Waty'
 import OnboardingCoach from '@/components/ui/OnboardingCoach'
 import { useOnboarding } from '@/lib/onboarding'
 import { calcMicros, MICROS_AJR, MICROS_NAMES } from '@/lib/nutrition-analysis'
+import { HORMONAL_PHASES, getHormonalPhase } from '@/lib/hormonal'
 import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, AreaChart, Area,
@@ -93,10 +94,12 @@ const HEALTH_CONDITIONS = [
 ]
 
 const CONDITIONS_FEMME = [
-  { value: '',                   label: '— Aucune' },
-  { value: 'enceinte',           label: 'Enceinte' },
-  { value: 'post-partum',        label: 'Post-partum' },
-  { value: 'post-partum-allait', label: 'Post-partum + allaitement' },
+  { value: '',                   label: '— Aucune',                   short: '' },
+  { value: 'enceinte',           label: 'Enceinte',                   short: '+300 kcal/j, protéines augmentées' },
+  { value: 'post-partum',        label: 'Post-partum',                short: '+500 kcal/j, récupération post-partum' },
+  { value: 'post-partum-allait', label: 'Post-partum + allaitement',  short: '+600 kcal/j, allaitement — pas de régime restrictif' },
+  { value: 'perimenopause',      label: HORMONAL_PHASES.perimenopause.label, short: HORMONAL_PHASES.perimenopause.short },
+  { value: 'menopause',          label: HORMONAL_PHASES.menopause.label,     short: HORMONAL_PHASES.menopause.short },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -107,18 +110,36 @@ function calcTDEE(w: number, h: number, age: number, sex: string, activity: numb
   if (condition === 'enceinte')           bmr += 300
   if (condition === 'post-partum')        bmr += 500
   if (condition === 'post-partum-allait') bmr += 600
+  // Périménopause / ménopause : métabolisme de base ajusté (facteur défini dans lib/hormonal)
+  const phase = getHormonalPhase(condition)
+  if (phase && phase.bmrFactor !== 1) bmr = Math.round(bmr * phase.bmrFactor)
   // Hypothyroïdie : métabolisme ralenti de ~10%
   if (healthConditions?.includes('hypothyroidie')) bmr = Math.round(bmr * 0.90)
   return Math.round(bmr * activity)
 }
 
-// Adapter les macros selon les conditions de santé
+// Adapter les macros selon les conditions de santé (et la phase hormonale)
 function adaptMacrosForHealth(
   cal: number, prot: number, carb: number, fat: number,
-  healthConditions?: string[] | null
+  healthConditions?: string[] | null,
+  condition?: string | null,
+  weightKg?: number | null,
 ): { cal: number; prot: number; carb: number; fat: number; notes: string[] } {
   let c = cal, p = prot, g = carb, l = fat
   const notes: string[] = []
+
+  // Périménopause / ménopause : protéines renforcées (g/kg), glucides recalculés
+  // pour conserver le total calorique. Appliqué AVANT les conditions de santé,
+  // qui gardent le dernier mot sur les glucides (diabète) et les protéines (inflammatoire).
+  const phase = getHormonalPhase(condition)
+  if (phase) {
+    const target = weightKg ? Math.round(weightKg * phase.protPerKg) : Math.round(p * 1.1)
+    if (target > p) {
+      p = target
+      g = Math.max(0, Math.round((c - p * 4 - l * 9) / 4))
+    }
+    notes.push(...phase.macroNotes)
+  }
 
   if (healthConditions?.includes('diabete_type1') || healthConditions?.includes('diabete_type2')) {
     // Glucides max 40% des calories, index glycémique bas
@@ -250,7 +271,75 @@ function ConditionBanner({ condition }: { condition: string }) {
       </div>
     </div>
   )
+  const phase = getHormonalPhase(condition)
+  if (phase) return (
+    <div className="flex items-start gap-2 bg-fuchsia-50 border border-fuchsia-200 rounded-2xl p-3">
+      <Info size={16} className="text-fuchsia-500 flex-shrink-0 mt-0.5" />
+      <div>
+        <p className="text-xs font-bold text-fuchsia-700">{phase.banner.title}</p>
+        <p className="text-[11px] text-fuchsia-600 leading-relaxed mt-0.5">{phase.banner.body}</p>
+      </div>
+    </div>
+  )
   return null
+}
+
+/**
+ * Bloc « Waty te conseille » pour la périménopause / ménopause :
+ * aliments à privilégier, à limiter, et conseils sport. Toutes les données
+ * viennent de lib/hormonal.ts — rien n'est codé en dur ici.
+ */
+function HormonalAdvice({ condition }: { condition: string }) {
+  const [open, setOpen] = useState(true)
+  const phase = getHormonalPhase(condition)
+  if (!phase) return null
+  return (
+    <div className="rounded-2xl border border-fuchsia-200 bg-white overflow-hidden">
+      <button type="button" onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center gap-2 px-3 py-2.5 bg-fuchsia-50 text-left">
+        <Sparkles size={14} className="text-fuchsia-500 flex-shrink-0" />
+        <span className="text-xs font-bold text-fuchsia-700 flex-1">Waty te conseille — {phase.label}</span>
+        <ChevronDown size={14} className={`text-fuchsia-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="flex flex-col gap-3 p-3">
+          <Waty mode="nutrition" size="sm" dismissible={false} message={phase.waty} />
+
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-700 mb-1.5">Aliments à privilégier</p>
+            <ul className="flex flex-col gap-1.5">
+              {phase.favor.map(f => (
+                <li key={f.why} className="flex gap-2 text-[11px] leading-relaxed">
+                  <Check size={12} className="text-emerald-500 flex-shrink-0 mt-0.5" strokeWidth={3} />
+                  <span className="text-zinc-700"><strong className="text-zinc-900">{f.why}</strong> : {f.foods}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700 mb-1.5">À limiter (sans interdit)</p>
+            <ul className="flex flex-col gap-1 text-[11px] leading-relaxed text-zinc-700">
+              {phase.limit.map(l => <li key={l} className="flex gap-2"><span className="text-amber-500">•</span><span>{l}</span></li>)}
+            </ul>
+          </div>
+
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-indigo-700 mb-1.5">Côté sport</p>
+            <ul className="flex flex-col gap-1 text-[11px] leading-relaxed text-zinc-700">
+              {phase.sport.map(s => <li key={s} className="flex gap-2"><Dumbbell size={12} className="text-indigo-500 flex-shrink-0 mt-0.5" /><span>{s}</span></li>)}
+            </ul>
+          </div>
+
+          <p className="text-[10px] text-zinc-400 leading-relaxed">
+            Repères généraux, pas une prescription : ton médecin ou ta gynécologue reste la référence,
+            notamment pour la vitamine D, le calcium et un éventuel traitement hormonal.
+          </p>
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ─── Page principale ──────────────────────────────────────────────────────────
@@ -521,7 +610,8 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
         form.condition === 'enceinte'           ? 'La personne est enceinte (+300 kcal).'           : '',
         form.condition === 'post-partum'        ? 'La personne est en post-partum (+500 kcal).'     : '',
         form.condition === 'post-partum-allait' ? 'Post-partum avec allaitement (+600 kcal).'        : '',
-        hc.includes('diabete_type1')            ? 'Diabétique type 1 — glycémie à surveiller.'      : '',
+        getHormonalPhase(form.condition)?.aiNote ?? '',
+        hc.includes('diabete_type1')           ? 'Diabétique type 1 — glycémie à surveiller.'      : '',
         hc.includes('diabete_type2')            ? 'Diabétique type 2 — glucides à limiter.'         : '',
         hc.includes('inflammatoire')            ? 'Maladie inflammatoire — régime anti-inflam.'     : '',
         hc.includes('allergie_gluten')          ? 'Intolérance au gluten — sans gluten strict.'     : '',
@@ -956,10 +1046,13 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
                 </div>
                 {form.condition !== '' && (
                   <p className="text-[10px] text-pink-500 mt-1.5">
-                    {form.condition === 'enceinte'           ? '+300 kcal/j, protéines augmentées'
-                    : form.condition === 'post-partum'       ? '+500 kcal/j, récupération post-partum'
-                    : '+600 kcal/j, allaitement — pas de régime restrictif'}
+                    {CONDITIONS_FEMME.find(c => c.value === form.condition)?.short ?? ''}
                   </p>
+                )}
+                {getHormonalPhase(form.condition) && (
+                  <div className="mt-3">
+                    <HormonalAdvice condition={form.condition} />
+                  </div>
                 )}
               </div>
             )}
@@ -1090,7 +1183,9 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
                   w ? Math.round(w * 1.4) : Math.round(tdee * 0.25 / 4),
                   Math.round(tdee * 0.40 / 4),
                   Math.round(tdee * 0.30 / 9),
-                  hc
+                  hc,
+                  form.condition,
+                  w || null,
                 )
                 // Un déficit n'est proposé que s'il reste raisonnable. Sous un
                 // IMC de 20, on ne suggère PAS de manger moins — ce n'est pas le
