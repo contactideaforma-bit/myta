@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { format, subDays, parseISO } from 'date-fns'
@@ -720,6 +720,78 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
     return calcTDEE(w, h, age, form.sex, act, form.condition, (form as any).health_conditions)
   })()
 
+  // ── Objectifs calculés par MYTA pour les paramètres actuellement saisis ──────
+  // Une seule source de vérité : utilisée par l'affichage ET par le recalcul
+  // automatique ci-dessous. Recalculée à chaque rendu (dérivée de `form`).
+  const suggestion = (() => {
+    const hc = (form as any).health_conditions as string[] ?? []
+    const w  = parseFloat(form.weight_kg)
+    const h  = parseInt(form.height_cm)
+    const bmi = w && h ? w / ((h / 100) ** 2) : null
+
+    let suggested: { cal: number; prot: number; carb: number; fat: number; notes: string[] } | null = null
+    let deficitBlocked = false
+
+    if (tdee) {
+      const adapted = adaptMacrosForHealth(
+        tdee,
+        w ? Math.round(w * 1.4) : Math.round(tdee * 0.25 / 4),
+        Math.round(tdee * 0.40 / 4),
+        Math.round(tdee * 0.30 / 9),
+        hc,
+        form.condition,
+        w || null,
+      )
+      // Un déficit n'est proposé que s'il reste raisonnable. Sous un
+      // IMC de 20, on ne suggère PAS de manger moins — ce n'est pas le
+      // rôle d'une app, et le risque n'est pas symétrique.
+      deficitBlocked = form.goal === 'perte de poids' && bmi !== null && bmi < 20
+      const goalAdjust = deficitBlocked ? 0
+        : form.goal === 'perte de poids' ? -300
+        : form.goal === 'prise de masse' ? +300
+        : 0
+      suggested = { cal: adapted.cal + goalAdjust, prot: adapted.prot, carb: adapted.carb, fat: adapted.fat, notes: adapted.notes }
+    }
+    return { suggested, deficitBlocked }
+  })()
+
+  // ── Recalcul automatique des objectifs du jour ────────────────────────────────
+  // À chaque changement de paramètre (poids, taille, âge, sexe, activité,
+  // condition, santé, objectif), les objectifs suivent le calcul de MYTA…
+  // SAUF si la personne les a ajustés à la main : on ne touche jamais à des
+  // valeurs personnalisées (elles diffèrent de la précédente suggestion).
+  // Le bouton « Revenir au calcul de MYTA » remet en mode automatique.
+  const prevSuggestedRef = useRef<{ cal: number; prot: number; carb: number; fat: number } | null>(null)
+  const sKey = suggestion.suggested
+    ? `${suggestion.suggested.cal}|${suggestion.suggested.prot}|${suggestion.suggested.carb}|${suggestion.suggested.fat}`
+    : ''
+  useEffect(() => {
+    const sug = suggestion.suggested
+    if (!sug || loading) return
+    const prev = prevSuggestedRef.current
+    const cur = {
+      cal:  parseInt(form.calorie_target) || null,
+      prot: parseInt(form.prot_target)    || null,
+      carb: parseInt(form.carb_target)    || null,
+      fat:  parseInt(form.fat_target)     || null,
+    }
+    const empty = cur.cal === null
+    const followsPrev = !!prev && cur.cal === prev.cal && cur.prot === prev.prot && cur.carb === prev.carb && cur.fat === prev.fat
+    const alreadyEqual = cur.cal === sug.cal && cur.prot === sug.prot && cur.carb === sug.carb && cur.fat === sug.fat
+    prevSuggestedRef.current = { cal: sug.cal, prot: sug.prot, carb: sug.carb, fat: sug.fat }
+    if (alreadyEqual) return
+    if (empty || followsPrev) {
+      setForm(f => ({
+        ...f,
+        calorie_target: String(sug.cal),
+        prot_target:    String(sug.prot),
+        carb_target:    String(sug.carb),
+        fat_target:     String(sug.fat),
+      }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sKey, loading])
+
   const bilanStats = (() => {
     if (!weights.length && !journalDays.length && !sleepLogs.length) return null
     const calTarget = profile?.calorie_target ?? tdee ?? 2000
@@ -743,18 +815,31 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
   )
 
   const isFemme = form.sex === 'femme'
+  // Profil incomplet = pas de calcul possible (poids, taille, date de naissance)
+  const profileIncomplete = !profile?.weight_kg || !profile?.height_cm || !profile?.birth_date
 
   // ── Rendu ───────────────────────────────────────────────────────────────────
   return (
     <div className="page">
 
       {/* Parcours guidé : pourquoi compléter le profil */}
-      {obStep === 'profile' && (
+      {obStep === 'profile' ? (
         <OnboardingCoach
           mode="nutrition"
           title="Complétons ton profil"
-          message="Renseigne ton poids, ta taille, ton âge, ton sexe, ton niveau d'activité et ton objectif. Ces infos permettent à Waty de calculer des calories, des macros et des conseils vraiment adaptés à TOI. Quand c'est bon, appuie sur « Enregistrer » en bas."
+          message="Renseigne ton poids, ta taille, ton âge, ton sexe, ton niveau d'activité et ton objectif. Ces infos permettent à Waty de calculer des calories, des macros et des conseils vraiment adaptés à TOI. Quand c'est bon, appuie sur « Sauvegarder » en bas."
           onSkip={obSkip}
+        />
+      ) : profileIncomplete && (
+        /* Profil incomplet (quel que soit l'état du guide) : Waty ne peut pas
+           encore calculer les besoins → invitation, non fermable, jusqu'à ce que
+           poids, taille et date de naissance soient renseignés. */
+        <OnboardingCoach
+          mode="nutrition"
+          title="Je ne peux pas encore calculer tes besoins"
+          message="Il me manque ton poids, ta taille ou ta date de naissance. Renseigne-les dans l'onglet Profil : je calcule aussitôt tes calories et tes macros du jour, et je les adapterai automatiquement à chaque changement."
+          ctaLabel={tab === 'profil' ? undefined : 'Compléter mon profil'}
+          onCta={tab === 'profil' ? undefined : () => setTab('profil')}
         />
       )}
 
@@ -1010,6 +1095,38 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {tab === 'profil' && (
         <div className="flex flex-col gap-4">
+          {/* ── Objectif arrêter de fumer ── */}
+          <div className="card flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Cigarette size={18} className="text-zinc-400" />
+                <div>
+                  <h2 className="text-sm font-semibold text-zinc-700">Objectif : Arrêter de fumer</h2>
+                  <p className="text-[11px] text-zinc-400">Active le suivi tabac dans le journal alimentaire</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setForm(f => ({ ...f, smoking_goal: !(f as any).smoking_goal }))}
+                className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${(form as any).smoking_goal ? 'bg-tta-mid' : 'bg-zinc-200'}`}
+              >
+                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${(form as any).smoking_goal ? 'translate-x-6' : 'translate-x-0.5'}`} />
+              </button>
+            </div>
+
+            {(form as any).smoking_goal && (
+              <div className="bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 flex items-start gap-2">
+                <Heart size={15} className="flex-shrink-0 mt-0.5 text-tta-mid" />
+                <div>
+                  <p className="text-xs font-bold text-orange-700">Suivi tabac activé</p>
+                  <p className="text-[10px] text-orange-600 mt-0.5 leading-relaxed">
+                    Une section apparaîtra dans ton journal pour compter tes cigarettes.
+                    Chaque progrès est récompensé — jamais de jugement, que de l'encouragement.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="card flex flex-col gap-4">
             <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-1.5">
               <User size={14} />Informations personnelles
@@ -1100,14 +1217,18 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
 
             {/* Date naissance + poids + taille dans une grille propre */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
+              <div className="col-span-2 min-w-0">
                 <label className="text-xs text-zinc-400 mb-1 block">Date de naissance</label>
+                {/* Les <input type="date"> ont une largeur intrinsèque sur iOS/Safari qui
+                    ignore w-full et déborde du cadre : on force min-width 0, max-width 100 %
+                    et on neutralise l'apparence native. */}
                 <input
                   type="date"
-                  className="input w-full"
+                  className="input block w-full min-w-0 max-w-full appearance-none"
                   value={form.birth_date}
+                  max={new Date().toISOString().slice(0, 10)}
                   onChange={e => setForm(f => ({ ...f, birth_date: e.target.value }))}
-                  style={{ colorScheme: 'light' }}
+                  style={{ colorScheme: 'light', WebkitAppearance: 'none', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box' }}
                 />
               </div>
               <div>
@@ -1168,35 +1289,8 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
             )}
 
             {(() => {
-              // ── Ce que MYTA calcule pour ce profil ──────────────────────────
-              const hc = (form as any).health_conditions as string[] ?? []
-              const w  = parseFloat(form.weight_kg)
-              const h  = parseInt(form.height_cm)
-              const bmi = w && h ? w / ((h / 100) ** 2) : null
-
-              let suggested: { cal: number; prot: number; carb: number; fat: number; notes: string[] } | null = null
-              let deficitBlocked = false
-
-              if (tdee) {
-                const adapted = adaptMacrosForHealth(
-                  tdee,
-                  w ? Math.round(w * 1.4) : Math.round(tdee * 0.25 / 4),
-                  Math.round(tdee * 0.40 / 4),
-                  Math.round(tdee * 0.30 / 9),
-                  hc,
-                  form.condition,
-                  w || null,
-                )
-                // Un déficit n'est proposé que s'il reste raisonnable. Sous un
-                // IMC de 20, on ne suggère PAS de manger moins — ce n'est pas le
-                // rôle d'une app, et le risque n'est pas symétrique.
-                deficitBlocked = form.goal === 'perte de poids' && bmi !== null && bmi < 20
-                const goalAdjust = deficitBlocked ? 0
-                  : form.goal === 'perte de poids' ? -300
-                  : form.goal === 'prise de masse' ? +300
-                  : 0
-                suggested = { cal: adapted.cal + goalAdjust, prot: adapted.prot, carb: adapted.carb, fat: adapted.fat, notes: adapted.notes }
-              }
+              // ── Ce que MYTA calcule pour ce profil (cf. `suggestion` plus haut) ──
+              const { suggested, deficitBlocked } = suggestion
 
               // ── Ce qui est réellement appliqué aujourd'hui ──────────────────
               const current = {
@@ -1294,6 +1388,11 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
 
                   {showManualTargets && (
                     <div className="flex flex-col gap-3">
+                      <p className="text-[10px] text-zinc-400 leading-relaxed">
+                        Par défaut, tes objectifs suivent automatiquement tes paramètres (poids, âge,
+                        activité, objectif, conditions). Si tu les modifies ici, ils deviennent
+                        personnalisés et ne bougent plus — « Revenir au calcul de MYTA » réactive le suivi automatique.
+                      </p>
                       <div>
                         <label className="text-xs text-zinc-500 mb-1 block">Calories par jour (kcal)</label>
                         <input type="number" min="1000" max="6000" className="input"
@@ -1325,38 +1424,6 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
                 </>
               )
             })()}
-          </div>
-
-          {/* ── Objectif arrêter de fumer ── */}
-          <div className="card flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Cigarette size={18} className="text-zinc-400" />
-                <div>
-                  <h2 className="text-sm font-semibold text-zinc-700">Objectif : Arrêter de fumer</h2>
-                  <p className="text-[11px] text-zinc-400">Active le suivi tabac dans le journal alimentaire</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setForm(f => ({ ...f, smoking_goal: !(f as any).smoking_goal }))}
-                className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${(form as any).smoking_goal ? 'bg-tta-mid' : 'bg-zinc-200'}`}
-              >
-                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${(form as any).smoking_goal ? 'translate-x-6' : 'translate-x-0.5'}`} />
-              </button>
-            </div>
-
-            {(form as any).smoking_goal && (
-              <div className="bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 flex items-start gap-2">
-                <Heart size={15} className="flex-shrink-0 mt-0.5 text-tta-mid" />
-                <div>
-                  <p className="text-xs font-bold text-orange-700">Suivi tabac activé</p>
-                  <p className="text-[10px] text-orange-600 mt-0.5 leading-relaxed">
-                    Une section apparaîtra dans ton journal pour compter tes cigarettes.
-                    Chaque progrès est récompensé — jamais de jugement, que de l'encouragement.
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
 
           <button onClick={save} disabled={saving}

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } from 'date-fns'
 // WeightChart et MonthProgress déplacés vers journal/profil
 import { fr } from 'date-fns/locale'
+import type { LucideIcon } from 'lucide-react'
 import {
   ArrowRight, Loader2, Baby, Salad, Dumbbell, Zap, Flame,
   Target, BarChart3, Newspaper, Beef, Moon, UserPlus, Users,
@@ -182,6 +183,79 @@ const ONBOARDING_HUB: Record<Exclude<OnboardingStep, 'done'>,
     cta: 'Voir mon compte' },
 }
 
+// ── Raccourci du dashboard illustré par une photo Pexels ─────────────────────
+// La photo vient de /api/photos (clé Pexels côté serveur), est mise en cache
+// 7 jours dans localStorage pour ne pas consommer le quota à chaque ouverture,
+// et le pictogramme d'origine reste le repli si la photo manque.
+const PHOTO_CACHE_DAYS = 7
+
+function usePexelsPhoto(query: string, cacheKey: string): string | null {
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    let active = true
+    const key = `myta_shortcut_photo_${cacheKey}`
+    try {
+      const raw = localStorage.getItem(key)
+      if (raw) {
+        const c = JSON.parse(raw) as { url: string; ts: number; q: string }
+        if (c.q === query && Date.now() - c.ts < PHOTO_CACHE_DAYS * 86400_000) { setUrl(c.url); return }
+      }
+    } catch { /* cache illisible → on refait la requête */ }
+    ;(async () => {
+      try {
+        const supabase = createClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) return
+        const res = await fetch(`/api/photos?q=${encodeURIComponent(query)}`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        })
+        const data = await res.json()
+        if (!active || !data?.url) return
+        setUrl(data.url)
+        try { localStorage.setItem(key, JSON.stringify({ url: data.url, ts: Date.now(), q: query })) } catch { /* quota */ }
+      } catch { /* repli pictogramme */ }
+    })()
+    return () => { active = false }
+  }, [query, cacheKey])
+  return url
+}
+
+function ShortcutCard({ label, sub, cta, query, cacheKey, tone, Icon, onClick }: {
+  label: string; sub: string; cta: string; query: string; cacheKey: string
+  tone: { bg: string; border: string; hover: string; iconBg: string; icon: string; title: string; sub: string; cta: string }
+  Icon: LucideIcon
+  onClick: () => void
+}) {
+  const photo = usePexelsPhoto(query, cacheKey)
+  const [broken, setBroken] = useState(false)
+  const showPhoto = !!photo && !broken
+
+  return (
+    <button
+      onClick={onClick}
+      className={`relative flex flex-col items-center gap-2.5 px-4 pb-5 rounded-3xl border-2 overflow-hidden text-left active:scale-[0.97] transition-all shadow-sm ${tone.bg} ${tone.border} ${tone.hover} ${showPhoto ? 'pt-0' : 'pt-5'}`}
+    >
+      {showPhoto ? (
+        <div className="relative w-[calc(100%+2rem)] -mx-4 h-24 mb-0.5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={photo!} alt="" loading="lazy" onError={() => setBroken(true)}
+            className="absolute inset-0 w-full h-full object-cover" />
+          <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-white/70 to-transparent" />
+        </div>
+      ) : (
+        <div className={`w-14 h-14 ${tone.iconBg} rounded-2xl flex items-center justify-center`}><Icon size={26} className={tone.icon} /></div>
+      )}
+      <div className="text-center">
+        <p className={`text-sm font-extrabold ${tone.title}`}>{label}</p>
+        <p className={`text-xs font-medium ${tone.sub}`}>{sub}</p>
+      </div>
+      <div className={`flex items-center gap-1 text-xs font-bold ${tone.cta}`}>
+        {cta} <ArrowRight size={12} />
+      </div>
+    </button>
+  )
+}
+
 export default function DashboardPage() {
   const [stats, setStats]         = useState<Stats | null>(null)
   const [loading, setLoading]     = useState(true)
@@ -342,6 +416,8 @@ export default function DashboardPage() {
     condition:        (s.profile as any)?.condition ?? null,
   })
 
+  const profileIncomplete = !s.profile?.weight_kg || !s.profile?.height_cm || !s.profile?.birth_date
+
   const watyMsg = getWatyProactifMessage({
     firstName,
     goal:         s.profile?.goal ?? null,
@@ -383,6 +459,17 @@ export default function DashboardPage() {
         />
       )}
 
+      {/* ── Profil incomplet : Waty ne peut pas calculer les besoins ── */}
+      {!(obStep && obStep !== 'done') && profileIncomplete && (
+        <OnboardingCoach
+          mode="nutrition"
+          title="Paramétrons ton profil"
+          message="Pour calculer tes besoins (calories, protéines, glucides, lipides) et te donner des conseils vraiment adaptés, il me faut ton poids, ta taille et ta date de naissance. Deux minutes suffisent."
+          ctaLabel="Paramétrer mon profil"
+          onCta={() => router.push('/profile')}
+        />
+      )}
+
       {/* ── Série + Badge ── */}
       <div className="card flex flex-col gap-3">
         <div className="flex items-center justify-between">
@@ -395,34 +482,24 @@ export default function DashboardPage() {
         {badge && <BadgeDisplay badge={badge} streak={s.streak} size="sm" />}
       </div>
 
-      {/* ── Raccourcis rapides ── */}
+      {/* ── Raccourcis rapides (photos Pexels, repli sur pictogramme) ── */}
       <div className="grid grid-cols-2 gap-3">
-        <button
+        <ShortcutCard
+          label="Journal" sub="alimentaire" cta="Ouvrir"
+          query="healthy colorful meal bowl top view"
+          cacheKey="journal"
+          tone={{ bg: 'bg-orange-50', border: 'border-orange-100', hover: 'hover:bg-orange-100', iconBg: 'bg-orange-100', icon: 'text-orange-600', title: 'text-orange-700', sub: 'text-orange-500', cta: 'text-orange-600' }}
+          Icon={Salad}
           onClick={() => router.push('/nutrition/journal')}
-          className="flex flex-col items-center gap-2.5 px-4 py-5 rounded-3xl bg-orange-50 border-2 border-orange-100 hover:bg-orange-100 active:scale-[0.97] transition-all shadow-sm"
-        >
-          <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center"><Salad size={26} className="text-orange-600" /></div>
-          <div className="text-center">
-            <p className="text-sm font-extrabold text-orange-700">Journal</p>
-            <p className="text-xs text-orange-500 font-medium">alimentaire</p>
-          </div>
-          <div className="flex items-center gap-1 text-xs font-bold text-orange-600">
-            Ouvrir <ArrowRight size={12} />
-          </div>
-        </button>
-        <button
+        />
+        <ShortcutCard
+          label="Séance" sub="de sport" cta="Logger"
+          query="woman workout fitness training gym"
+          cacheKey="sport"
+          tone={{ bg: 'bg-indigo-50', border: 'border-indigo-100', hover: 'hover:bg-indigo-100', iconBg: 'bg-indigo-100', icon: 'text-indigo-600', title: 'text-indigo-700', sub: 'text-indigo-500', cta: 'text-indigo-600' }}
+          Icon={Dumbbell}
           onClick={() => router.push('/sport/session')}
-          className="flex flex-col items-center gap-2.5 px-4 py-5 rounded-3xl bg-indigo-50 border-2 border-indigo-100 hover:bg-indigo-100 active:scale-[0.97] transition-all shadow-sm"
-        >
-          <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center"><Dumbbell size={26} className="text-indigo-600" /></div>
-          <div className="text-center">
-            <p className="text-sm font-extrabold text-indigo-700">Séance</p>
-            <p className="text-xs text-indigo-500 font-medium">de sport</p>
-          </div>
-          <div className="flex items-center gap-1 text-xs font-bold text-indigo-600">
-            Logger <ArrowRight size={12} />
-          </div>
-        </button>
+        />
       </div>
 
       {/* ── Bilan IA 7j ── */}
