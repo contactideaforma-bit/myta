@@ -4,37 +4,15 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { PremiumGate } from '@/components/ui/PremiumGate'
 import { Waty, WATY_MESSAGES } from '@/components/ui/Waty'
+import { useRouter } from 'next/navigation'
+import { RecipeNutritionGuide } from '@/components/ui/RecipeNutritionGuide'
+import { fromSavedRow, toSavedRow, SOURCE_LABELS, type Recipe, type Ingredient, type Etape } from '@/lib/recipes'
 import {
   ChevronLeft, Clock, Users, Flame,
   Loader2, ChefHat, Star,
   Bookmark, BookmarkCheck, Share2, Check, Search, X,
+  Link2, ExternalLink,
 } from 'lucide-react'
-
-interface Ingredient { qte: string; nom: string; note?: string }
-interface Etape { num: number; titre: string; detail: string; duree?: string; astuce?: string }
-
-interface Recipe {
-  id: string
-  titre: string
-  description: string
-  temps: number
-  temps_prep?: number
-  temps_cuisson?: number
-  portions: number
-  calories: number
-  proteines?: number
-  glucides?: number
-  lipides?: number
-  difficulte: 'Facile' | 'Moyen' | 'Avancé'
-  ustensiles?: string[]
-  ingredients: Ingredient[] | string[]
-  etapes: Etape[] | string[]
-  conseils_chef?: string
-  accompagnements?: string[]
-  photo_keyword: string
-  photoUrl?: string
-  category?: string
-}
 
 const CATEGORIES = [
   { key: 'anti-inflammatoire', label: '🌿 Anti-inflammatoire', desc: 'Oméga-3, antioxydants' },
@@ -113,6 +91,7 @@ type View = 'categories' | 'generated' | 'saved'
 
 export default function RecipesPage() {
   const supabase = createClient()
+  const router   = useRouter()
 
   const [view, setView]                   = useState<View>('categories')
   const [recipes, setRecipes]             = useState<Recipe[]>([])
@@ -129,7 +108,13 @@ export default function RecipesPage() {
   const [searchQuery, setSearchQuery]     = useState('')
   const [searchCategory, setSearchCategory] = useState<string>('')
 
-  useEffect(() => { loadSavedIds() }, [])
+  useEffect(() => {
+    loadSavedIds()
+    // Retour depuis /nutrition/recipes/import → ouvrir directement « Mes recettes »
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('view') === 'saved') {
+      setView('saved'); loadSavedRecipes()
+    }
+  }, [])
 
   async function loadSavedIds() {
     const { data: { user } } = await supabase.auth.getUser()
@@ -143,12 +128,7 @@ export default function RecipesPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setLoadingSaved(false); return }
     const { data } = await supabase.from('saved_recipes').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
-    setSavedRecipes((data ?? []).map((r: any) => ({
-      id: r.recipe_id, titre: r.titre, description: r.description,
-      temps: r.temps, portions: r.portions, calories: r.calories,
-      difficulte: r.difficulte, ingredients: r.ingredients, etapes: r.etapes,
-      photo_keyword: '', photoUrl: r.photo_url ?? undefined, category: r.category,
-    })))
+    setSavedRecipes((data ?? []).map(fromSavedRow))
     setLoadingSaved(false)
   }
 
@@ -201,13 +181,8 @@ export default function RecipesPage() {
     e.stopPropagation()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { error } = await supabase.from('saved_recipes').upsert({
-      user_id: user.id, recipe_id: recipe.id, titre: recipe.titre,
-      description: recipe.description, temps: recipe.temps, portions: recipe.portions,
-      calories: recipe.calories, difficulte: recipe.difficulte,
-      ingredients: recipe.ingredients, etapes: recipe.etapes,
-      photo_url: recipe.photoUrl ?? null, category: recipe.category ?? null,
-    }, { onConflict: 'user_id,recipe_id' })
+    const { error } = await supabase.from('saved_recipes')
+      .upsert(toSavedRow(user.id, recipe), { onConflict: 'user_id,recipe_id' })
     if (!error) { setSavedIds(prev => new Set([...prev, recipe.id])); showToast('✓ Recette sauvegardée') }
   }
 
@@ -283,20 +258,24 @@ export default function RecipesPage() {
         ))}
       </div>
 
-      {(detail.proteines || detail.glucides || detail.lipides) && (
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { label: 'Protéines', val: detail.proteines, color: 'text-blue-500', bg: 'bg-blue-50' },
-            { label: 'Glucides',  val: detail.glucides,  color: 'text-yellow-600', bg: 'bg-yellow-50' },
-            { label: 'Lipides',   val: detail.lipides,   color: 'text-purple-500', bg: 'bg-purple-50' },
-          ].map(m => m.val ? (
-            <div key={m.label} className={`${m.bg} rounded-2xl p-2 text-center`}>
-              <p className={`text-base font-extrabold ${m.color}`}>{m.val}g</p>
-              <p className="text-[10px] text-zinc-400">{m.label}</p>
-            </div>
-          ) : null)}
+      {/* Crédit source (recette importée) */}
+      {detail.source_kind && detail.source_kind !== 'ia' && (
+        <div className="card-sm flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-500 flex-shrink-0"><Link2 size={16} /></div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-bold text-zinc-400 uppercase">Source · {SOURCE_LABELS[detail.source_kind] ?? detail.source_kind}</p>
+            {detail.source_author && <p className="text-sm font-semibold text-zinc-900 truncate">{detail.source_author}</p>}
+            {detail.source_url && (
+              <a href={detail.source_url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-tta-mid flex items-center gap-1">
+                <ExternalLink size={11} />Voir la publication d'origine
+              </a>
+            )}
+          </div>
         </div>
       )}
+
+      {/* Guide nutritionnel : Score MYTA + macros + impact sur la journée + ajout au journal */}
+      <RecipeNutritionGuide recipe={detail} score={detail.score ?? null} onToast={showToast} />
 
       {detail.ustensiles && detail.ustensiles.length > 0 && (
         <div className="card">
@@ -385,7 +364,6 @@ export default function RecipesPage() {
 
   // ── Vue liste ──────────────────────────────────────────────────────────────
   return (
-    <PremiumGate label="Recettes IA — fonctionnalité Premium">
     <div className="page">
       {toast && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-semibold text-white bg-nutri shadow-lg">{toast}</div>}
 
@@ -393,7 +371,7 @@ export default function RecipesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-zinc-900">Recettes</h1>
-          <p className="text-sm text-zinc-400">Générées par IA · 100% en français</p>
+          <p className="text-sm text-zinc-400">Générées par IA ou importées · 100% en français</p>
         </div>
         <button onClick={() => { setView('saved'); setDetail(null); loadSavedRecipes() }}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${view === 'saved' ? 'bg-nutri text-white border-nutri' : 'border-zinc-200 text-zinc-600 hover:border-nutri/40'}`}>
@@ -402,8 +380,23 @@ export default function RecipesPage() {
         </button>
       </div>
 
-      {/* ── Barre de recherche permanente ── */}
+      {/* ── Importer une recette (Instagram / TikTok / capture / photo) — accessible à tous les forfaits ── */}
       {view !== 'saved' && (
+        <button onClick={() => router.push('/nutrition/recipes/import')}
+          className="card flex items-center gap-3 text-left p-4 hover:border-nutri/40 hover:shadow-md transition-all">
+          <div className="w-11 h-11 rounded-2xl bg-nutri-light text-nutri-dark flex items-center justify-center flex-shrink-0"><Link2 size={20} /></div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-zinc-900">Importer une recette</p>
+            <p className="text-[11px] text-zinc-400 leading-snug">Colle un lien Instagram ou TikTok, une capture ou une photo — Waty en fait une fiche avec son Score MYTA.</p>
+          </div>
+          <span className="text-[10px] font-bold text-nutri-dark bg-nutri-light px-2 py-1 rounded-full flex-shrink-0">Nouveau</span>
+        </button>
+      )}
+
+      {view !== 'saved' && <PremiumGate label="Recettes IA — fonctionnalité Premium"><div className="flex flex-col gap-4">
+
+      {/* ── Barre de recherche permanente ── */}
+      {(
         <div className="card flex flex-col gap-3">
           {/* Barre search */}
           <div className="relative">
@@ -456,7 +449,7 @@ export default function RecipesPage() {
       )}
 
       {/* Catégories rapides si rien de sélectionné */}
-      {view !== 'saved' && !searchQuery && !searchCategory && (
+      {!searchQuery && !searchCategory && (
         <div className="grid grid-cols-2 gap-2">
           {CATEGORIES.map(cat => (
             <button key={cat.key} onClick={() => loadCategory(cat.key)}
@@ -468,13 +461,6 @@ export default function RecipesPage() {
         </div>
       )}
 
-      {/* Retour depuis sauvegardées */}
-      {view === 'saved' && (
-        <button onClick={() => setView('categories')} className="btn-ghost self-start -ml-1">
-          <ChevronLeft size={16} />Parcourir les catégories
-        </button>
-      )}
-
       {/* État initial */}
       {view === 'categories' && !searchQuery && !searchCategory && (
         <div className="card text-center py-12 text-zinc-400">
@@ -484,13 +470,22 @@ export default function RecipesPage() {
         </div>
       )}
 
-      {/* Chargement */}
+      {/* Chargement génération */}
       {loading && (
         <div className="card text-center py-14">
           <Loader2 size={32} className="animate-spin text-nutri mx-auto mb-3" />
           <p className="text-sm font-medium text-zinc-700">Génération des recettes…</p>
           <p className="text-xs text-zinc-400 mt-1">Waty prépare 4 recettes pour toi ✨</p>
         </div>
+      )}
+
+      </div></PremiumGate>}
+
+      {/* Retour depuis sauvegardées */}
+      {view === 'saved' && (
+        <button onClick={() => setView('categories')} className="btn-ghost self-start -ml-1">
+          <ChevronLeft size={16} />Parcourir les catégories
+        </button>
       )}
 
       {view === 'saved' && loadingSaved && (
@@ -539,6 +534,5 @@ export default function RecipesPage() {
         </div>
       )}
     </div>
-    </PremiumGate>
   )
 }

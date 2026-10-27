@@ -1,20 +1,28 @@
 /**
- * Gestion du quota IA par plan d'abonnement — limites journalières par feature.
+ * Gestion du quota IA par plan d'abonnement.
  *
- * Forfaits essentiel* :
+ * Limites JOURNALIÈRES (forfaits essentiel*) :
  *   - meal   : 3 analyses/jour  (analyze-meal-photo + voice-meal, cumulé)
  *   - sport  : 2 analyses/jour  (voice-session)
  *   - recipe : bloqué (0)
  *   - report : bloqué (0)
+ *
+ * Limite MENSUELLE (feature 'import' = import de recette lien/capture/photo) :
+ *   - essentiel : 3 imports / mois (dégustation)
+ *   - essai 3 j : 5 imports / mois (porte d'entrée, pas illimité)
+ *   - premium   : illimité
+ *   → fail-CLOSED en cas d'erreur technique (un import coûte 1 à 4 ct).
  *
  * Forfaits premium* : illimité sur toutes les features
  * Rôle 'child'      : accès IA bloqué
  * Partenaire famille : hérite du plan du propriétaire
  *
  * Colonnes Supabase utilisées :
- *   ai_daily_key        TEXT     — format "YYYY-MM-DD"
- *   ai_daily_meal_used  INTEGER  — compteur repas du jour
- *   ai_daily_sport_used INTEGER  — compteur sport du jour
+ *   ai_daily_key          TEXT     — format "YYYY-MM-DD"
+ *   ai_daily_meal_used    INTEGER  — compteur repas du jour
+ *   ai_daily_sport_used   INTEGER  — compteur sport du jour
+ *   ai_month_key          TEXT     — format "YYYY-MM"      (supabase-recipes-import.sql)
+ *   ai_month_import_used  INTEGER  — compteur imports du mois
  */
 
 import { createClient } from '@supabase/supabase-js'
@@ -27,14 +35,20 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export type AiFeature = 'meal' | 'sport' | 'recipe' | 'report'
+export type AiFeature = 'meal' | 'sport' | 'recipe' | 'report' | 'import'
 
 /** Limites journalières pour les plans essentiel (0 = bloqué) */
-const DAILY_LIMITS: Record<AiFeature, number> = {
+const DAILY_LIMITS: Record<Exclude<AiFeature, 'import'>, number> = {
   meal:   3,  // analyze-meal-photo + voice-meal cumulé
   sport:  2,  // voice-session
   recipe: 0,  // réservé Premium
   report: 0,  // réservé Premium
+}
+
+/** Limites mensuelles d'import de recettes */
+export const IMPORT_MONTHLY_LIMITS = {
+  essentiel: 3,
+  trial:     5,
 }
 
 const FEATURE_LABELS: Record<AiFeature, string> = {
@@ -42,6 +56,7 @@ const FEATURE_LABELS: Record<AiFeature, string> = {
   sport:  'analyses de séance',
   recipe: 'recettes IA',
   report: 'rapport IA hebdomadaire',
+  import: 'imports de recettes',
 }
 
 export interface AiGuardResult {
@@ -55,7 +70,7 @@ export async function checkAiQuota(userId: string, feature: AiFeature): Promise<
     const { data: profile, error } = await supabaseAdmin
       .from('profiles')
       .select(
-        'plan, subscription_status, trial_ends_at, family_role, family_owner_id, ai_daily_key, ai_daily_meal_used, ai_daily_sport_used'
+        'plan, subscription_status, trial_ends_at, family_role, family_owner_id, ai_daily_key, ai_daily_meal_used, ai_daily_sport_used, ai_month_key, ai_month_import_used'
       )
       .eq('id', userId)
       .single()
@@ -110,7 +125,44 @@ export async function checkAiQuota(userId: string, feature: AiFeature): Promise<
     // Détecter le tier (premium vs essentiel).
     // Pendant l'essai gratuit 3 jours → accès Premium complet offert.
     const planConfig = effectivePlan ? STRIPE_PLANS[effectivePlan as PlanId] : null
-    const isPremium  = planConfig?.tier === 'premium' || isFreeTrial(activeStatus, trialEndsAt)
+    const inTrial    = isFreeTrial(activeStatus, trialEndsAt)
+    const isPremium  = planConfig?.tier === 'premium' || inTrial
+
+    // ─── Import de recettes : quota MENSUEL ───────────────────────────────────
+    if (feature === 'import') {
+      // Premium payant → illimité. Essai → 5/mois. Essentiel → 3/mois.
+      if (planConfig?.tier === 'premium') return { allowed: true, remaining: null }
+
+      const limit    = inTrial ? IMPORT_MONTHLY_LIMITS.trial : IMPORT_MONTHLY_LIMITS.essentiel
+      const monthKey = new Date().toISOString().slice(0, 7)   // "YYYY-MM"
+      const isMonth  = (profile.ai_month_key ?? '') === monthKey
+      const used     = isMonth ? (profile.ai_month_import_used ?? 0) : 0
+
+      if (used >= limit) {
+        return {
+          allowed: false,
+          error: NextResponse.json({
+            error:      `Tu as utilisé tes ${limit} imports de recettes du mois.`,
+            hint:       inTrial
+              ? "Abonne-toi en Premium pour importer sans limite."
+              : "Passe en Premium pour importer des recettes sans limite.",
+            code:       'MONTHLY_QUOTA_EXCEEDED',
+            feature,
+            limit,
+            used,
+            upgradeUrl: '/pricing?change=true',
+          }, { status: 429 }),
+        }
+      }
+
+      const { error: upErr } = await supabaseAdmin
+        .from('profiles')
+        .update({ ai_month_key: monthKey, ai_month_import_used: used + 1 })
+        .eq('id', userId)
+      if (upErr) throw upErr   // fail-closed (voir catch)
+
+      return { allowed: true, remaining: limit - (used + 1) }
+    }
 
     // Premium → illimité
     if (isPremium) {
@@ -175,6 +227,13 @@ export async function checkAiQuota(userId: string, feature: AiFeature): Promise<
 
   } catch (err) {
     console.error('[ai-guard] Erreur:', err)
+    if (feature === 'import') {
+      // Fail-CLOSED : un import coûte trop cher pour être offert en cas de panne
+      return {
+        allowed: false,
+        error: NextResponse.json({ error: "Service momentanément indisponible, réessaie dans un instant." }, { status: 503 }),
+      }
+    }
     // Fail-open en cas d'erreur technique (serverless cold start, DB timeout…)
     return { allowed: true, remaining: null }
   }
