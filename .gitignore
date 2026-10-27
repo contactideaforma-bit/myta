@@ -22,3 +22,4 @@ android.keystore
 
 # Projet iOS Capacitor — local uniquement (comme le projet Android)
 /ios/
+MYTA/
