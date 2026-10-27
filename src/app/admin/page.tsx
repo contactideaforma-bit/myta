@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { MytaIcon } from '@/components/ui/MytaIcon'
 import { MytaIllustration } from '@/components/ui/MytaIllustration'
+import { AdminStats } from './AdminStats'
 
 interface Code { code: string; partner_user_id: string | null; partner_name: string | null; days: number; max_uses: number | null; uses: number; redemptions: number; expires_at: string | null; active: boolean; note: string | null; created_at: string }
 interface Activity { createdAt: string | null; lastSignIn: string | null; activated: boolean; lastDay: string | null; days7: number; days30: number; meals30: number; sessions30: number; sleeps30: number; recipes: number; games30: number; lastMeal: string | null }
@@ -30,7 +31,7 @@ export default function AdminPage() {
   const router = useRouter()
   const supabase = createClient()
   const [allowed, setAllowed] = useState<boolean | null>(null)
-  const [tab, setTab] = useState<'partners' | 'codes'>('partners')
+  const [tab, setTab] = useState<'partners' | 'codes' | 'stats'>('partners')
   const [partners, setPartners] = useState<Partner[]>([])
   const [codes, setCodes] = useState<Code[]>([])
   const [loading, setLoading] = useState(true)
@@ -144,7 +145,7 @@ export default function AdminPage() {
       </div>
 
       <div className="flex bg-raised rounded-full p-1 gap-1">
-        {([['partners', 'Partenaires'], ['codes', 'Codes promo']] as const).map(([k, l]) => (
+        {([['partners', 'Partenaires'], ['codes', 'Codes promo'], ['stats', 'Statistiques']] as const).map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)} className={`flex-1 py-2 rounded-full text-sm font-extrabold transition-all ${tab === k ? 'bg-white text-tta-mid shadow-sm' : 't-muted'}`}>{l}</button>
         ))}
       </div>
@@ -297,6 +298,8 @@ export default function AdminPage() {
           ))}
         </>
       )}
+
+      {tab === 'stats' && <AdminStats headers={headers} />}
     </div>
   )
 }
