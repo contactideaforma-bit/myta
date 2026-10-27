@@ -3,8 +3,8 @@
  * Pastilles Instagram / TikTok.
  * Les logos officiels sont des marques déposées : on ne les redessine pas. Dépose les
  * fichiers fournis par les plateformes (kits de marque) dans :
- *   public/brands/instagram.svg   (ou .png)
- *   public/brands/tiktok.svg      (ou .png)
+ *   public/brands/instagram.png   (ou .png)
+ *   public/brands/tiktok.png      (ou .png)
  * S'ils sont présents, ils s'affichent ; sinon, un picto vidéo générique prend le relais.
  */
 import { useState } from 'react'
@@ -28,11 +28,11 @@ export function SourceChips({ light = false, active }: { light?: boolean; active
     <div className="flex items-center gap-1.5">
       <span className={`${base} ${dim('instagram')} ${light ? 'text-white' : 'text-zinc-900'}`}
         style={light ? { background: 'rgba(255,255,255,0.18)' } : { background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-        <BrandIcon src="/brands/instagram.svg" alt="" />Instagram
+        <BrandIcon src="/brands/instagram.png" alt="" />Instagram
       </span>
       <span className={`${base} ${dim('tiktok')} ${light ? 'text-white' : 'text-zinc-900'}`}
         style={light ? { background: 'rgba(255,255,255,0.18)' } : { background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-        <BrandIcon src="/brands/tiktok.svg" alt="" />TikTok
+        <BrandIcon src="/brands/tiktok.png" alt="" />TikTok
       </span>
     </div>
   )
