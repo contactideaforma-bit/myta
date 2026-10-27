@@ -6,7 +6,7 @@ import { PremiumGate } from '@/components/ui/PremiumGate'
 import { Waty, WATY_MESSAGES } from '@/components/ui/Waty'
 import { useRouter } from 'next/navigation'
 import { RecipeNutritionGuide } from '@/components/ui/RecipeNutritionGuide'
-import { fromSavedRow, toSavedRow, SOURCE_LABELS, type Recipe, type Ingredient, type Etape } from '@/lib/recipes'
+import { fromSavedRow, toSavedRow, SOURCE_LABELS, shareRecipePdf, recipeShareToken, type Recipe, type Ingredient, type Etape } from '@/lib/recipes'
 import {
   ChevronLeft, Clock, Users, Flame,
   Loader2, ChefHat, Star,
@@ -226,19 +226,10 @@ export default function RecipesPage() {
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 2500) }
 
-  /** Jeton public de partage (la recette doit être dans le catalogue). */
-  async function shareTokenFor(recipe: Recipe): Promise<string | null> {
-    if (recipe.share_token) return recipe.share_token
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return null
-    const { data } = await supabase.from('saved_recipes').select('share_token').eq('user_id', user.id).eq('recipe_id', recipe.id).maybeSingle()
-    return data?.share_token ?? null
-  }
-
   async function shareRecipe(recipe: Recipe, e: React.MouseEvent) {
     e.stopPropagation()
     if (!savedIds.has(recipe.id)) await saveRecipe(recipe, e)
-    const token = await shareTokenFor(recipe)
+    const token = await recipeShareToken(supabase, recipe)
     const url = token ? `${window.location.origin}/nutrition/recipes/share?t=${token}` : `${window.location.origin}/nutrition/recipes/share?id=${recipe.id}`
     if (navigator.share) {
       try { await navigator.share({ title: recipe.titre, text: recipe.description, url }) } catch { }
@@ -248,28 +239,13 @@ export default function RecipesPage() {
     }
   }
 
-  /** Fiche PDF : partage natif du fichier quand c'est possible (iOS/Android), sinon ouverture. */
+  /** « Partager en PDF » : fiche imprimable, feuille de partage native quand c'est possible. */
   async function exportPdf(recipe: Recipe) {
     setPdfBusy(true)
     try {
-      if (!savedIds.has(recipe.id)) {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) { await supabase.from('saved_recipes').upsert(toSavedRow(user.id, recipe), { onConflict: 'user_id,recipe_id' }); setSavedIds(prev => new Set([...prev, recipe.id])) }
-      }
-      const token = await shareTokenFor(recipe)
-      if (!token) { showToast('Sauvegarde la recette d\'abord'); return }
-      const url = `/api/recipes/pdf?t=${token}`
-      const res = await fetch(url)
-      if (!res.ok) { showToast('PDF indisponible pour le moment'); return }
-      const blob = await res.blob()
-      const file = new File([blob], `myta-${recipe.titre.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 50)}.pdf`, { type: 'application/pdf' })
-      const nav: any = navigator
-      if (nav.canShare && nav.canShare({ files: [file] })) {
-        try { await nav.share({ files: [file], title: recipe.titre }) } catch { /* annulé */ }
-      } else {
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; a.click()
-        setTimeout(() => URL.revokeObjectURL(a.href), 10000)
-      }
+      const r = await shareRecipePdf(supabase, recipe)
+      if (!r.ok) showToast(r.error ?? 'PDF indisponible')
+      else setSavedIds(prev => new Set([...prev, recipe.id]))
     } finally { setPdfBusy(false) }
   }
 
@@ -331,7 +307,7 @@ export default function RecipesPage() {
 
       <div className="flex gap-2">
         <button onClick={() => exportPdf(detail)} disabled={pdfBusy} className="btn-ghost flex-1 justify-center bg-raised disabled:opacity-50">
-          {pdfBusy ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}{pdfBusy ? 'Préparation…' : 'Fiche PDF'}
+          {pdfBusy ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}{pdfBusy ? 'Préparation du PDF…' : 'Partager en PDF'}
         </button>
         <button onClick={e => shareRecipe(detail, e)} className="btn-ghost flex-1 justify-center bg-raised"><Share2 size={14} />Envoyer à un ami</button>
       </div>

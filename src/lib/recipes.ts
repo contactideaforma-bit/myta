@@ -129,3 +129,39 @@ export async function addRecipeToJournal(
   })
   return error ? { ok: false, error: error.message } : { ok: true }
 }
+
+/** Jeton public de partage de la recette (elle doit être dans le catalogue de l'utilisateur). */
+export async function recipeShareToken(supabase: SupabaseClient, recipe: Recipe): Promise<string | null> {
+  if (recipe.share_token) return recipe.share_token
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  const { data } = await supabase.from('saved_recipes').select('share_token').eq('user_id', user.id).eq('recipe_id', recipe.id).maybeSingle()
+  return data?.share_token ?? null
+}
+
+/**
+ * « Partager en PDF » : génère la fiche (serveur) puis ouvre la feuille de partage
+ * (iOS/Android/Chrome) ; à défaut, télécharge le fichier.
+ */
+export async function shareRecipePdf(supabase: SupabaseClient, recipe: Recipe, score?: ScoreMyta | null): Promise<{ ok: boolean; error?: string }> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: 'Non connecté' }
+  // La fiche PDF se base sur la version enregistrée : on sauvegarde d'abord (silencieux si déjà fait)
+  const { error: upErr } = await supabase.from('saved_recipes').upsert(toSavedRow(user.id, recipe, score), { onConflict: 'user_id,recipe_id' })
+  if (upErr) return { ok: false, error: upErr.message }
+  const token = await recipeShareToken(supabase, recipe)
+  if (!token) return { ok: false, error: 'Jeton de partage introuvable' }
+  const res = await fetch(`/api/recipes/pdf?t=${token}`)
+  if (!res.ok) return { ok: false, error: 'PDF indisponible pour le moment' }
+  const blob = await res.blob()
+  const name = `myta-${recipe.titre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50) || 'recette'}.pdf`
+  const file = new File([blob], name, { type: 'application/pdf' })
+  const nav: any = typeof navigator !== 'undefined' ? navigator : null
+  if (nav?.canShare && nav.canShare({ files: [file] })) {
+    try { await nav.share({ files: [file], title: recipe.titre, text: `Recette MYTA : ${recipe.titre}` }) } catch { /* partage annulé */ }
+    return { ok: true }
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click()
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000)
+  return { ok: true }
+}

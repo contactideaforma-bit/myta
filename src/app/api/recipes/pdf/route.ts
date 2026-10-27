@@ -113,28 +113,51 @@ export async function GET(req: NextRequest) {
     y -= 34
   }
 
-  // ── Ingrédients ──
+  // ── Résumé express : la recette en un coup d'œil (pratique imprimée, à côté des fourneaux) ──
+  const stepsAll: any[] = Array.isArray(r.etapes) ? r.etapes : []
+  if (stepsAll.length > 0) {
+    const lines = stepsAll.map((et, i) => {
+      const t = typeof et === 'object' && et?.titre ? clean(et.titre) : clean(typeof et === 'string' ? et : et?.detail ?? '').split(/[.!?]/)[0]
+      const d = typeof et === 'object' && et?.duree ? ` (${clean(et.duree)})` : ''
+      return `${i + 1}. ${t.slice(0, 60)}${d}`
+    })
+    const colW = (W - 2 * M - 24) / 2, rowH = 12
+    const rows = Math.ceil(lines.length / 2)
+    const boxH = 22 + rows * rowH + 8
+    ensure(boxH + 10)
+    page.drawRectangle({ x: M, y: y - boxH, width: W - 2 * M, height: boxH, color: rgb(0.965, 0.965, 0.985), borderColor: LINE, borderWidth: 0.8 })
+    page.drawText('EN UN COUP D\u2019\u0152IL', { x: M + 12, y: y - 15, size: 8, font: bold, color: VIOLET })
+    lines.forEach((l, i) => {
+      const col = i < rows ? 0 : 1, row = i < rows ? i : i - rows
+      const x = M + 12 + col * (colW + 12), yy = y - 30 - row * rowH
+      const txt = wrap(l, font, 8.5, colW)[0] ?? ''
+      page.drawText(txt, { x, y: yy, size: 8.5, font, color: INK })
+    })
+    y -= boxH + 10
+  }
+
+  // ── Ingrédients (cases à cocher pour la liste de courses / le plan de travail) ──
   heading(`Ingrédients · ${r.portions ?? 1} portion${(r.portions ?? 1) > 1 ? 's' : ''}`)
   const ings: any[] = Array.isArray(r.ingredients) ? r.ingredients : []
   const half = Math.ceil(ings.length / 2), colWidth = (W - 2 * M - 16) / 2
   const yStart = y
   let yL = y, yR = y
-  const drawIng = (s: string, x: number, yy: number) => {
-    page.drawCircle({ x: x + 3, y: yy - 3.5, size: 1.6, color: GREEN })
-    page.drawText(s, { x: x + 10, y: yy - 7, size: 9.5, font, color: INK })
+  const drawIng = (s: string, x: number, yy: number, first: boolean) => {
+    if (first) page.drawRectangle({ x: x + 1, y: yy - 9, width: 7, height: 7, borderColor: GREEN, borderWidth: 0.9, color: rgb(1, 1, 1) })
+    page.drawText(s, { x: x + 13, y: yy - 7.5, size: 9.5, font, color: INK })
   }
   ensure(half * 14 + 10)
   ings.forEach((ing, i) => {
     const lines = wrap(clean(ingLabel(ing)), font, 9.5, colWidth - 12)
-    if (i < half) { for (const l of lines) { drawIng(l, M, yL); yL -= 14 } }
-    else { for (const l of lines) { drawIng(l, M + colWidth + 16, yR); yR -= 14 } }
+    if (i < half) { lines.forEach((l, k) => { drawIng(l, M, yL, k === 0); yL -= 14 }) }
+    else { lines.forEach((l, k) => { drawIng(l, M + colWidth + 16, yR, k === 0); yR -= 14 }) }
   })
   y = Math.min(yL, yR, yStart) - 2
   if (Array.isArray(r.ustensiles) && r.ustensiles.length) { y -= 4; para(`Ustensiles : ${r.ustensiles.join(', ')}`, 8.5, font, MUTED) }
 
   // ── Étapes ──
   heading('Préparation, étape par étape')
-  const steps: any[] = Array.isArray(r.etapes) ? r.etapes : []
+  const steps: any[] = stepsAll
   steps.forEach((et, i) => {
     const titre = typeof et === 'object' && et?.titre ? clean(et.titre) : `Étape ${i + 1}`
     const detail = typeof et === 'string' ? et : (et?.detail ?? '')

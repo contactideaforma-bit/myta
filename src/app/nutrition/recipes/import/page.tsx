@@ -7,10 +7,10 @@ import { Capacitor, CapacitorHttp } from '@capacitor/core'
 import { Waty } from '@/components/ui/Waty'
 import { RecipeNutritionGuide } from '@/components/ui/RecipeNutritionGuide'
 import { scoreRecipe, type ScoreMyta } from '@/lib/score-myta'
-import { toSavedRow, SOURCE_LABELS, type Recipe, type Ingredient, type Etape, type SourceKind } from '@/lib/recipes'
+import { toSavedRow, SOURCE_LABELS, shareRecipePdf, type Recipe, type Ingredient, type Etape, type SourceKind } from '@/lib/recipes'
 import {
   ChevronLeft, Link2, ClipboardPaste, Camera, Image as ImageIcon, FileText, X,
-  Loader2, Sparkles, Minus, Plus, Trash2, Bookmark, ExternalLink, Clock, Users, Star,
+  Loader2, Sparkles, Minus, Plus, Trash2, Bookmark, ExternalLink, Clock, Users, Star, FileDown, Check,
 } from 'lucide-react'
 
 interface ImportResult {
@@ -42,6 +42,38 @@ export default function ImportRecipePage() {
   const [result, setResult]     = useState<ImportResult | null>(null)
   const [recipe, setRecipe]     = useState<(Recipe & { ingredients: Ingredient[]; etapes: Etape[] }) | null>(null)
   const [saving, setSaving]     = useState(false)
+  const [pdfBusy, setPdfBusy]   = useState(false)
+
+  // ── Avancement de l'analyse (le serveur répond d'un bloc : on anime les étapes réelles) ──
+  const [progress, setProgress] = useState<{ pct: number; step: number } | null>(null)
+  const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+  const ANALYZE_STEPS = [
+    { label: url ? (Capacitor.isNativePlatform() && /instagram\.com/i.test(url) ? 'Lecture de la publication depuis ton téléphone' : 'Lecture de la publication') : image ? 'Lecture de l\'image' : 'Lecture du texte', until: 22, ms: 1800 },
+    { label: 'Waty repère les ingrédients et les quantités', until: 52, ms: 6000 },
+    { label: 'Rédaction des étapes, complétion de ce qui manque', until: 78, ms: 7000 },
+    { label: 'Calcul du Score MYTA et choix de la photo', until: 93, ms: 9000 },
+  ]
+  function startProgress() {
+    const t0 = Date.now()
+    setProgress({ pct: 2, step: 0 })
+    if (progressTimer.current) clearInterval(progressTimer.current)
+    progressTimer.current = setInterval(() => {
+      const elapsed = Date.now() - t0
+      let acc = 0, step = 0, pct = 0
+      for (let i = 0; i < ANALYZE_STEPS.length; i++) {
+        const st = ANALYZE_STEPS[i], from = i ? ANALYZE_STEPS[i - 1].until : 0
+        if (elapsed <= acc + st.ms) { step = i; pct = from + (st.until - from) * ((elapsed - acc) / st.ms); break }
+        acc += st.ms; step = i; pct = st.until
+      }
+      setProgress({ pct: Math.min(93, Math.round(pct)), step })
+    }, 120)
+  }
+  function stopProgress(done: boolean) {
+    if (progressTimer.current) clearInterval(progressTimer.current)
+    progressTimer.current = null
+    if (done) { setProgress({ pct: 100, step: ANALYZE_STEPS.length - 1 }); setTimeout(() => setProgress(null), 500) }
+    else setProgress(null)
+  }
 
   const kindHint = /instagram\.com/i.test(url) ? 'Instagram' : /tiktok\.com/i.test(url) ? 'TikTok' : url ? 'ce lien' : ''
 
@@ -63,7 +95,8 @@ export default function ImportRecipePage() {
 
   async function analyze() {
     if (!url && !text.trim() && !image) return
-    setLoading(true); setError(''); setNeedsMore(false)
+    setLoading(true); setError(''); setNeedsMore(false); startProgress()
+    let done = false
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const fd = new FormData()
@@ -94,6 +127,7 @@ export default function ImportRecipePage() {
         }
         return
       }
+      done = true
       const r: ImportResult = data
       setResult(r)
       setRecipe({ ...r.recipe })
@@ -104,7 +138,7 @@ export default function ImportRecipePage() {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch {
       setError('Erreur réseau, réessaie.')
-    } finally { setLoading(false) }
+    } finally { stopProgress(done); setLoading(false) }
   }
 
   // ── Recalcul local du score quand l'utilisateur corrige quantités / portions ──
@@ -149,6 +183,15 @@ export default function ImportRecipePage() {
     if (error) { showToast('Erreur de sauvegarde'); console.error(error); return }
     showToast('Recette enregistrée')
     setTimeout(() => router.push('/nutrition/recipes?view=saved'), 600)
+  }
+
+  /** Partager en PDF : enregistre la fiche (telle qu'éditée) puis ouvre la feuille de partage. */
+  async function sharePdf() {
+    if (!recipeWithMacros) return
+    setPdfBusy(true)
+    const r = await shareRecipePdf(supabase, recipeWithMacros, liveScore)
+    setPdfBusy(false)
+    if (!r.ok) showToast(r.error ?? 'PDF indisponible')
   }
 
   // ═══════════════ Vue prévisualisation / édition ═══════════════
@@ -275,6 +318,10 @@ export default function ImportRecipePage() {
           {saving ? <Loader2 size={16} className="animate-spin" /> : <Bookmark size={16} />}
           Enregistrer dans mes recettes
         </button>
+        <button onClick={sharePdf} disabled={pdfBusy || saving || !recipe.titre.trim() || recipe.ingredients.length === 0} className="btn-ghost justify-center py-3 bg-raised disabled:opacity-50">
+          {pdfBusy ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
+          {pdfBusy ? 'Préparation du PDF…' : 'Partager en PDF'}
+        </button>
         <p className="text-[10px] text-zinc-400 text-center px-4">
           Les étapes sont reformulées par Waty et la publication d'origine reste créditée. Tu es responsable du contenu que tu importes.
         </p>
@@ -346,10 +393,41 @@ export default function ImportRecipePage() {
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 leading-snug">{error}</div>
       )}
 
-      <button onClick={analyze} disabled={loading || (!url && !text.trim() && !image)} className="btn-nutri justify-center py-3 disabled:opacity-50">
-        {loading ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-        {loading ? 'Waty analyse la recette…' : `Analyser ${kindHint ? `la recette ${kindHint}` : 'la recette'}`}
-      </button>
+      {loading && progress ? (
+        <div className="card flex flex-col gap-3 border-nutri/30">
+          <div className="flex items-center gap-3">
+            <div className="relative w-10 h-10 flex-shrink-0">
+              <svg viewBox="0 0 40 40" className="w-10 h-10 -rotate-90">
+                <circle cx="20" cy="20" r="16" fill="none" stroke="#E4E4EE" strokeWidth="4" />
+                <circle cx="20" cy="20" r="16" fill="none" stroke="#22C55E" strokeWidth="4" strokeLinecap="round"
+                  strokeDasharray={`${2 * Math.PI * 16}`} strokeDashoffset={`${2 * Math.PI * 16 * (1 - progress.pct / 100)}`} className="transition-[stroke-dashoffset] duration-200" />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-[10px] font-extrabold text-zinc-700">{progress.pct}%</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-zinc-900">Waty analyse la recette</p>
+              <p className="text-xs text-zinc-500 truncate">{ANALYZE_STEPS[progress.step].label}<span className="inline-block w-4 text-left animate-pulse">…</span></p>
+            </div>
+          </div>
+          <div className="h-2 rounded-full bg-zinc-100 overflow-hidden">
+            <div className="h-full rounded-full bg-gradient-to-r from-nutri to-emerald-400 transition-[width] duration-200" style={{ width: `${progress.pct}%` }} />
+          </div>
+          <ol className="flex flex-col gap-1">
+            {ANALYZE_STEPS.map((st, i) => (
+              <li key={i} className={`flex items-center gap-2 text-[11px] ${i < progress.step ? 'text-nutri-dark' : i === progress.step ? 'text-zinc-800 font-semibold' : 'text-zinc-300'}`}>
+                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${i < progress.step ? 'bg-nutri text-white' : i === progress.step ? 'bg-nutri-light text-nutri-dark' : 'bg-zinc-100 text-zinc-300'}`}>{i < progress.step ? <Check size={9} strokeWidth={3} /> : i + 1}</span>
+                {st.label}
+              </li>
+            ))}
+          </ol>
+          <p className="text-[10px] text-zinc-400">Une quinzaine de secondes en général. Ne ferme pas l'app.</p>
+        </div>
+      ) : (
+        <button onClick={analyze} disabled={loading || (!url && !text.trim() && !image)} className="btn-nutri justify-center py-3 disabled:opacity-50">
+          <Sparkles size={16} />
+          {`Analyser ${kindHint ? `la recette ${kindHint}` : 'la recette'}`}
+        </button>
+      )}
 
       {!url && !image && !text && (
         <Waty mode="nutrition" size="sm" dismissible={false}
