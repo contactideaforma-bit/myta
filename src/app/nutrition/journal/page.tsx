@@ -5,11 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import {
-  ChevronLeft, ChevronRight, Flame,
-  Search, X, Trash2, Loader2,
-  Scale, BarChart3, Mic, Camera, Pencil,
-  Plus, Beef, Wheat, Droplet, Pill, Utensils, NotebookPen,
-  Microscope, Cigarette, Trophy, Heart, AlertTriangle, Zap, Check, Circle,
+  Flame, Search, X, Trash2, Loader2, Scale, BarChart3, Camera, Pencil, Plus, Wheat, Pill, Microscope, Cigarette, Trophy, Heart, AlertTriangle, Check, Circle,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { getSmokingWatyMessage } from '@/lib/gamification'
@@ -31,6 +27,7 @@ import {
 import { getActiveProfile } from '@/lib/active-profile'
 import type { JournalEntry, WeightLog, Profile } from '@/types'
 import { MytaIcon } from '@/components/ui/MytaIcon'
+import { MytaIllustration } from '@/components/ui/MytaIllustration'
 
 interface DayMacros { cal: number; prot: number; carb: number; fat: number }
 
@@ -103,29 +100,6 @@ function NutrientDetailModal({ title, color, entries, onClose }: {
         </div>
       </div>
     </div>
-  )
-}
-
-// ─── Composant MacroCard cliquable ─────────────────────────────────────────
-function MacroCard({ label, Icon, tint, value, unit, goal, color, onClick }: {
-  label: string; Icon: LucideIcon; tint: string; value: number; unit: string; goal: number; color: string
-  onClick?: () => void
-}) {
-  const pct = Math.min(100, goal > 0 ? Math.round((value / goal) * 100) : 0)
-  return (
-    <button onClick={onClick} className="card text-left w-full hover:shadow-md transition-all active:scale-[0.98]">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-bold uppercase tracking-wide text-zinc-400">{label}</span>
-        <Icon size={17} style={{ color: tint }} />
-      </div>
-      <div className="text-2xl font-black text-zinc-900">
-        {value} <span className="text-sm font-semibold text-zinc-400">{unit}</span>
-      </div>
-      <div className="h-1.5 bg-zinc-100 rounded-full mt-2 overflow-hidden">
-        <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${pct}%` }} />
-      </div>
-      <p className="text-xs text-zinc-400 mt-1">Objectif : {goal} {unit}</p>
-    </button>
   )
 }
 
@@ -764,40 +738,72 @@ export default function JournalPage() {
         <EditQtyModal entry={editingEntry} onConfirm={qty => updateEntryQty(editingEntry, qty)} onClose={() => setEditingEntry(null)} />
       )}
 
-      {/* Header + navigation date */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-zinc-900">Journal alimentaire</h1>
-          <p className="text-sm text-zinc-400 capitalize">{formatDateFR(currentDate)}</p>
-        </div>
-        <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-full px-2 py-1 shadow-sm">
-          <button onClick={() => setCurrentDate(d => addDays(d, -1))} className="w-8 h-8 rounded-full hover:bg-zinc-100 flex items-center justify-center text-zinc-500">
-            <ChevronLeft size={16} />
-          </button>
-          <span className="text-sm font-bold min-w-[90px] text-center">
-            {isToday ? "Aujourd'hui" : format(new Date(currentDate + 'T12:00'), 'd MMM', { locale: fr })}
-          </span>
-          <button onClick={() => setCurrentDate(d => addDays(d, 1))} disabled={isToday} className="w-8 h-8 rounded-full hover:bg-zinc-100 flex items-center justify-center text-zinc-500 disabled:opacity-30">
-            <ChevronRight size={16} />
-          </button>
-        </div>
+      {/* Sélecteur de jours : 7 derniers jours, point = journée renseignée */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-extrabold t-text capitalize">{isToday ? "Aujourd'hui" : formatDateFR(currentDate)}</p>
+        {!isToday && <button onClick={() => setCurrentDate(todayISO())} className="text-xs font-bold text-tta-mid">Revenir à aujourd'hui</button>}
+      </div>
+      <div className="grid grid-cols-7 gap-1.5 -mt-1">
+        {Array.from({ length: 7 }, (_, i) => {
+          const d = addDays(todayISO(), -(6 - i))
+          const sel = d === currentDate
+          const has = (weekCal[d] ?? 0) > 0
+          const over = (weekCal[d] ?? 0) > (g.cal || 2000)
+          return (
+            <button key={d} onClick={() => setCurrentDate(d)}
+              className={`rounded-2xl py-2 flex flex-col items-center gap-0.5 transition-all ${sel ? 'bg-[#15152A] text-white shadow-md' : 'bg-transparent'}`}>
+              <span className={`text-[11px] font-bold ${sel ? 'text-white/80' : 't-muted'}`}>{format(new Date(d + 'T12:00'), 'EEEEE', { locale: fr }).toUpperCase()}</span>
+              <span className={`text-sm font-extrabold ${sel ? 'text-white' : 't-text'}`}>{format(new Date(d + 'T12:00'), 'd')}</span>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: has ? (over ? '#FBBF24' : '#22C55E') : 'transparent' }} />
+            </button>
+          )
+        })}
       </div>
 
-      {/* Macros */}
-      <div className="grid grid-cols-2 gap-3">
-        <MacroCard label="Calories" Icon={Flame} tint="#f97316" value={totals.cal}  unit="kcal" goal={g.cal}  color="bg-orange-400"
-          onClick={() => setNutriModal({ title: 'Calories par aliment', color: '#f97316',
-            entries: foodEntries.map(e => ({ food_name: e.food_name, value: Number(e.cal), unit: 'kcal' })) })} />
-        <MacroCard label="Protéines" Icon={Beef} tint="#3b82f6" value={totals.prot} unit="g" goal={g.prot} color="bg-blue-400"
-          onClick={() => setNutriModal({ title: 'Protéines par aliment', color: '#3b82f6',
-            entries: foodEntries.map(e => ({ food_name: e.food_name, value: Number(e.prot), unit: 'g' })).filter(e => e.value > 0) })} />
-        <MacroCard label="Glucides"  Icon={Wheat} tint="#eab308" value={totals.carb} unit="g" goal={g.carb} color="bg-yellow-400"
-          onClick={() => setNutriModal({ title: 'Glucides par aliment', color: '#eab308',
-            entries: foodEntries.map(e => ({ food_name: e.food_name, value: Number(e.carb), unit: 'g' })).filter(e => e.value > 0) })} />
-        <MacroCard label="Lipides"   Icon={Droplet} tint="#a855f7" value={totals.fat}  unit="g" goal={g.fat}  color="bg-purple-400"
-          onClick={() => setNutriModal({ title: 'Lipides par aliment', color: '#a855f7',
-            entries: foodEntries.map(e => ({ food_name: e.food_name, value: Number(e.fat), unit: 'g' })).filter(e => e.value > 0) })} />
-      </div>
+      {/* Résumé du jour : calories + barre empilée + 3 macros (tap = détail par aliment) */}
+      {(() => {
+        const rest = Math.max(0, Math.round((g.cal || 0) - totals.cal))
+        const pct = (v: number, goal: number) => goal > 0 ? Math.min(100, Math.round(v / goal * 100)) : 0
+        const barP = g.cal ? Math.min(100, totals.prot * 4 / g.cal * 100) : 0
+        const barC = g.cal ? Math.min(100 - barP, totals.carb * 4 / g.cal * 100) : 0
+        const barF = g.cal ? Math.min(100 - barP - barC, totals.fat * 9 / g.cal * 100) : 0
+        const macros = [
+          { label: 'Prot.', val: totals.prot, goal: g.prot, color: '#4B47A0', title: 'Protéines par aliment', key: 'prot' as const },
+          { label: 'Gluc.', val: totals.carb, goal: g.carb, color: '#0E7490', title: 'Glucides par aliment',  key: 'carb' as const },
+          { label: 'Lip.',  val: totals.fat,  goal: g.fat,  color: '#15803D', title: 'Lipides par aliment',   key: 'fat'  as const },
+        ]
+        return (
+          <div className="card-hero flex flex-col gap-3">
+            <button onClick={() => setNutriModal({ title: 'Calories par aliment', color: '#f97316',
+                entries: foodEntries.map(e => ({ food_name: e.food_name, value: Number(e.cal), unit: 'kcal' })) })}
+              className="text-left">
+              <div className="flex items-baseline justify-between">
+                <span className="text-xs font-bold t-muted">Consommé</span>
+                <span className="text-xs font-bold t-muted">objectif {g.cal.toLocaleString('fr-FR')}</span>
+              </div>
+              <div className="flex items-baseline gap-2 mt-0.5">
+                <span className="text-[34px] font-extrabold tracking-tight t-text leading-none tabular-nums">{Math.round(totals.cal).toLocaleString('fr-FR')}</span>
+                <span className="text-sm font-bold t-muted">kcal · {rest > 0 ? `reste ${rest.toLocaleString('fr-FR')}` : 'objectif atteint'}</span>
+              </div>
+            </button>
+            <div className="h-2.5 rounded-full bg-raised overflow-hidden flex">
+              <div className="h-full" style={{ width: `${barP}%`, background: '#4B47A0' }} />
+              <div className="h-full" style={{ width: `${barC}%`, background: '#06B6D4' }} />
+              <div className="h-full" style={{ width: `${barF}%`, background: '#22C55E' }} />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {macros.map(m => (
+                <button key={m.key} onClick={() => setNutriModal({ title: m.title, color: m.color,
+                    entries: foodEntries.map(e => ({ food_name: e.food_name, value: Number(e[m.key]), unit: 'g' })).filter(e => e.value > 0) })}
+                  className="bg-raised rounded-2xl px-2 py-2.5 text-center active:scale-[0.97] transition-transform">
+                  <p className="text-[15px] font-extrabold tabular-nums" style={{ color: m.color }}>{Math.round(m.val)} g</p>
+                  <p className="text-[11px] font-bold t-muted">{m.label} · {pct(m.val, m.goal)} %</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Waty conseil nutrition */}
       {(() => {
@@ -907,54 +913,40 @@ export default function JournalPage() {
         </div>
       )}
 
-      {/* Bouton ajout vocal + Recherche */}
+      {/* ── Ajouter : trois bulles (vocal/texte · photo · compléments) ── */}
       {!showVoiceMeal && (
-        <div className="flex flex-col gap-2">
-          <button onClick={() => setShowVoiceMeal(true)}
-            className="w-full flex items-center gap-3 bg-gradient-to-r from-nutri to-nutri-mid rounded-2xl px-4 py-3 text-left hover:opacity-90 transition-all active:scale-[0.98] shadow-sm">
-            <div className="w-9 h-9 bg-white/25 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Mic size={18} className="text-white" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-white">Ajouter un repas en vocal ou texte</p>
-              <p className="text-xs text-white/70">"J'ai mangé un bol de riz avec du poulet..."</p>
-            </div>
-          </button>
-
-          <button
-            onClick={() => photoInputRef.current?.click()}
-            disabled={photoAnalyzing}
-            className="w-full flex items-center gap-3 bg-gradient-to-r from-sky-500 to-blue-600 rounded-2xl px-4 py-3 text-left hover:opacity-90 transition-all active:scale-[0.98] shadow-sm disabled:opacity-60"
-          >
-            <div className="w-9 h-9 bg-white/25 rounded-xl flex items-center justify-center flex-shrink-0">
-              {photoAnalyzing ? <Loader2 size={18} className="text-white animate-spin" /> : <Camera size={18} className="text-white" />}
-            </div>
-            <div>
-              <p className="text-sm font-bold text-white">Analyser une photo de repas</p>
-              <p className="text-xs text-white/70">Photographiez votre assiette, l'IA détecte les aliments</p>
-            </div>
-          </button>
+        <div className="grid grid-cols-3 gap-3 py-1">
+          {[
+            { key: 'voice', label: 'Vocal ou texte', sub: 'Dis ce que tu as mangé', art: 'micro' as const, active: false, busy: false,
+              onClick: () => setShowVoiceMeal(true) },
+            { key: 'photo', label: 'Photo du repas', sub: 'Waty lit ton assiette', art: 'photo' as const, active: false, busy: photoAnalyzing,
+              onClick: () => photoInputRef.current?.click() },
+            { key: 'suppl', label: 'Compléments', sub: supplEntries.length > 0 ? `${supplEntries.length} aujourd'hui` : 'Vitamines, plantes…', art: 'gelules' as const, active: showSupplPanel, busy: false,
+              onClick: () => { setShowSupplPanel(v => !v); setSupplQuery(''); setSupplResults([]) } },
+          ].map(b => (
+            <button key={b.key} onClick={b.onClick} disabled={b.busy}
+              className="flex flex-col items-center gap-2 active:scale-95 transition-transform disabled:opacity-60">
+              <span className={`relative w-[84px] h-[84px] rounded-full flex items-center justify-center border transition-all ${
+                b.active ? 'bg-white/90 border-tta-mid/40 shadow-[0_10px_30px_rgba(75,71,160,0.18)]' : 'bg-white/55 border-white/80 shadow-[0_10px_30px_rgba(45,42,94,0.10)]'
+              }`} style={{ backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)' }}>
+                {b.busy
+                  ? <span className="w-8 h-8 border-4 border-sky-200 border-t-sky-500 rounded-full animate-spin" />
+                  : <MytaIllustration name={b.art} size={46} />}
+                {b.key === 'suppl' && supplEntries.length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[22px] h-[22px] px-1.5 rounded-full bg-violet-600 text-white text-[11px] font-extrabold flex items-center justify-center ring-2 ring-white">{supplEntries.length}</span>
+                )}
+              </span>
+              <span className="text-center leading-tight">
+                <span className="block text-[12px] font-extrabold t-text">{b.label}</span>
+                <span className="block text-[10px] font-semibold t-muted mt-0.5">{b.sub}</span>
+              </span>
+            </button>
+          ))}
         </div>
       )}
 
-      {/* ── Compléments alimentaires ── */}
+      {/* ── Compléments alimentaires (panneau) ── */}
       <div>
-        <button
-          onClick={() => { setShowSupplPanel(v => !v); setSupplQuery(''); setSupplResults([]) }}
-          className="w-full flex items-center gap-3 bg-gradient-to-r from-violet-500 to-purple-600 rounded-2xl px-4 py-3 text-left hover:opacity-90 transition-all active:scale-[0.98] shadow-sm"
-        >
-          <div className="w-9 h-9 bg-white/25 rounded-xl flex items-center justify-center flex-shrink-0"><Pill size={17} className="text-white" /></div>
-          <div className="flex-1">
-            <p className="text-sm font-bold text-white">Compléments alimentaires</p>
-            <p className="text-xs text-white/70">Moringa, spiruline, magnésium, oméga-3…</p>
-          </div>
-          {supplEntries.length > 0 && (
-            <span className="bg-white/25 text-white text-xs font-bold px-2 py-1 rounded-full">
-              {supplEntries.length}
-            </span>
-          )}
-          <span className="text-white/60 text-lg">{showSupplPanel ? '▲' : '▼'}</span>
-        </button>
 
         {showSupplPanel && (
           <div className="mt-2 bg-white border border-violet-100 rounded-2xl overflow-hidden shadow-sm">
@@ -1055,7 +1047,7 @@ export default function JournalPage() {
       {/* ── Aliments récents — accès rapide ── */}
       {recentFoods.length > 0 && !query && (
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-bold text-zinc-400 uppercase tracking-wide inline-flex items-center gap-1.5"><Zap size={12} /> Récents</p>
+          <p className="text-xs font-bold t-muted uppercase tracking-wide">Récents</p>
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
             {recentFoods.map((food, i) => (
               <button
@@ -1072,10 +1064,10 @@ export default function JournalPage() {
                 })}
                 className="flex-shrink-0 flex flex-col items-center gap-1 bg-white border border-zinc-100 rounded-2xl p-2.5 shadow-sm hover:border-nutri/40 hover:shadow-md transition-all active:scale-95 w-20"
               >
-                <div className="w-10 h-10 rounded-xl bg-nutri-light flex items-center justify-center text-lg flex-shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-nutri-light flex items-center justify-center flex-shrink-0 overflow-hidden">
                   {food.image_url
                     ? <img src={food.image_url} alt="" className="w-full h-full object-cover rounded-xl" />
-                    : <Utensils size={16} className='text-nutri-mid' />}
+                    : <MytaIllustration name="repas" size={30} />}
                 </div>
                 <p className="text-[10px] font-semibold text-zinc-700 text-center leading-tight line-clamp-2 w-full">{food.food_name}</p>
                 <p className="text-[9px] text-orange-400 font-bold">{Math.round(Number(food.cal))} kcal</p>
@@ -1090,24 +1082,24 @@ export default function JournalPage() {
       {/* Journal du jour */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-zinc-700 inline-flex items-center gap-2"><NotebookPen size={14} className="text-tta-mid" /> Journal du jour</h2>
+          <h2 className="text-sm font-extrabold t-text">Journal du jour</h2>
           <span className="text-xs text-zinc-400">{foodEntries.length} aliment{foodEntries.length > 1 ? 's' : ''}</span>
         </div>
 
         {foodEntries.length === 0 ? (
-          <div className="card text-center py-10 text-zinc-400">
-            <Utensils size={22} className="mx-auto mb-2 text-zinc-300" />
-            <p className="text-sm">Aucun aliment enregistré.</p>
-            <p className="text-xs mt-1">Recherchez un aliment ci-dessus.</p>
+          <div className="card text-center py-8 flex flex-col items-center gap-2">
+            <MytaIllustration name="vide" size={56} />
+            <p className="text-sm font-bold t-text">Rien de noté pour cette journée.</p>
+            <p className="text-xs t-muted">Dicte ton repas, prends-le en photo ou choisis un aliment récent.</p>
           </div>
         ) : (
           <div className="card divide-y divide-zinc-100 p-0">
             {foodEntries.map(e => (
               <div key={e.id} className="flex items-center gap-3 px-4 py-3 hover:bg-zinc-50/50 transition-colors">
-                <div className="w-9 h-9 rounded-xl bg-nutri-light flex items-center justify-center flex-shrink-0 text-base">
+                <div className="w-9 h-9 rounded-xl bg-nutri-light flex items-center justify-center flex-shrink-0 overflow-hidden">
                   {e.image_url
                     ? <img src={e.image_url} alt="" className="w-full h-full object-cover rounded-xl" onError={ev => { (ev.target as HTMLImageElement).style.display = 'none' }} />
-                    : <Utensils size={16} className='text-nutri-mid' />}
+                    : <MytaIllustration name="repas" size={28} />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold truncate">{e.food_name}</p>

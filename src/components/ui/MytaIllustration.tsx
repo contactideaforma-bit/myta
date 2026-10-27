@@ -10,7 +10,7 @@
  * reste neutre) ; `shadow` ajoute l'ombre portée au sol.
  */
 
-export type MytaIllustrationName = 'repas' | 'seance' | 'nuit' | 'recette' | 'eau' | 'waty' | 'trophee' | 'vide' | 'maison'
+export type MytaIllustrationName = 'repas' | 'seance' | 'nuit' | 'recette' | 'eau' | 'waty' | 'trophee' | 'vide' | 'maison' | 'micro' | 'photo' | 'gelules'
 
 interface Props {
   name: MytaIllustrationName
@@ -97,6 +97,28 @@ const ART: Record<MytaIllustrationName, JSX.Element> = {
     <rect x="16" y="34" width="8" height="8" rx="2" fill="#E0F2FE" />
     <path d="M14 34c0 8 4 14 10 17" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" opacity="0.35" />
     <path d="M46 10h5v10l-5-4z" fill="#22C55E" />
+  </>,
+  micro: <>
+    <rect x="22" y="6" width="20" height="34" rx="10" fill="#22C55E" />
+    <rect x="26" y="10" width="5" height="22" rx="2.5" fill="#fff" opacity="0.45" />
+    <path d="M14 30a18 18 0 0 0 36 0" fill="none" stroke="#15803D" strokeWidth="4" strokeLinecap="round" />
+    <path d="M32 48v8M22 56h20" stroke="#15803D" strokeWidth="4" strokeLinecap="round" />
+    <path d="M50 14c3 3 3 7 0 10M55 9c6 6 6 14 0 20" fill="none" stroke="#86EFAC" strokeWidth="3" strokeLinecap="round" />
+  </>,
+  photo: <>
+    <path d="M8 20a6 6 0 0 1 6-6h8l4-6h12l4 6h8a6 6 0 0 1 6 6v26a6 6 0 0 1-6 6H14a6 6 0 0 1-6-6z" fill="#2563EB" />
+    <path d="M8 20a6 6 0 0 1 6-6h8l4-6h12l4 6h8a6 6 0 0 1 6 6v4H8z" fill="#1D4ED8" />
+    <circle cx="32" cy="34" r="12" fill="#E0F2FE" />
+    <circle cx="32" cy="34" r="7" fill="#0EA5E9" />
+    <circle cx="29" cy="31" r="2.2" fill="#fff" opacity="0.8" />
+    <circle cx="49" cy="21" r="2.5" fill="#FBBF24" />
+  </>,
+  gelules: <>
+    <rect x="10" y="22" width="30" height="14" rx="7" transform="rotate(-30 25 29)" fill="#A855F7" />
+    <path d="M18 36l12-21" stroke="#fff" strokeWidth="3" strokeLinecap="round" transform="rotate(-30 25 29)" opacity="0.45" />
+    <rect x="28" y="30" width="30" height="14" rx="7" transform="rotate(25 43 37)" fill="#F3E8FF" />
+    <rect x="43" y="30" width="15" height="14" rx="7" transform="rotate(25 43 37)" fill="#7C3AED" />
+    <circle cx="20" cy="48" r="4" fill="#22C55E" /><circle cx="30" cy="52" r="3" fill="#FBBF24" />
   </>,
   vide: <>
     <path d="M10 30h44c0 11-9 19-22 19S10 41 10 30z" fill="#DCDBF6" />
