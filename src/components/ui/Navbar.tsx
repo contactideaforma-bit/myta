@@ -169,6 +169,23 @@ export function Navbar() {
   }
 
   useEffect(() => { setSidebarOpen(false) }, [pathname])
+
+  // ── Safe-area haut : ne réserver la zone de l'heure iOS QUE si la vue web
+  //    passe réellement sous la barre d'état. Quand le conteneur natif (ou le
+  //    mode PWA « default ») place déjà la page sous la barre, iOS continue de
+  //    renvoyer env(safe-area-inset-top) → double marge. On compare la hauteur
+  //    de la fenêtre à celle de l'écran : égales = sous la barre d'état.
+  useEffect(() => {
+    const sync = () => {
+      const h = window.visualViewport?.height ?? window.innerHeight
+      const under = Math.abs(h - window.screen.height) < 4
+      document.documentElement.style.setProperty('--sat', under ? 'env(safe-area-inset-top, 0px)' : '0px')
+    }
+    sync()
+    window.addEventListener('resize', sync)
+    window.addEventListener('orientationchange', sync)
+    return () => { window.removeEventListener('resize', sync); window.removeEventListener('orientationchange', sync) }
+  }, [])
   useEffect(() => { if (sidebarOpen) setSidebarModule(activeModule) }, [sidebarOpen])
   useEffect(() => {
     document.body.style.overflow = sidebarOpen ? 'hidden' : ''

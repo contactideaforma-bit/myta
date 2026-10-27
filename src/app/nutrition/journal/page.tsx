@@ -751,10 +751,11 @@ export default function JournalPage() {
           const over = (weekCal[d] ?? 0) > (g.cal || 2000)
           return (
             <button key={d} onClick={() => setCurrentDate(d)}
-              className={`rounded-2xl py-2 flex flex-col items-center gap-0.5 transition-all ${sel ? 'bg-[#15152A] text-white shadow-md' : 'bg-transparent'}`}>
+              className={`rounded-2xl py-2 flex flex-col items-center gap-0.5 transition-all ${sel ? 'text-white shadow-[0_8px_20px_rgba(34,197,94,0.35)]' : 'bg-transparent'}`}
+              style={sel ? { background: 'linear-gradient(135deg,#22C55E,#16A34A)' } : undefined}>
               <span className={`text-[11px] font-bold ${sel ? 'text-white/80' : 't-muted'}`}>{format(new Date(d + 'T12:00'), 'EEEEE', { locale: fr }).toUpperCase()}</span>
               <span className={`text-sm font-extrabold ${sel ? 'text-white' : 't-text'}`}>{format(new Date(d + 'T12:00'), 'd')}</span>
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: has ? (over ? '#FBBF24' : '#22C55E') : 'transparent' }} />
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: has ? (sel ? '#fff' : over ? '#FBBF24' : '#22C55E') : 'transparent' }} />
             </button>
           )
         })}
@@ -770,32 +771,33 @@ export default function JournalPage() {
         const macros = [
           { label: 'Prot.', val: totals.prot, goal: g.prot, color: '#4B47A0', title: 'Protéines par aliment', key: 'prot' as const },
           { label: 'Gluc.', val: totals.carb, goal: g.carb, color: '#0E7490', title: 'Glucides par aliment',  key: 'carb' as const },
-          { label: 'Lip.',  val: totals.fat,  goal: g.fat,  color: '#15803D', title: 'Lipides par aliment',   key: 'fat'  as const },
+          { label: 'Lip.',  val: totals.fat,  goal: g.fat,  color: '#EA580C', title: 'Lipides par aliment',   key: 'fat'  as const },
         ]
         return (
-          <div className="card-hero flex flex-col gap-3">
+          <div className="card-hero flex flex-col gap-3 relative overflow-hidden">
+            <div className="absolute -top-16 -right-16 w-44 h-44 rounded-full pointer-events-none" style={{ background: 'radial-gradient(closest-side, rgba(34,197,94,0.22), transparent)' }} />
             <button onClick={() => setNutriModal({ title: 'Calories par aliment', color: '#f97316',
                 entries: foodEntries.map(e => ({ food_name: e.food_name, value: Number(e.cal), unit: 'kcal' })) })}
               className="text-left">
               <div className="flex items-baseline justify-between">
-                <span className="text-xs font-bold t-muted">Consommé</span>
+                <span className="text-xs font-extrabold text-nutri-dark uppercase tracking-wide">Consommé</span>
                 <span className="text-xs font-bold t-muted">objectif {g.cal.toLocaleString('fr-FR')}</span>
               </div>
               <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-[34px] font-extrabold tracking-tight t-text leading-none tabular-nums">{Math.round(totals.cal).toLocaleString('fr-FR')}</span>
+                <span className="text-[34px] font-extrabold tracking-tight leading-none tabular-nums" style={{ color: '#15803D' }}>{Math.round(totals.cal).toLocaleString('fr-FR')}</span>
                 <span className="text-sm font-bold t-muted">kcal · {rest > 0 ? `reste ${rest.toLocaleString('fr-FR')}` : 'objectif atteint'}</span>
               </div>
             </button>
-            <div className="h-2.5 rounded-full bg-raised overflow-hidden flex">
+            <div className="h-2.5 rounded-full overflow-hidden flex" style={{ background: 'rgba(34,197,94,0.12)' }}>
               <div className="h-full" style={{ width: `${barP}%`, background: '#4B47A0' }} />
               <div className="h-full" style={{ width: `${barC}%`, background: '#06B6D4' }} />
-              <div className="h-full" style={{ width: `${barF}%`, background: '#22C55E' }} />
+              <div className="h-full" style={{ width: `${barF}%`, background: '#F97316' }} />
             </div>
             <div className="grid grid-cols-3 gap-2">
               {macros.map(m => (
                 <button key={m.key} onClick={() => setNutriModal({ title: m.title, color: m.color,
                     entries: foodEntries.map(e => ({ food_name: e.food_name, value: Number(e[m.key]), unit: 'g' })).filter(e => e.value > 0) })}
-                  className="bg-raised rounded-2xl px-2 py-2.5 text-center active:scale-[0.97] transition-transform">
+                  className="rounded-2xl px-2 py-2.5 text-center active:scale-[0.97] transition-transform" style={{ background: `${m.color}14` }}>
                   <p className="text-[15px] font-extrabold tabular-nums" style={{ color: m.color }}>{Math.round(m.val)} g</p>
                   <p className="text-[11px] font-bold t-muted">{m.label} · {pct(m.val, m.goal)} %</p>
                 </button>
@@ -917,18 +919,22 @@ export default function JournalPage() {
       {!showVoiceMeal && (
         <div className="grid grid-cols-3 gap-3 py-1">
           {[
-            { key: 'voice', label: 'Vocal ou texte', sub: 'Dis ce que tu as mangé', art: 'micro' as const, active: false, busy: false,
+            { key: 'voice', label: 'Vocal ou texte', sub: 'Dis ce que tu as mangé', art: 'micro' as const, active: false, busy: false, tint: 'rgba(34,197,94,0.14)', ring: 'rgba(34,197,94,0.35)',
               onClick: () => setShowVoiceMeal(true) },
-            { key: 'photo', label: 'Photo du repas', sub: 'Waty lit ton assiette', art: 'photo' as const, active: false, busy: photoAnalyzing,
+            { key: 'photo', label: 'Photo du repas', sub: 'Waty lit ton assiette', art: 'photo' as const, active: false, busy: photoAnalyzing, tint: 'rgba(37,99,235,0.12)', ring: 'rgba(37,99,235,0.3)',
               onClick: () => photoInputRef.current?.click() },
-            { key: 'suppl', label: 'Compléments', sub: supplEntries.length > 0 ? `${supplEntries.length} aujourd'hui` : 'Vitamines, plantes…', art: 'gelules' as const, active: showSupplPanel, busy: false,
+            { key: 'suppl', label: 'Compléments', sub: supplEntries.length > 0 ? `${supplEntries.length} aujourd'hui` : 'Vitamines, plantes…', art: 'gelules' as const, active: showSupplPanel, busy: false, tint: 'rgba(168,85,247,0.14)', ring: 'rgba(168,85,247,0.35)',
               onClick: () => { setShowSupplPanel(v => !v); setSupplQuery(''); setSupplResults([]) } },
           ].map(b => (
             <button key={b.key} onClick={b.onClick} disabled={b.busy}
               className="flex flex-col items-center gap-2 active:scale-95 transition-transform disabled:opacity-60">
-              <span className={`relative w-[84px] h-[84px] rounded-full flex items-center justify-center border transition-all ${
-                b.active ? 'bg-white/90 border-tta-mid/40 shadow-[0_10px_30px_rgba(75,71,160,0.18)]' : 'bg-white/55 border-white/80 shadow-[0_10px_30px_rgba(45,42,94,0.10)]'
-              }`} style={{ backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)' }}>
+              <span className="relative w-[84px] h-[84px] rounded-full flex items-center justify-center transition-all"
+                style={{
+                  background: `linear-gradient(160deg, rgba(255,255,255,0.85), ${b.tint})`,
+                  border: `1.5px solid ${b.active ? b.ring : 'rgba(255,255,255,0.9)'}`,
+                  boxShadow: b.active ? `0 12px 30px ${b.ring}` : `0 10px 28px ${b.tint}`,
+                  backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+                }}>
                 {b.busy
                   ? <span className="w-8 h-8 border-4 border-sky-200 border-t-sky-500 rounded-full animate-spin" />
                   : <MytaIllustration name={b.art} size={46} />}
@@ -1047,7 +1053,7 @@ export default function JournalPage() {
       {/* ── Aliments récents — accès rapide ── */}
       {recentFoods.length > 0 && !query && (
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-bold t-muted uppercase tracking-wide">Récents</p>
+          <p className="text-xs font-extrabold text-nutri-dark uppercase tracking-wide">Récents</p>
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
             {recentFoods.map((food, i) => (
               <button
