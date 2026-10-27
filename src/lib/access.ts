@@ -2,7 +2,9 @@
  * Source de vérité unique pour l'accès à l'app (modèle "Netflix").
  *
  * Statuts d'abonnement (profiles.subscription_status) :
- *   - 'active' | 'vip'  → accès permanent
+ *   - 'active'          → accès permanent (Stripe / stores)
+ *   - 'vip'             → accès offert : permanent si access_until est NULL,
+ *                         sinon TANT QUE now < access_until (partenaires, codes promo)
  *   - 'trialing'        → accès pendant l'essai :
  *        • trial_ends_at renseigné (essai 3 j sans CB) → accès TANT QUE now < trial_ends_at
  *        • trial_ends_at NULL (essai géré par Stripe)  → accès (Stripe gère la transition)
@@ -15,9 +17,14 @@
 export function hasActiveAccess(
   status?: string | null,
   trialEndsAt?: string | null,
+  accessUntil?: string | null,
 ): boolean {
   if (!status) return false
-  if (status === 'active' || status === 'vip') return true
+  if (status === 'active') return true
+  if (status === 'vip') {
+    if (!accessUntil) return true
+    return new Date(accessUntil).getTime() > Date.now()
+  }
   if (status === 'trialing') {
     if (!trialEndsAt) return true // essai géré par Stripe
     return new Date(trialEndsAt).getTime() > Date.now()
@@ -41,5 +48,12 @@ export function isFreeTrial(
 export function trialDaysLeft(trialEndsAt?: string | null): number {
   if (!trialEndsAt) return 0
   const ms = new Date(trialEndsAt).getTime() - Date.now()
+  return ms > 0 ? Math.ceil(ms / 86_400_000) : 0
+}
+
+/** Jours entiers restants d'accès offert (statut 'vip' à durée limitée). */
+export function accessDaysLeft(accessUntil?: string | null): number | null {
+  if (!accessUntil) return null
+  const ms = new Date(accessUntil).getTime() - Date.now()
   return ms > 0 ? Math.ceil(ms / 86_400_000) : 0
 }

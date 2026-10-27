@@ -77,12 +77,12 @@ export async function middleware(request: NextRequest) {
   try {
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('subscription_status, trial_ends_at')
+      .select('subscription_status, trial_ends_at, access_until')
       .eq('id', user.id)
       .single()
 
     const status = profile?.subscription_status
-    const hasAccess = hasActiveAccess(status, profile?.trial_ends_at)
+    const hasAccess = hasActiveAccess(status, profile?.trial_ends_at, profile?.access_until)
 
     if (!hasAccess) {
       const dest = status === 'past_due' ? '/payment-failed' : '/pricing'

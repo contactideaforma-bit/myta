@@ -67,6 +67,8 @@ function pageTitle(pathname: string): string {
   if (pathname.startsWith('/guide'))    return 'Guide'
   if (pathname.startsWith('/faq'))      return 'FAQ'
   if (pathname.startsWith('/billing'))  return 'Abonnement'
+  if (pathname.startsWith('/admin'))    return 'Collabs'
+  if (pathname.startsWith('/code'))     return 'Code promo'
   return 'MYTA'
 }
 
@@ -121,6 +123,7 @@ export function Navbar() {
 
   // ── Plan & profil actif ──
   const [userPlan,      setUserPlan]      = useState<string | null>(null)
+  const [isAdmin,       setIsAdmin]       = useState(false)
   const [viewingAsId,   setViewingAsId]   = useState<string | null>(null)
   const [viewingAsName, setViewingAsName] = useState<string | null>(null)
 
@@ -202,6 +205,8 @@ export function Navbar() {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) return
       const selfId = data.user.id
+      // Lien « Collabs » : réservé à l'adresse d'administration (le serveur revérifie)
+      setIsAdmin((data.user.email ?? '').toLowerCase() === 'contact@mytwinapp.fr')
 
       // Mini-jeux Waty : compter le jour d'utilisation (1×/jour, guard localStorage)
       logActivityToday(selfId)
@@ -560,6 +565,21 @@ export function Navbar() {
             </div>
             {pathname.startsWith('/games') && <MytaIcon name="chevron" size={14} className="text-tta-mid" />}
           </button>
+
+          {/* Espace admin (collabs) — visible uniquement pour le compte d'administration */}
+          {isAdmin && (
+            <button onClick={() => handleNavClick('/admin')}
+              className={cn('w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-all',
+                pathname.startsWith('/admin') ? 'bg-tta-light' : 'hover:bg-zinc-50 text-zinc-600')}>
+              <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center', pathname.startsWith('/admin') ? 'bg-tta-mid/20' : 'bg-violet-50')}>
+                <MytaIcon name="crown" size={16} className={pathname.startsWith('/admin') ? 'text-tta-mid' : 'text-violet-500'} />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-zinc-700">Collabs</p>
+                <p className="text-[10px] text-zinc-400">Partenaires Premium & codes promo</p>
+              </div>
+            </button>
+          )}
 
           {/* Profil */}
           <div className="px-3 pt-3 pb-1">

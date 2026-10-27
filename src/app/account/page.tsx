@@ -16,6 +16,8 @@ import { restoreRcPurchases } from '@/lib/revenuecat'
 import OnboardingCoach from '@/components/ui/OnboardingCoach'
 import { useOnboarding } from '@/lib/onboarding'
 import { NotificationSettings } from '@/components/ui/NotificationSettings'
+import { PromoCodeBox } from '@/components/ui/PromoCodeBox'
+import { MytaIcon } from '@/components/ui/MytaIcon'
 
 /** Ouvre la gestion des abonnements Apple (résiliation côté App Store). */
 const APPLE_MANAGE_SUBS_URL = 'itms-apps://apps.apple.com/account/subscriptions'
@@ -48,7 +50,7 @@ const STATUS_LABEL: Record<string, { text: string; color: string; bg: string }> 
   active:   { text: 'Actif',              color: 'text-green-700',  bg: 'bg-green-50'  },
   canceled: { text: 'Résilié',            color: 'text-red-600',    bg: 'bg-red-50'    },
   past_due: { text: 'Paiement en retard', color: 'text-orange-700', bg: 'bg-orange-50' },
-  vip:      { text: 'VIP',             color: 'text-purple-700', bg: 'bg-purple-50' },
+  vip:      { text: 'Premium offert',     color: 'text-purple-700', bg: 'bg-purple-50' },
   free:     { text: 'Gratuit',            color: 'text-zinc-600',   bg: 'bg-zinc-100'  },
 }
 
@@ -404,6 +406,14 @@ export default function AccountPage() {
           <p className="text-[11px] text-zinc-400 text-center">Minimum 8 caractères</p>
         </div>
       </Section>
+
+      {/* ── Code promo (jours Premium offerts par un partenaire) ── */}
+      {subStatus !== 'active' && subStatus !== 'past_due' && (
+        <Section title="J'ai un code" icon={<MytaIcon name="sparkle" size={16} />}>
+          <p className="text-xs text-zinc-500 -mt-2">Un créateur t'a partagé un code MYTA ? Les jours de Premium s'ajoutent à ton compte.</p>
+          <PromoCodeBox onSuccess={() => setTimeout(() => window.location.reload(), 1200)} />
+        </Section>
+      )}
 
       {/* ── Mode de paiement ── */}
       {!iosApp && ['active', 'trialing', 'past_due'].includes(subStatus) && (

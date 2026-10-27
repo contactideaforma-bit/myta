@@ -70,7 +70,7 @@ export async function checkAiQuota(userId: string, feature: AiFeature): Promise<
     const { data: profile, error } = await supabaseAdmin
       .from('profiles')
       .select(
-        'plan, subscription_status, trial_ends_at, family_role, family_owner_id, ai_daily_key, ai_daily_meal_used, ai_daily_sport_used, ai_month_key, ai_month_import_used'
+        'plan, subscription_status, trial_ends_at, access_until, family_role, family_owner_id, ai_daily_key, ai_daily_meal_used, ai_daily_sport_used, ai_month_key, ai_month_import_used'
       )
       .eq('id', userId)
       .single()
@@ -97,22 +97,24 @@ export async function checkAiQuota(userId: string, feature: AiFeature): Promise<
     let effectivePlan: string | null = profile.plan ?? null
     let activeStatus = profile.subscription_status ?? ''
     let trialEndsAt: string | null = profile.trial_ends_at ?? null
+    let accessUntil: string | null = profile.access_until ?? null
 
     if (profile.family_role === 'partner' && profile.family_owner_id) {
       const { data: owner } = await supabaseAdmin
         .from('profiles')
-        .select('plan, subscription_status, trial_ends_at')
+        .select('plan, subscription_status, trial_ends_at, access_until')
         .eq('id', profile.family_owner_id)
         .single()
       if (owner) {
         effectivePlan = owner.plan ?? effectivePlan
         activeStatus  = owner.subscription_status ?? activeStatus
         trialEndsAt   = owner.trial_ends_at ?? trialEndsAt
+        accessUntil   = owner.access_until ?? accessUntil
       }
     }
 
     // Accès requis (abonné OU essai 3 jours en cours). L'essai expiré est refusé.
-    if (!hasActiveAccess(activeStatus, trialEndsAt)) {
+    if (!hasActiveAccess(activeStatus, trialEndsAt, accessUntil)) {
       return {
         allowed: false,
         error: NextResponse.json({
