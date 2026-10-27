@@ -1,0 +1,5 @@
+Dépose ici les logos officiels fournis par les plateformes (kits de marque) :
+  instagram.svg  (ou instagram.png)  — https://about.meta.com/brand/resources/instagram/instagram-brand/
+  tiktok.svg     (ou tiktok.png)     — https://www.tiktok.com/about/brand-and-legal
+Les pastilles « Instagram » / « TikTok » de l'app les affichent automatiquement ;
+sans fichier, un picto vidéo générique est utilisé.

@@ -433,15 +433,9 @@ export default function RecipesPage() {
       {toast && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-semibold text-white bg-nutri shadow-lg">{toast}</div>}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-zinc-900">Recettes</h1>
-          <p className="text-sm text-zinc-400">Importe, crée, garde : ton catalogue à toi</p>
-        </div>
-        <button onClick={() => { setView('saved'); setDetail(null); loadSavedRecipes() }}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-bold transition-colors ${view === 'saved' ? 'bg-nutri text-white border-nutri' : 'border-zinc-200 text-zinc-700 bg-white'}`}>
-          <BookmarkCheck size={14} />Mon catalogue{savedIds.size > 0 ? ` · ${savedIds.size}` : ''}
-        </button>
+      <div>
+        <h1 className="text-xl font-bold text-zinc-900">Recettes</h1>
+        <p className="text-sm text-zinc-400">Importe, crée, garde : ton catalogue à toi</p>
       </div>
 
       {/* ── 1. Importer depuis Instagram / TikTok : le geste principal, mis en avant ── */}
@@ -463,6 +457,19 @@ export default function RecipesPage() {
             <SourceChips light />
             <span className="inline-flex items-center gap-1.5 bg-white text-tta-mid text-sm font-extrabold px-4 py-2.5 rounded-full shadow-sm flex-shrink-0"><Link2 size={15} />Coller un lien</span>
           </div>
+        </button>
+      )}
+
+      {/* Mon catalogue : accès plein format, sous le geste principal */}
+      {view !== 'saved' && (
+        <button onClick={() => { setView('saved'); setDetail(null); loadSavedRecipes() }}
+          className="card flex items-center gap-3 text-left py-3 hover:border-nutri/40 transition-colors">
+          <MytaIllustration name="livre" size={40} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-zinc-900">Mon catalogue</p>
+            <p className="text-[11px] text-zinc-400">{savedIds.size > 0 ? `${savedIds.size} recette${savedIds.size > 1 ? 's' : ''} · étapes, photos, PDF, partage` : 'Tes recettes enregistrées, étape par étape'}</p>
+          </div>
+          <span className="text-xs font-extrabold text-nutri-dark bg-nutri-light rounded-full px-2.5 py-1 flex-shrink-0">{savedIds.size > 0 ? savedIds.size : 'Ouvrir'}</span>
         </button>
       )}
 

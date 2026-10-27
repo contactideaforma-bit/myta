@@ -7,10 +7,11 @@ import { Capacitor, CapacitorHttp } from '@capacitor/core'
 import { Waty } from '@/components/ui/Waty'
 import { RecipeNutritionGuide } from '@/components/ui/RecipeNutritionGuide'
 import { SourceChips } from '../SourceChips'
+import { MytaIllustration } from '@/components/ui/MytaIllustration'
 import { scoreRecipe, type ScoreMyta } from '@/lib/score-myta'
 import { toSavedRow, SOURCE_LABELS, shareRecipePdf, recipeShareToken, type Recipe, type Ingredient, type Etape, type SourceKind } from '@/lib/recipes'
 import {
-  ChevronLeft, Link2, ClipboardPaste, Camera, Image as ImageIcon, FileText, X,
+  ChevronLeft, ClipboardPaste, X,
   Loader2, Sparkles, Minus, Plus, Trash2, Bookmark, ExternalLink, Clock, Users, Star, FileDown, Check, Share2, ChevronDown,
 } from 'lucide-react'
 
@@ -411,18 +412,18 @@ export default function ImportRecipePage() {
         <div className={`grid grid-cols-3 gap-2 ${needsMore ? 'rounded-3xl ring-2 ring-nutri/30 p-1' : ''}`}>
           <button onClick={() => { if (fileRef.current) { fileRef.current.removeAttribute('capture'); fileRef.current.click() } }}
             className="card flex flex-col items-center gap-2 py-4 px-2 text-center">
-            <span className="w-11 h-11 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center"><ImageIcon size={22} /></span>
+            <MytaIllustration name="capture" size={48} />
             <span className="text-xs font-bold text-zinc-800 leading-tight">Une capture d'écran</span>
             <span className="text-[10px] text-zinc-400 leading-tight">de la recette affichée</span>
           </button>
           <button onClick={() => { if (fileRef.current) { fileRef.current.setAttribute('capture', 'environment'); fileRef.current.click() } }}
             className="card flex flex-col items-center gap-2 py-4 px-2 text-center">
-            <span className="w-11 h-11 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center"><Camera size={22} /></span>
+            <MytaIllustration name="livre" size={48} />
             <span className="text-xs font-bold text-zinc-800 leading-tight">Une photo</span>
             <span className="text-[10px] text-zinc-400 leading-tight">d'un livre ou d'une fiche</span>
           </button>
           <button onClick={() => setShowText(v => !v)} className={`card flex flex-col items-center gap-2 py-4 px-2 text-center ${showText ? 'border-tta-mid/40' : ''}`}>
-            <span className="w-11 h-11 rounded-2xl bg-violet-100 text-tta-mid flex items-center justify-center"><FileText size={22} /></span>
+            <MytaIllustration name="texte" size={48} />
             <span className="text-xs font-bold text-zinc-800 leading-tight">Le texte</span>
             <span className="text-[10px] text-zinc-400 leading-tight flex items-center gap-0.5">à coller <ChevronDown size={10} className={`transition-transform ${showText ? 'rotate-180' : ''}`} /></span>
           </button>

@@ -10,7 +10,7 @@
  * reste neutre) ; `shadow` ajoute l'ombre portée au sol.
  */
 
-export type MytaIllustrationName = 'repas' | 'seance' | 'nuit' | 'recette' | 'eau' | 'waty' | 'trophee' | 'vide' | 'maison' | 'micro' | 'photo' | 'gelules'
+export type MytaIllustrationName = 'repas' | 'seance' | 'nuit' | 'recette' | 'eau' | 'waty' | 'trophee' | 'vide' | 'maison' | 'micro' | 'photo' | 'gelules' | 'capture' | 'livre' | 'texte'
 
 interface Props {
   name: MytaIllustrationName
@@ -119,6 +119,35 @@ const ART: Record<MytaIllustrationName, JSX.Element> = {
     <rect x="28" y="30" width="30" height="14" rx="7" transform="rotate(25 43 37)" fill="#F3E8FF" />
     <rect x="43" y="30" width="15" height="14" rx="7" transform="rotate(25 43 37)" fill="#7C3AED" />
     <circle cx="20" cy="48" r="4" fill="#22C55E" /><circle cx="30" cy="52" r="3" fill="#FBBF24" />
+  </>,
+  capture: <>
+    <rect x="16" y="4" width="32" height="56" rx="8" fill="#15152A" />
+    <rect x="19" y="9" width="26" height="46" rx="4" fill="#E0F2FE" />
+    <rect x="22" y="13" width="20" height="14" rx="3" fill="#7DD3FC" />
+    <path d="M25 24l5-6 4 4 3-3 3 5z" fill="#0284C7" />
+    <circle cx="37" cy="17" r="2" fill="#fff" />
+    <path d="M23 32h18M23 37h18M23 42h11" stroke="#38BDF8" strokeWidth="2.2" strokeLinecap="round" />
+    <path d="M10 10h6M10 10v6M54 10h-6M54 10v6M10 54h6M10 54v-6M54 54h-6M54 54v-6" stroke="#0284C7" strokeWidth="2.6" strokeLinecap="round" />
+    <rect x="28" y="56" width="8" height="2" rx="1" fill="#fff" opacity="0.5" />
+  </>,
+  livre: <>
+    <path d="M8 16c8-4 16-4 24 0v34c-8-4-16-4-24 0z" fill="#FDE68A" />
+    <path d="M56 16c-8-4-16-4-24 0v34c8-4 16-4 24 0z" fill="#FCD34D" />
+    <path d="M32 16v34" stroke="#B45309" strokeWidth="2" strokeLinecap="round" />
+    <path d="M13 24c5-2 10-2 15 0M13 30c5-2 10-2 15 0M13 36c4-2 8-2 12 0" stroke="#B45309" strokeWidth="1.8" strokeLinecap="round" opacity="0.6" />
+    <path d="M36 24c5-2 10-2 15 0M36 30c5-2 10-2 15 0" stroke="#B45309" strokeWidth="1.8" strokeLinecap="round" opacity="0.6" />
+    <rect x="34" y="34" width="22" height="16" rx="4" fill="#F97316" />
+    <rect x="40" y="31" width="10" height="5" rx="2" fill="#EA580C" />
+    <circle cx="45" cy="42" r="5" fill="#fff" />
+    <circle cx="45" cy="42" r="2.6" fill="#15152A" />
+    <circle cx="52" cy="38" r="1.4" fill="#fff" opacity="0.8" />
+  </>,
+  texte: <>
+    <path d="M16 6h22l12 12v36a4 4 0 0 1-4 4H16a4 4 0 0 1-4-4V10a4 4 0 0 1 4-4z" fill="#EDE9FE" />
+    <path d="M38 6v12h12z" fill="#C4B5FD" />
+    <path d="M19 24h20M19 30h26M19 36h26M19 42h18" stroke="#7C3AED" strokeWidth="2.4" strokeLinecap="round" />
+    <rect x="34" y="40" width="20" height="14" rx="4" fill="#4B47A0" />
+    <path d="M39 47h10M44 44v6" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" opacity="0.9" />
   </>,
   vide: <>
     <path d="M10 30h44c0 11-9 19-22 19S10 41 10 30z" fill="#DCDBF6" />
