@@ -4,14 +4,11 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Logo } from '@/components/ui/Logo'
 import {
-  LayoutDashboard,
-  BookOpen, ChefHat, Lightbulb,
-  Dumbbell, Timer, History, User,
-  LogOut, AlertTriangle, Menu, X,
-  ChevronRight, Sun, Moon, MessageSquareWarning, Send, CheckCircle,
-  HelpCircle, Users, Settings, ArrowLeft, Gamepad2, Eye,
-  Bug, BarChart3, CreditCard, PenLine, Salad,
+  AlertTriangle, X, Send, CheckCircle, MessageSquareWarning,
+  Bug, BarChart3, CreditCard, PenLine, Lightbulb,
 } from 'lucide-react'
+import { MytaIcon, type MytaIconName } from './MytaIcon'
+import { TabBar } from './TabBar'
 import { ProfileSwitcher } from './ProfileSwitcher'
 import { logActivityToday } from '@/lib/games'
 import { cn } from '@/lib/utils'
@@ -35,17 +32,43 @@ const ACCENT: Record<'dashboard' | 'nutrition' | 'sport', string> = {
   sport:     '#A78BFA',   // violet sport
 }
 
-const NAV_NUTRI = [
-  { href: '/nutrition/journal',    label: 'Journal',     icon: BookOpen,   desc: 'Suivi alimentaire du jour',  color: 'text-green-600',  bg: 'bg-green-50'  },
-  { href: '/nutrition/recipes',    label: 'Recettes',    icon: ChefHat,    desc: 'Recettes IA en français',    color: 'text-green-500',  bg: 'bg-green-50'  },
-  { href: '/nutrition/advice',     label: 'Conseils',    icon: Lightbulb,  desc: 'Nutrition & bien-être',      color: 'text-yellow-500', bg: 'bg-yellow-50' },
+type NavItem = { href: string; label: string; icon: MytaIconName; desc: string; color: string; bg: string }
+
+const NAV_NUTRI: NavItem[] = [
+  { href: '/nutrition/journal',        label: 'Journal',   icon: 'journal', desc: 'Suivi alimentaire du jour',          color: 'text-green-600',  bg: 'bg-green-50'  },
+  { href: '/nutrition/recipes',        label: 'Recettes',  icon: 'recipe',  desc: 'Recettes IA · import Instagram/TikTok', color: 'text-orange-500', bg: 'bg-orange-50' },
+  { href: '/nutrition/advice',         label: 'Conseils',  icon: 'advice',  desc: 'Nutrition & bien-être',              color: 'text-yellow-500', bg: 'bg-yellow-50' },
 ]
 
-const NAV_SPORT = [
-  { href: '/sport/session',  label: 'Séance',     icon: Dumbbell, desc: 'Logger un entraînement', color: 'text-purple-500', bg: 'bg-purple-50' },
-  { href: '/sport/tabata',   label: 'Tabata',     icon: Timer,    desc: 'Timer HIIT configurable', color: 'text-red-500',    bg: 'bg-red-50'    },
-  { href: '/sport/history',  label: 'Historique', icon: History,  desc: 'Mes séances passées',     color: 'text-blue-500',   bg: 'bg-blue-50'   },
+const NAV_SPORT: NavItem[] = [
+  { href: '/sport/session',  label: 'Séance',     icon: 'sport',   desc: 'Logger un entraînement',  color: 'text-purple-500', bg: 'bg-purple-50' },
+  { href: '/sport/tabata',   label: 'Tabata',     icon: 'timer',   desc: 'Timer HIIT configurable', color: 'text-red-500',    bg: 'bg-red-50'    },
+  { href: '/sport/history',  label: 'Historique', icon: 'history', desc: 'Mes séances passées',     color: 'text-blue-500',   bg: 'bg-blue-50'   },
 ]
+
+/** Titre affiché au centre du header selon la route */
+function pageTitle(pathname: string): string {
+  if (pathname === '/dashboard') return "Aujourd'hui"
+  if (pathname.startsWith('/nutrition/journal'))  return 'Journal'
+  if (pathname.startsWith('/nutrition/recipes/import')) return 'Importer'
+  if (pathname.startsWith('/nutrition/recipes'))  return 'Recettes'
+  if (pathname.startsWith('/nutrition/advice'))   return 'Conseils'
+  if (pathname.startsWith('/nutrition/calculator')) return 'Calculateur'
+  if (pathname.startsWith('/sport/session'))  return 'Séance'
+  if (pathname.startsWith('/sport/tabata'))   return 'Tabata'
+  if (pathname.startsWith('/sport/history'))  return 'Historique'
+  if (pathname.startsWith('/sleep'))    return 'Sommeil'
+  if (pathname.startsWith('/bilan'))    return 'Bilan'
+  if (pathname.startsWith('/profile'))  return 'Profil'
+  if (pathname.startsWith('/friends'))  return 'Amis'
+  if (pathname.startsWith('/games'))    return 'Mini-jeux'
+  if (pathname.startsWith('/account'))  return 'Mon compte'
+  if (pathname.startsWith('/family'))   return 'Famille'
+  if (pathname.startsWith('/guide'))    return 'Guide'
+  if (pathname.startsWith('/faq'))      return 'FAQ'
+  if (pathname.startsWith('/billing'))  return 'Abonnement'
+  return 'MYTA'
+}
 
 function QuitModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
   return (
@@ -221,8 +244,6 @@ export function Navbar() {
 
   const isDashboard  = pathname === '/dashboard'
   const activeModule: Module = pathname.startsWith('/sport') ? 'sport' : 'nutrition'
-  const navItems = activeModule === 'nutrition' ? NAV_NUTRI : NAV_SPORT
-  const isNutri  = activeModule === 'nutrition'
   const sidebarNavItems = sidebarModule === 'nutrition' ? NAV_NUTRI : NAV_SPORT
   const sidebarIsNutri  = sidebarModule === 'nutrition'
 
@@ -330,41 +351,42 @@ export function Navbar() {
         </div>
       )}
 
-      {/* ── Header coloré ── */}
-      <header
-        className="sticky top-0 z-50"
-        style={{ background: BRAND_BAR }}
-      >
-        <div className="px-4 h-14 flex items-center justify-between">
-
-          {/* Burger */}
-          <button onClick={() => setSidebarOpen(v => !v)}
-            className="w-9 h-9 flex items-center justify-center rounded-2xl bg-white/20 hover:bg-white/30 transition-colors text-white">
-            <Menu size={20} />
+      {/* ── Header : safe-area (heure iOS) + 44 pt, verre dépoli ── */}
+      <header className="app-header">
+        <div className="app-header-row">
+          {/* Menu (gauche) */}
+          <button onClick={() => setSidebarOpen(v => !v)} aria-label="Menu" className="icon-btn">
+            <MytaIcon name="menu" size={18} />
           </button>
 
-          {/* Logo */}
-          <button onClick={() => router.push('/dashboard')} className="ml-2" aria-label="Tableau de bord">
-            <Logo size="sm" tone="light" baseline={false} />
+          {/* Titre de l'écran (centre) */}
+          <button onClick={() => router.push('/dashboard')} className="flex-1 flex items-center justify-center gap-2 min-w-0" aria-label="Tableau de bord">
+            <span className="app-header-title truncate">{pageTitle(pathname)}</span>
           </button>
 
-          <div className="flex-1" />
-
-          {/* Switch profil (couple/famille) ou rien */}
-          <ProfileSwitcher plan={userPlan} />
+          {/* Droite : switch profil (couple/famille) + amis */}
+          <div className="flex items-center gap-1.5">
+            <ProfileSwitcher plan={userPlan} />
+            <button onClick={() => handleNavClick('/friends')} aria-label="Amis et challenges" className="icon-btn relative">
+              <MytaIcon name="friends" size={18} />
+              {hasUnread && pathname !== '/friends' && (
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full" />
+              )}
+            </button>
+          </div>
         </div>
-
-        {/* Liseré de section — remplace l'ancien changement de couleur de barre */}
-        <div className="h-[3px] w-full" style={{
-          background: ACCENT[isDashboard ? 'dashboard' : activeModule],
-        }} />
+        {/* Liseré de section : la couleur indique où l'on est */}
+        <div className="h-[2px] w-full opacity-70" style={{ background: ACCENT[isDashboard ? 'dashboard' : activeModule] }} />
       </header>
+
+      {/* ── Barre d'onglets du bas (Accueil · Journal · + · Sport · Sommeil) ── */}
+      <TabBar />
 
       {/* ── Banner "Vous consultez le profil de…" ── */}
       {viewingAsId && viewingAsName && (
-        <div className="sticky top-14 z-40 flex items-center justify-between gap-2 px-4 py-2 text-xs font-bold text-white"
-          style={{ background: 'linear-gradient(90deg, #d97706, #f59e0b)' }}>
-          <span className="flex items-center gap-1.5"><Eye size={13} /> Profil de {viewingAsName.split(' ')[0]}</span>
+        <div className="sticky z-40 flex items-center justify-between gap-2 px-4 py-2 text-xs font-bold text-white"
+          style={{ top: 'calc(46px + var(--sat))', background: 'linear-gradient(90deg, #d97706, #f59e0b)' }}>
+          <span className="flex items-center gap-1.5"><MytaIcon name="eye" size={13} /> Profil de {viewingAsName.split(' ')[0]}</span>
           <button
             onClick={() => {
               localStorage.removeItem('myta_viewing_as_id')
@@ -372,7 +394,7 @@ export function Navbar() {
               window.location.reload()
             }}
             className="flex items-center gap-1 underline underline-offset-2 hover:no-underline">
-            <ArrowLeft size={11} />Retour à mon profil
+            <MytaIcon name="back" size={11} />Retour à mon profil
           </button>
         </div>
       )}
@@ -385,17 +407,14 @@ export function Navbar() {
 
       {/* ── Sidebar ── */}
       <aside className={cn(
-        'fixed top-0 left-0 z-[56] h-full w-72 bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-in-out',
+        'fixed top-0 left-0 z-[56] h-full w-72 bg-[var(--card)] shadow-2xl flex flex-col transition-transform duration-300 ease-in-out',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
 
         {/* Header sidebar coloré */}
         <div
-          className={cn(
-            'px-5 py-5 flex items-center justify-between',
-
-          )}
-          style={{ background: BRAND_BAR }}
+          className="px-5 pb-5 flex items-center justify-between"
+          style={{ background: BRAND_BAR, paddingTop: 'calc(20px + var(--sat))' }}
         >
           <div className="flex items-center">
             {/* Pas de pastille blanche : le logo est lisible nativement sur la
@@ -418,7 +437,7 @@ export function Navbar() {
                 'flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5',
                 sidebarIsNutri ? 'bg-gradient-to-r from-nutri to-nutri-mid text-white shadow-sm' : 'text-zinc-400'
               )}>
-              <Salad size={14} /> Nutrition
+              <MytaIcon name="journal" size={14} /> Nutrition
             </button>
             <button
               onClick={() => setSidebarModule('sport')}
@@ -426,7 +445,7 @@ export function Navbar() {
                 'flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5',
                 !sidebarIsNutri ? 'bg-gradient-to-r from-tta-mid to-sport text-white shadow-sm' : 'text-zinc-400'
               )}>
-              <Dumbbell size={14} /> Sport
+              <MytaIcon name="sport" size={14} /> Sport
             </button>
           </div>
         </div>
@@ -444,27 +463,25 @@ export function Navbar() {
             )}>
             <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center',
               pathname === '/dashboard' ? 'bg-tta-mid/20' : 'bg-zinc-100')}>
-              <LayoutDashboard size={16} className={pathname === '/dashboard' ? 'text-tta-mid' : 'text-zinc-400'} />
+              <MytaIcon name="home" size={16} className={pathname === '/dashboard' ? 'text-tta-mid' : 'text-zinc-400'} />
             </div>
             <div className="flex-1">
               <p className="text-sm font-bold">Dashboard</p>
               <p className="text-[10px] text-zinc-400">Vue d'ensemble</p>
             </div>
-            {pathname === '/dashboard' && <ChevronRight size={14} className="text-tta-mid" />}
+            {pathname === '/dashboard' && <MytaIcon name="chevron" size={14} className="text-tta-mid" />}
           </button>
 
           {/* Label module */}
           <div className="px-3 pt-3 pb-1">
             <p className={cn('text-[10px] font-extrabold uppercase tracking-widest',
               sidebarIsNutri ? 'text-nutri-mid' : 'text-sport')}>
-              {sidebarIsNutri
-                ? <><Salad size={13} /> Nutrition</>
-                : <><Dumbbell size={13} /> Sport</>}
+              {sidebarIsNutri ? 'Nutrition' : 'Sport'}
             </p>
           </div>
 
           {/* Items module */}
-          {sidebarNavItems.map(({ href, label, icon: Icon, desc, color, bg }) => {
+          {sidebarNavItems.map(({ href, label, icon, desc, color, bg }) => {
             const active = pathname === href
             return (
               <button key={href} onClick={() => handleNavClick(href)}
@@ -475,7 +492,7 @@ export function Navbar() {
                     : 'hover:bg-zinc-50 text-zinc-600'
                 )}>
                 <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0', active ? bg : 'bg-zinc-100')}>
-                  <Icon size={16} className={active ? color : 'text-zinc-400'} />
+                  <MytaIcon name={icon} size={16} className={active ? color : 'text-zinc-400'} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className={cn('text-sm font-bold', active ? (sidebarIsNutri ? 'text-nutri-dark' : 'text-sport-dark') : 'text-zinc-700')}>
@@ -483,7 +500,7 @@ export function Navbar() {
                   </p>
                   <p className="text-[10px] text-zinc-400 truncate">{desc}</p>
                 </div>
-                {active && <ChevronRight size={14} className={sidebarIsNutri ? 'text-nutri-mid' : 'text-sport'} />}
+                {active && <MytaIcon name="chevron" size={14} className={sidebarIsNutri ? 'text-nutri-mid' : 'text-sport'} />}
               </button>
             )
           })}
@@ -497,7 +514,7 @@ export function Navbar() {
             <div className="relative">
               <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center',
                 pathname === '/friends' ? 'bg-tta-mid/20' : 'bg-purple-50')}>
-                <Users size={16} className={pathname === '/friends' ? 'text-tta-mid' : 'text-purple-400'} />
+                <MytaIcon name="friends" size={16} className={pathname === '/friends' ? 'text-tta-mid' : 'text-purple-400'} />
               </div>
               {hasUnread && pathname !== '/friends' && (
                 <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
@@ -507,7 +524,7 @@ export function Navbar() {
               <p className="text-sm font-bold text-zinc-700">Amis & Challenges</p>
               <p className="text-[10px] text-zinc-400">Défis & Sauver Waty</p>
             </div>
-            {pathname === '/friends' && <ChevronRight size={14} className="text-tta-mid" />}
+            {pathname === '/friends' && <MytaIcon name="chevron" size={14} className="text-tta-mid" />}
           </button>
 
           {/* Mini-jeux Waty */}
@@ -518,13 +535,13 @@ export function Navbar() {
             )}>
             <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center',
               pathname.startsWith('/games') ? 'bg-tta-mid/20' : 'bg-amber-50')}>
-              <Gamepad2 size={16} className={pathname.startsWith('/games') ? 'text-tta-mid' : 'text-amber-500'} />
+              <MytaIcon name="games" size={16} className={pathname.startsWith('/games') ? 'text-tta-mid' : 'text-amber-500'} />
             </div>
             <div className="flex-1">
               <p className="text-sm font-bold text-zinc-700">Mini-jeux Waty</p>
               <p className="text-[10px] text-zinc-400">À débloquer en utilisant l'app</p>
             </div>
-            {pathname.startsWith('/games') && <ChevronRight size={14} className="text-tta-mid" />}
+            {pathname.startsWith('/games') && <MytaIcon name="chevron" size={14} className="text-tta-mid" />}
           </button>
 
           {/* Profil */}
@@ -541,7 +558,7 @@ export function Navbar() {
             )}>
             <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center',
               pathname === '/bilan' ? 'bg-tta-mid/20' : 'bg-zinc-100')}>
-              <BarChart3 size={16} className={pathname === '/bilan' ? 'text-tta-mid' : 'text-zinc-400'} />
+              <MytaIcon name="chart" size={16} className={pathname === '/bilan' ? 'text-tta-mid' : 'text-zinc-400'} />
             </div>
             <div className="flex-1">
               <p className="text-sm font-bold text-zinc-700">Bilan</p>
@@ -556,7 +573,7 @@ export function Navbar() {
             )}>
             <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center',
               pathname === '/profile' ? 'bg-tta-mid/20' : 'bg-zinc-100')}>
-              <User size={16} className={pathname === '/profile' ? 'text-tta-mid' : 'text-zinc-400'} />
+              <MytaIcon name="user" size={16} className={pathname === '/profile' ? 'text-tta-mid' : 'text-zinc-400'} />
             </div>
             <div className="flex-1">
               <p className="text-sm font-bold text-zinc-700">Profil</p>
@@ -571,7 +588,7 @@ export function Navbar() {
             )}>
             <div className={cn('w-9 h-9 rounded-xl flex items-center justify-center',
               pathname === '/sleep' ? 'bg-tta-mid/20' : 'bg-zinc-100')}>
-              <Moon size={16} className={pathname === '/sleep' ? 'text-tta-mid' : 'text-zinc-400'} />
+              <MytaIcon name="sleep" size={16} className={pathname === '/sleep' ? 'text-tta-mid' : 'text-zinc-400'} />
             </div>
             <div className="flex-1">
               <p className="text-sm font-bold text-zinc-700">Sommeil</p>
@@ -581,13 +598,13 @@ export function Navbar() {
         </nav>
 
         {/* Footer compact */}
-        <div className="px-4 py-3 border-t border-zinc-100 flex flex-col gap-2">
+        <div className="px-4 pt-3 border-t border-zinc-100 flex flex-col gap-2" style={{ paddingBottom: 'calc(12px + var(--sab))' }}>
 
           {/* Ligne 1 mini : Guide · FAQ · Mon compte */}
           <div className="flex items-center justify-center gap-3 py-1">
             <button onClick={() => { router.push('/guide'); setSidebarOpen(false) }}
               className="flex items-center gap-1 text-zinc-400 hover:text-tta-mid transition-colors">
-              <HelpCircle size={12} />
+              <MytaIcon name="help" size={12} />
               <span className="text-[11px] font-semibold">Guide</span>
             </button>
             <span className="text-zinc-200 text-xs">·</span>
@@ -596,7 +613,7 @@ export function Navbar() {
                 'flex items-center gap-1 transition-colors',
                 pathname === '/faq' ? 'text-tta-mid' : 'text-zinc-400 hover:text-tta-mid'
               )}>
-              <HelpCircle size={12} />
+              <MytaIcon name="help" size={12} />
               <span className="text-[11px] font-semibold">FAQ</span>
             </button>
             <span className="text-zinc-200 text-xs">·</span>
@@ -605,7 +622,7 @@ export function Navbar() {
                 'flex items-center gap-1 transition-colors',
                 pathname === '/account' ? 'text-tta-mid' : 'text-zinc-400 hover:text-tta-mid'
               )}>
-              <Settings size={12} />
+              <MytaIcon name="settings" size={12} />
               <span className="text-[11px] font-semibold">Mon compte</span>
             </button>
           </div>
@@ -615,8 +632,8 @@ export function Navbar() {
             <button onClick={toggle}
               className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl hover:bg-zinc-50 transition-all text-zinc-500">
               {theme === 'dark'
-                ? <Sun size={14} className="text-amber-400" />
-                : <Moon size={14} className="text-zinc-400" />}
+                ? <MytaIcon name="sun" size={14} className="text-amber-400" />
+                : <MytaIcon name="moon" size={14} className="text-zinc-400" />}
               <span className="text-xs font-semibold text-zinc-500">{theme === 'dark' ? 'Clair' : 'Sombre'}</span>
             </button>
 
@@ -624,7 +641,7 @@ export function Navbar() {
 
             <button onClick={() => { setShowReport(true); setSidebarOpen(false) }}
               className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl hover:bg-zinc-50 transition-all text-zinc-400 hover:text-amber-500">
-              <MessageSquareWarning size={14} />
+              <MytaIcon name="report" size={14} />
               <span className="text-xs font-semibold">Signaler</span>
             </button>
 
@@ -632,7 +649,7 @@ export function Navbar() {
 
             <button onClick={signOut}
               className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl hover:bg-red-50 transition-all text-zinc-400 hover:text-red-500">
-              <LogOut size={14} />
+              <MytaIcon name="logout" size={14} />
               <span className="text-xs font-semibold">Sortir</span>
             </button>
           </div>

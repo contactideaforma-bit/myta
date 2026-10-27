@@ -3,12 +3,44 @@
 @tailwind utilities;
 
 @layer base {
-  :root { --radius: 0.75rem; color-scheme: light; }
-  .dark  { color-scheme: dark; }
+  /* ── Jetons de thème (refonte 27/10/2026) ──
+     Les écrans refaits (coque, accueil) n'utilisent QUE ces variables.
+     Les surcouches .dark … !important plus bas restent pour les écrans
+     pas encore migrés ; elles reprennent la même palette. */
+  :root {
+    --radius: 0.75rem; color-scheme: light;
+    --bg:        #F6F6FB;   /* fond de page */
+    --card:      #FFFFFF;   /* cartes */
+    --raised:    #F6F6FB;   /* fond secondaire dans une carte */
+    --line:      rgba(21,21,42,0.06);
+    --text:      #15152A;
+    --muted:     #6B6B8A;
+    --faint:     #A3A3BD;
+    --glass:     rgba(246,246,251,0.86);
+    --shadow:    0 10px 30px rgba(45,42,94,0.08);
+    --shadow-sm: 0 6px 20px rgba(45,42,94,0.06);
+    --icon-cut:  #FFFFFF;
+    --sat:       env(safe-area-inset-top, 0px);
+    --sab:       env(safe-area-inset-bottom, 0px);
+  }
+  .dark {
+    color-scheme: dark;
+    --bg:        #0F1020;
+    --card:      #1A1B33;
+    --raised:    #22233F;
+    --line:      rgba(255,255,255,0.08);
+    --text:      #F2F2FA;
+    --muted:     #A0A2C2;
+    --faint:     #7D7F9E;
+    --glass:     rgba(15,16,32,0.84);
+    --shadow:    0 10px 30px rgba(0,0,0,0.35);
+    --shadow-sm: 0 6px 20px rgba(0,0,0,0.3);
+    --icon-cut:  #1A1B33;
+  }
 
   /* Dégradé de page clair (auth, pricing, success…) — version sombre incluse */
   .page-gradient { background: linear-gradient(160deg, #f0f0ff 0%, #e8fbf8 50%, #f0fdf4 100%); }
-  .dark .page-gradient { background: linear-gradient(160deg, #1a1825 0%, #1d2030 50%, #1a2526 100%); }
+  .dark .page-gradient { background: linear-gradient(160deg, #0F1020 0%, #1d2030 50%, #1a2526 100%); }
 
   /* App mobile : largeur verrouillée, pas de scroll horizontal ni d'effet
      élastique « page web », pas de zoom double-tap, texte non re-scalé par iOS */
@@ -27,8 +59,11 @@
   html { min-height: 100%; }
 
   body {
-    @apply bg-cream text-zinc-800 antialiased;
+    @apply text-zinc-800 antialiased;
+    background-color: var(--bg);
+    color: var(--text);
     font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
     min-height: 100%;
     overflow-x: hidden;           /* fallback anciens navigateurs */
     overflow-x: clip;             /* moderne : pas de scroll horizontal, sans conteneur de scroll */
@@ -42,32 +77,32 @@
   canvas { touch-action: none; }
 
   /* Dark mode */
-  .dark body        { background-color: #1a1825; color: #f0eeff; }
-  .dark header      { background-color: #2d2a5e !important; border-color: #3d3a7a !important; }
-  .dark aside       { background-color: #2d2a5e !important; border-color: #3d3a7a !important; }
-  .dark .card       { background-color: #252340 !important; border-color: #3d3a7a !important; }
-  .dark .card-sm    { background-color: #252340 !important; border-color: #3d3a7a !important; }
-  .dark .kpi-card   { background-color: #2d2a5e !important; }
-  .dark .input      { background-color: #2d2a5e !important; border-color: #4d4a8e !important; color: #f0eeff !important; }
+  .dark body        { background-color: #0F1020; color: #f0eeff; }
+  .dark header.legacy-bar { background-color: #22233F !important; border-color: #2E3052 !important; }
+  .dark aside       { background-color: #22233F !important; border-color: #2E3052 !important; }
+  .dark .card       { background-color: #1A1B33 !important; border-color: #2E3052 !important; }
+  .dark .card-sm    { background-color: #1A1B33 !important; border-color: #2E3052 !important; }
+  .dark .kpi-card   { background-color: #22233F !important; }
+  .dark .input      { background-color: #22233F !important; border-color: #3A3C66 !important; color: #f0eeff !important; }
   .dark .btn-ghost  { color: #a0a0d0 !important; }
-  .dark .btn-ghost:hover { background-color: #3d3a7a !important; }
-  .dark select      { background-color: #2d2a5e !important; border-color: #4d4a8e !important; color: #f0eeff !important; }
-  .dark .bg-white   { background-color: #252340 !important; }
-  .dark textarea    { background-color: #2d2a5e !important; border-color: #4d4a8e !important; color: #f0eeff !important; }
+  .dark .btn-ghost:hover { background-color: #2E3052 !important; }
+  .dark select      { background-color: #22233F !important; border-color: #3A3C66 !important; color: #f0eeff !important; }
+  .dark .bg-white   { background-color: #1A1B33 !important; }
+  .dark textarea    { background-color: #22233F !important; border-color: #3A3C66 !important; color: #f0eeff !important; }
   .dark textarea::placeholder { color: #6060a0 !important; }
-  .dark .bg-cream   { background-color: #1a1825 !important; }
-  .dark .bg-zinc-50 { background-color: #1a1825 !important; }
-  .dark .bg-zinc-100 { background-color: #2d2a5e !important; }
-  .dark .border-zinc-200 { border-color: #3d3a7a !important; }
-  .dark .border-zinc-100 { border-color: #2d2a5e !important; }
+  .dark .bg-cream   { background-color: #0F1020 !important; }
+  .dark .bg-zinc-50 { background-color: #0F1020 !important; }
+  .dark .bg-zinc-100 { background-color: #22233F !important; }
+  .dark .border-zinc-200 { border-color: #2E3052 !important; }
+  .dark .border-zinc-100 { border-color: #22233F !important; }
   .dark .text-zinc-900 { color: #f0eeff !important; }
   .dark .text-zinc-800 { color: #e0e0f8 !important; }
   .dark .text-zinc-700 { color: #c0c0e8 !important; }
   .dark .text-zinc-600 { color: #a0a0d0 !important; }
   .dark .text-zinc-500 { color: #8080b8 !important; }
-  .dark .divide-zinc-100 > * + * { border-color: #2d2a5e !important; }
-  .dark .hover\:bg-zinc-50:hover  { background-color: #2d2a5e !important; }
-  .dark .hover\:bg-zinc-100:hover { background-color: #3d3a7a !important; }
+  .dark .divide-zinc-100 > * + * { border-color: #22233F !important; }
+  .dark .hover\:bg-zinc-50:hover  { background-color: #22233F !important; }
+  .dark .hover\:bg-zinc-100:hover { background-color: #2E3052 !important; }
 
   /* Textes moyens — plus lisibles sur fond sombre */
   .dark .text-zinc-500 { color: #8080b8 !important; }
@@ -75,29 +110,29 @@
   .dark .text-zinc-300 { color: #5555a0 !important; }
 
   /* Fonds colorés clairs → fond sombre en dark mode */
-  .dark .bg-orange-50  { background-color: #252340 !important; }
-  .dark .bg-orange-100 { background-color: #2d2a5e !important; }
-  .dark .border-orange-100 { border-color: #4d4a8e !important; }
+  .dark .bg-orange-50  { background-color: #1A1B33 !important; }
+  .dark .bg-orange-100 { background-color: #22233F !important; }
+  .dark .border-orange-100 { border-color: #3A3C66 !important; }
   .dark .text-orange-700 { color: #fb923c !important; }
   .dark .text-orange-600 { color: #f97316 !important; }
   .dark .text-orange-500 { color: #fdba74 !important; }
-  .dark .hover\:bg-orange-100:hover { background-color: #3d3a7a !important; }
+  .dark .hover\:bg-orange-100:hover { background-color: #2E3052 !important; }
 
-  .dark .bg-indigo-50  { background-color: #252340 !important; }
-  .dark .bg-indigo-100 { background-color: #2d2a5e !important; }
-  .dark .border-indigo-100 { border-color: #4d4a8e !important; }
+  .dark .bg-indigo-50  { background-color: #1A1B33 !important; }
+  .dark .bg-indigo-100 { background-color: #22233F !important; }
+  .dark .border-indigo-100 { border-color: #3A3C66 !important; }
   .dark .text-indigo-700 { color: #a5b4fc !important; }
   .dark .text-indigo-600 { color: #818cf8 !important; }
   .dark .text-indigo-500 { color: #c7d2fe !important; }
-  .dark .hover\:bg-indigo-100:hover { background-color: #3d3a7a !important; }
+  .dark .hover\:bg-indigo-100:hover { background-color: #2E3052 !important; }
 
-  .dark .bg-purple-50  { background-color: #252340 !important; }
-  .dark .bg-amber-100  { background-color: #2d2a5e !important; }
-  .dark .bg-amber-50   { background-color: #252340 !important; }
-  .dark .bg-green-50   { background-color: #252340 !important; }
-  .dark .bg-blue-50    { background-color: #252340 !important; }
-  .dark .bg-red-50     { background-color: #2d2a5e !important; }
-  .dark .border-green-200 { border-color: #3d3a7a !important; }
+  .dark .bg-purple-50  { background-color: #1A1B33 !important; }
+  .dark .bg-amber-100  { background-color: #22233F !important; }
+  .dark .bg-amber-50   { background-color: #1A1B33 !important; }
+  .dark .bg-green-50   { background-color: #1A1B33 !important; }
+  .dark .bg-blue-50    { background-color: #1A1B33 !important; }
+  .dark .bg-red-50     { background-color: #22233F !important; }
+  .dark .border-green-200 { border-color: #2E3052 !important; }
   .dark .border-red-200   { border-color: #4d3a5e !important; }
 
   /* ── Compléments audit dark : fonds pastel restants ── */
@@ -106,12 +141,12 @@
   .dark .bg-purple-100, .dark .bg-pink-100, .dark .bg-violet-100,
   .dark .bg-blue-100, .dark .bg-green-100, .dark .bg-nutri-light,
   .dark .bg-tta-light, .dark .bg-sport-light {
-    background-color: #252340 !important;
+    background-color: #1A1B33 !important;
   }
   .dark .border-pink-100, .dark .border-violet-100, .dark .border-blue-100,
   .dark .border-amber-100, .dark .border-amber-200, .dark .border-green-100,
   .dark .border-teal-100, .dark .border-purple-100 {
-    border-color: #3d3a7a !important;
+    border-color: #2E3052 !important;
   }
 
   /* Textes foncés sur fonds pastel → versions lisibles sur fond sombre */
@@ -135,12 +170,20 @@
   .dark .text-\[\#4B47A0\] { color: #a8a4ee !important; }
   /* Surfaces blanches translucides (barres sticky, veils). Les faibles
      opacités (/15 à /30 : effet verre sur dégradés colorés) restent intactes */
-  .dark .bg-white\/95 { background-color: rgba(37, 35, 64, 0.95) !important; }
-  .dark .bg-white\/90 { background-color: rgba(37, 35, 64, 0.9) !important; }
-  .dark .bg-white\/80 { background-color: rgba(37, 35, 64, 0.8) !important; }
-  .dark .bg-white\/70 { background-color: rgba(37, 35, 64, 0.7) !important; }
-  .dark .bg-white\/60 { background-color: rgba(37, 35, 64, 0.6) !important; }
+  .dark .bg-white\/95 { background-color: rgba(26, 27, 51, 0.95) !important; }
+  .dark .bg-white\/90 { background-color: rgba(26, 27, 51, 0.9) !important; }
+  .dark .bg-white\/80 { background-color: rgba(26, 27, 51, 0.8) !important; }
+  .dark .bg-white\/70 { background-color: rgba(26, 27, 51, 0.7) !important; }
+  .dark .bg-white\/60 { background-color: rgba(26, 27, 51, 0.6) !important; }
 }
+
+/* ── Animations coque ── */
+@keyframes mytaSheet { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes mytaFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mytaRing { from { stroke-dashoffset: var(--ring-full); } }
+.animate-myta-sheet  { animation: mytaSheet 0.28s cubic-bezier(.2,.8,.2,1) both; }
+.animate-myta-fadein { animation: mytaFadeIn 0.2s ease-out both; }
+.animate-myta-ring   { animation: mytaRing 0.9s cubic-bezier(.2,.8,.2,1) both; }
 
 /* ── Animations landing page ── */
 @keyframes mytaFloat {
@@ -163,15 +206,56 @@
 
   /* ── Page container — mobile first ── */
   .page {
-    @apply w-full max-w-lg mx-auto px-4 py-5 flex flex-col gap-4;
+    @apply w-full max-w-lg mx-auto px-4 pt-4 flex flex-col gap-4;
+    /* place pour la barre d'onglets + barre d'accueil iPhone */
+    padding-bottom: calc(56px + var(--sab) + 24px);
   }
+  main { min-height: calc(100vh - 44px - var(--sat)); }
+
+  /* ── Header de l'app : safe-area + 44 pt, verre dépoli ── */
+  .app-header {
+    @apply sticky top-0 z-50;
+    padding-top: var(--sat);
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--line);
+  }
+  .app-header-row { @apply h-11 px-4 flex items-center justify-between gap-2; }
+  .app-header-title { @apply text-[17px] font-extrabold tracking-tight; color: var(--text); }
+  .icon-btn {
+    @apply w-[34px] h-[34px] rounded-full flex items-center justify-center transition-colors active:scale-95;
+    background: rgba(75,71,160,0.08); color: #4B47A0;
+  }
+  .dark .icon-btn { background: rgba(123,127,212,0.16); color: #B9BCF2; }
+
+  /* ── Barre d'onglets du bas ── */
+  .tabbar {
+    @apply fixed bottom-0 left-0 right-0 z-50;
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+    border-top: 1px solid var(--line);
+    padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);
+  }
+  .tabbar-safe { height: var(--sab); }
+
+  /* Textes sur jetons (écrans refaits) */
+  .t-text  { color: var(--text); }
+  .t-muted { color: var(--muted); }
+  .t-faint { color: var(--faint); }
+  .bg-raised { background-color: var(--raised); }
 
   /* ── Cartes fun ── */
   .card {
-    @apply bg-white rounded-3xl p-5 border border-zinc-100 shadow-sm;
+    @apply rounded-3xl p-5 border;
+    background-color: var(--card); border-color: var(--line); box-shadow: var(--shadow-sm);
   }
   .card-sm {
-    @apply bg-white rounded-2xl p-4 border border-zinc-100 shadow-sm;
+    @apply rounded-2xl p-4 border;
+    background-color: var(--card); border-color: var(--line); box-shadow: var(--shadow-sm);
+  }
+  .card-hero {
+    @apply rounded-[28px] p-[18px] border;
+    background-color: var(--card); border-color: var(--line); box-shadow: var(--shadow);
   }
   .card-nutri {
     @apply bg-nutri-light rounded-3xl p-5 border border-nutri/20 shadow-sm;
