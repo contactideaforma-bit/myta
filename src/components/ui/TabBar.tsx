@@ -13,11 +13,11 @@ import { MytaIcon, type MytaIconName } from './MytaIcon'
 import { MytaIllustration, type MytaIllustrationName } from './MytaIllustration'
 import { getActiveProfile } from '@/lib/active-profile'
 
-const TABS: { href: string; label: string; icon: MytaIconName; match: (p: string) => boolean }[] = [
-  { href: '/dashboard',         label: 'Accueil', icon: 'home',    match: p => p === '/dashboard' },
-  { href: '/nutrition/journal', label: 'Journal', icon: 'journal', match: p => p.startsWith('/nutrition') },
-  { href: '/sport/session',     label: 'Sport',   icon: 'sport',   match: p => p.startsWith('/sport') },
-  { href: '/sleep',             label: 'Sommeil', icon: 'sleep',   match: p => p.startsWith('/sleep') },
+const TABS: { href: string; label: string; icon: MytaIconName; art: MytaIllustrationName; match: (p: string) => boolean }[] = [
+  { href: '/dashboard',         label: 'Accueil', icon: 'home',    art: 'maison', match: p => p === '/dashboard' },
+  { href: '/nutrition/journal', label: 'Journal', icon: 'journal', art: 'repas',  match: p => p.startsWith('/nutrition') },
+  { href: '/sport/session',     label: 'Sport',   icon: 'sport',   art: 'seance', match: p => p.startsWith('/sport') },
+  { href: '/sleep',             label: 'Sommeil', icon: 'sleep',   art: 'nuit',   match: p => p.startsWith('/sleep') },
 ]
 
 interface Action { href: string; title: string; sub: string; icon: MytaIconName; art: MytaIllustrationName }
@@ -110,8 +110,9 @@ function Tab({ t, active, onClick }: { t: typeof TABS[number]; active: boolean; 
   return (
     <button onClick={onClick} aria-current={active ? 'page' : undefined}
       className={`flex flex-col items-center gap-0.5 py-1 text-[10px] transition-colors ${active ? 'text-tta-mid font-extrabold' : 'text-zinc-400 font-bold'}`}>
-      <span className={`transition-transform ${active ? 'scale-100' : 'scale-95'}`}>
-        <MytaIcon name={t.icon} size={22} outline={!active} />
+      {/* Illustration vectorielle : en couleur quand l'onglet est actif, grisée sinon */}
+      <span className={`transition-all duration-200 ${active ? 'scale-110 -translate-y-0.5' : 'scale-100 grayscale opacity-55'}`}>
+        <MytaIllustration name={t.art} size={28} />
       </span>
       {t.label}
     </button>

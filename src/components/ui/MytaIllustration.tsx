@@ -10,7 +10,7 @@
  * reste neutre) ; `shadow` ajoute l'ombre portée au sol.
  */
 
-export type MytaIllustrationName = 'repas' | 'seance' | 'nuit' | 'recette' | 'eau' | 'waty' | 'trophee' | 'vide'
+export type MytaIllustrationName = 'repas' | 'seance' | 'nuit' | 'recette' | 'eau' | 'waty' | 'trophee' | 'vide' | 'maison'
 
 interface Props {
   name: MytaIllustrationName
@@ -88,6 +88,15 @@ const ART: Record<MytaIllustrationName, JSX.Element> = {
     <rect x="20" y="46" width="24" height="7" rx="3" fill="#D97706" />
     <path d="M25 13a6 6 0 0 1 4-3" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" opacity="0.7" />
     <path d="M32 18l1.5 3.2 3.5.5-2.5 2.5.6 3.5-3.1-1.7-3.1 1.7.6-3.5-2.5-2.5 3.5-.5z" fill="#fff" opacity="0.9" />
+  </>,
+  maison: <>
+    <path d="M32 8L6 30h7v22a3 3 0 0 0 3 3h32a3 3 0 0 0 3-3V30h7z" fill="#4B47A0" />
+    <path d="M32 8L6 30h7l19-16 19 16h7z" fill="#3B3780" />
+    <rect x="26" y="36" width="12" height="19" rx="5" fill="#FBBF24" />
+    <rect x="40" y="34" width="8" height="8" rx="2" fill="#E0F2FE" />
+    <rect x="16" y="34" width="8" height="8" rx="2" fill="#E0F2FE" />
+    <path d="M14 34c0 8 4 14 10 17" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" opacity="0.35" />
+    <path d="M46 10h5v10l-5-4z" fill="#22C55E" />
   </>,
   vide: <>
     <path d="M10 30h44c0 11-9 19-22 19S10 41 10 30z" fill="#DCDBF6" />
