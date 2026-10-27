@@ -37,6 +37,10 @@ export interface Recipe {
   accompagnements?: string[]
   photo_keyword: string
   photoUrl?: string
+  /** Informations complétées par Waty quand la source était incomplète (visibles, corrigeables) */
+  completions?: string[]
+  /** Identifiant de partage public (saved_recipes.share_token) */
+  share_token?: string | null
   category?: string
   // Provenance (import)
   source_kind?: SourceKind | null
@@ -71,6 +75,8 @@ export function fromSavedRow(r: any): Recipe {
     photo_keyword: '', photoUrl: r.photo_url ?? undefined, category: r.category ?? undefined,
     source_kind: r.source_kind ?? 'ia', source_url: r.source_url ?? null, source_author: r.source_author ?? null,
     score: r.score_detail ?? null,
+    completions: Array.isArray(r.completions) ? r.completions : undefined,
+    share_token: r.share_token ?? null,
   }
 }
 
@@ -95,6 +101,7 @@ export function toSavedRow(userId: string, recipe: Recipe, score?: ScoreMyta | n
     source_kind: recipe.source_kind ?? 'ia', source_url: recipe.source_url ?? null,
     source_author: recipe.source_author ?? null,
     source_captured_at: recipe.source_kind && recipe.source_kind !== 'ia' ? new Date().toISOString() : null,
+    completions: recipe.completions ?? null,
   }
 }
 

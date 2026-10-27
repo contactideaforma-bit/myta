@@ -92,26 +92,66 @@ async function extractTikTok(url: string): Promise<SourceMeta> {
   return meta
 }
 
-async function extractInstagram(url: string): Promise<SourceMeta> {
+const UA_MOBILE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'
+
+function stripTags(html: string): string {
+  return decodeEntities(html.replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|li)>/gi, '\n').replace(/<[^>]+>/g, '')).replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
+}
+
+/** Lit légende / auteur / image dans le HTML d'une page Instagram (page publique ou widget embed). */
+function parseInstagramHtml(html: string, meta: SourceMeta): SourceMeta {
+  // a) Widget embed « captioned » : <div class="Caption">… (pas de mur de connexion)
+  const cap = html.match(/class="Caption"[^>]*>([\s\S]*?)<div class="CaptionComments"/i) ?? html.match(/class="Caption"[^>]*>([\s\S]*?)<\/div>\s*<div class="CaptionComments/i)
+  if (cap) {
+    const user = html.match(/class="CaptionUsername"[^>]*>([\s\S]*?)<\/a>/i)?.[1] ?? html.match(/class="UsernameText"[^>]*>([^<]+)</i)?.[1]
+    let text = stripTags(cap[1])
+    if (user) { meta.author = stripTags(user); text = text.replace(new RegExp(`^${meta.author.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*`), '') }
+    if (text.length > 20) meta.caption = text
+    const img = html.match(/class="EmbeddedMediaImage"[^>]*src="([^"]+)"/i)?.[1]
+    if (img) meta.thumbnail = decodeEntities(img)
+    if (meta.caption) return meta
+  }
+  // b) Balises og: (page publique servie à un navigateur mobile)
+  const ogTitle = metaTag(html, 'og:title')
+  const ogDesc  = metaTag(html, 'og:description') ?? metaTag(html, 'description')
+  if (!meta.thumbnail) meta.thumbnail = metaTag(html, 'og:image')
+  const authorMatch = (ogTitle ?? '').match(/^(.+?) on Instagram/i) ?? (ogDesc ?? '').match(/-\s*(.+?) on /i)
+  if (authorMatch && !meta.author) meta.author = authorMatch[1].replace(/^[\d,.\sKM]+likes?,?\s*[\d,.\sKM]*comments?\s*-\s*/i, '').trim()
+  const captionFrom = (t?: string) => {
+    if (!t) return undefined
+    const q = t.match(/[:：]\s*["“]([\s\S]+)["”]\s*$/) ?? t.match(/[:：]\s*["“]([\s\S]+)/)
+    return (q ? q[1] : t).trim()
+  }
+  const c1 = captionFrom(ogTitle), c2 = captionFrom(ogDesc)
+  const best = (c1 && c1.length > (c2?.length ?? 0)) ? c1 : c2
+  if (best && best.length > 20 && !/^Instagram$/i.test(best)) meta.caption = best
+  if (!meta.title) meta.title = ogTitle
+  // c) JSON embarqué (caption dans "caption":"…" ou "text":"…")
+  if (!meta.caption) {
+    const j = html.match(/"caption"\s*:\s*"((?:[^"\\]|\\.){40,})"/) ?? html.match(/"edge_media_to_caption"[\s\S]{0,200}?"text"\s*:\s*"((?:[^"\\]|\\.){40,})"/)
+    if (j) { try { meta.caption = JSON.parse(`"${j[1]}"`) } catch { /* ignoré */ } }
+  }
+  return meta
+}
+
+async function extractInstagram(url: string, pageHtml?: string): Promise<SourceMeta> {
   const meta: SourceMeta = { kind: 'instagram', url }
-  try {
-    const r = await fetchWithTimeout(url, { headers: { 'User-Agent': UA, 'Accept-Language': 'fr-FR,fr;q=0.9', Accept: 'text/html' } })
-    if (!r.ok) return meta
-    const html = await r.text()
-    const ogTitle = metaTag(html, 'og:title')
-    const ogDesc  = metaTag(html, 'og:description') ?? metaTag(html, 'description')
-    meta.thumbnail = metaTag(html, 'og:image')
-    // og:title : "Auteur on Instagram: "légende…""  /  og:description : "123 likes, 4 comments - auteur on …: "légende""
-    const authorMatch = (ogTitle ?? '').match(/^(.+?) on Instagram/i) ?? (ogDesc ?? '').match(/-\s*(.+?) on /i)
-    if (authorMatch) meta.author = authorMatch[1].replace(/^[\d,.\sKM]+likes?,?\s*[\d,.\sKM]*comments?\s*-\s*/i, '').trim()
-    const captionFrom = (s?: string) => {
-      if (!s) return undefined
-      const q = s.match(/[:：]\s*["“]([\s\S]+)["”]\s*$/) ?? s.match(/[:：]\s*["“]([\s\S]+)/)
-      return (q ? q[1] : s).trim()
+  // 0. HTML récupéré par l'app sur le téléphone (Instagram bloque les serveurs, pas les mobiles)
+  if (pageHtml && pageHtml.length > 500) { parseInstagramHtml(pageHtml, meta); if (meta.caption) return meta }
+  const code = url.match(/instagram\.com\/(?:[^/]+\/)?(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/)?.[1]
+  // 1. Widget embed « captioned » : accessible sans connexion depuis un serveur
+  if (code) {
+    for (const path of [`https://www.instagram.com/p/${code}/embed/captioned/`, `https://www.instagram.com/reel/${code}/embed/captioned/`]) {
+      try {
+        const r = await fetchWithTimeout(path, { headers: { 'User-Agent': UA_MOBILE, 'Accept-Language': 'fr-FR,fr;q=0.9', Accept: 'text/html' } })
+        if (r.ok) { parseInstagramHtml(await r.text(), meta); if (meta.caption) return meta }
+      } catch (e) { console.warn('[import-recipe] instagram embed', e) }
     }
-    const cap = captionFrom(ogTitle) && (captionFrom(ogTitle)!.length > (captionFrom(ogDesc)?.length ?? 0)) ? captionFrom(ogTitle) : captionFrom(ogDesc)
-    meta.caption = cap
-    meta.title   = ogTitle
+  }
+  // 2. Page publique (og:) — fonctionne par intermittence selon l'IP du serveur
+  try {
+    const r = await fetchWithTimeout(url, { headers: { 'User-Agent': UA_MOBILE, 'Accept-Language': 'fr-FR,fr;q=0.9', Accept: 'text/html' } })
+    if (r.ok) parseInstagramHtml(await r.text(), meta)
   } catch (e) { console.warn('[import-recipe] instagram meta', e) }
   return meta
 }
@@ -161,9 +201,22 @@ async function extractWeb(url: string): Promise<SourceMeta> {
   return meta
 }
 
+// ─── Photo d'illustration (Pexels, clé serveur) ──────────────────────────────
+// Jamais la photo du créateur : une photo libre de droits correspondant au plat.
+async function pexelsPhoto(keyword: string): Promise<string | null> {
+  const key = process.env.PEXELS_API_KEY
+  if (!key) return null
+  try {
+    const r = await fetchWithTimeout(`https://api.pexels.com/v1/search?query=${encodeURIComponent(`${keyword} food`)}&per_page=1&orientation=landscape`, { headers: { Authorization: key } }, 5000)
+    if (!r.ok) return null
+    const j: any = await r.json()
+    return j.photos?.[0]?.src?.large ?? j.photos?.[0]?.src?.medium ?? null
+  } catch { return null }
+}
+
 // ─── Structuration IA ────────────────────────────────────────────────────────
 
-const RECIPE_SCHEMA = `{"ok":true,"titre":"Nom de la recette","description":"Une phrase appétissante.","temps_prep":10,"temps_cuisson":15,"portions":2,"difficulte":"Facile","ustensiles":["poêle"],"ingredients":[{"qte":"200 g","nom":"filet de saumon","note":"sans peau","grammes":200,"per100g":{"kcal":208,"prot":20,"carb":0,"sugars":0,"fat":13,"satFat":3,"fiber":0,"salt":0.1,"fvl":0}},{"qte":"1","nom":"citron","note":"","grammes":60,"per100g":{"kcal":29,"prot":1.1,"carb":9.3,"sugars":2.5,"fat":0.3,"satFat":0,"fiber":2.8,"salt":0,"fvl":100}}],"etapes":[{"num":1,"titre":"Préparation","detail":"…","duree":"5 min","astuce":"…"}],"conseils_chef":"…","accompagnements":["Riz"],"photo_keyword":"salmon lemon dish","source_author":"@auteur si visible, sinon vide"}`
+const RECIPE_SCHEMA = `{"ok":true,"titre":"Nom de la recette","description":"Une phrase appétissante.","temps_prep":10,"temps_cuisson":15,"portions":2,"difficulte":"Facile","ustensiles":["poêle"],"ingredients":[{"qte":"200 g","nom":"filet de saumon","note":"sans peau","grammes":200,"per100g":{"kcal":208,"prot":20,"carb":0,"sugars":0,"fat":13,"satFat":3,"fiber":0,"salt":0.1,"fvl":0}},{"qte":"1","nom":"citron","note":"","grammes":60,"per100g":{"kcal":29,"prot":1.1,"carb":9.3,"sugars":2.5,"fat":0.3,"satFat":0,"fiber":2.8,"salt":0,"fvl":100}}],"etapes":[{"num":1,"titre":"Préparation","detail":"…","duree":"5 min","astuce":"…"}],"conseils_chef":"…","accompagnements":["Riz"],"photo_keyword":"salmon lemon dish","source_author":"@auteur si visible, sinon vide","completions":["Quantité de sel estimée (1 pincée)","Temps de cuisson déduit (15 min à feu moyen)"]}`
 
 function buildPrompt(src: SourceMeta | null, userText: string, hasImage: boolean): string {
   const parts: string[] = []
@@ -184,7 +237,9 @@ Si les éléments ne contiennent PAS de recette exploitable (pas d'ingrédients 
 Règles strictes :
 - Titre et contenu en français (traduis si besoin). difficulte ∈ Facile | Moyen | Avancé.
 - REFORMULE les étapes dans ton propre style, clair et bienveillant : ne recopie jamais le texte source mot pour mot.
-- Conserve TOUS les ingrédients avec leurs quantités d'origine dans "qte". Si une quantité manque, estime-la pour le nombre de portions et mets-la quand même.
+- Conserve TOUS les ingrédients avec leurs quantités d'origine dans "qte".
+- COMPLÉTION LOGIQUE : les vidéos et légendes sont souvent incomplètes. Comble ce qui manque de façon cohérente avec la recette et le nombre de portions : quantité absente (estime-la, ex. « 2 c. à s. »), étape implicite (préchauffage, repos, assaisonnement), temps de préparation/cuisson, ustensiles, portions. Reste plausible et classique pour ce plat ; n'ajoute jamais un ingrédient qui n'est ni cité ni évident (sel, poivre, huile de cuisson sont admis).
+- "completions" : liste en français de CHAQUE information que tu as complétée ou estimée (quantité, étape, temps, portions), formulée court ; tableau vide si rien n'a été complété. L'utilisateur la voit et peut corriger.
 - "grammes" = poids estimé de l'ingrédient pour TOUTE la recette (1 œuf ≈ 55 g, 1 c. à s. d'huile ≈ 10 g, 1 c. à c. ≈ 5 g, 1 oignon ≈ 150 g, 1 gousse d'ail ≈ 5 g, 1 verre ≈ 200 ml ≈ 200 g, 1 pincée ≈ 1 g).
 - "per100g" = valeurs nutritionnelles pour 100 g de l'ingrédient (table CIQUAL française) : kcal, prot, carb, sugars (sucres), fat, satFat (acides gras saturés), fiber, salt (sel en g), fvl (= 100 si fruit/légume/légumineuse/noix, sinon 0 ; 50 pour un produit à moitié végétal).
 - portions : nombre de portions indiqué, sinon estime-le (jamais 0).
@@ -216,13 +271,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Trop de requêtes — réessaie dans 1h' }, { status: 429 })
   }
 
-  let kind = 'link', url = '', userText = ''
+  let kind = 'link', url = '', userText = '', pageHtml = ''
   let image: File | null = null
   try {
     const fd = await req.formData()
     kind     = String(fd.get('kind') ?? 'link')
     url      = String(fd.get('url')  ?? '').trim().slice(0, 500)
     userText = String(fd.get('text') ?? '').trim().slice(0, 10000)
+    pageHtml = String(fd.get('pageHtml') ?? '').slice(0, 600000)   // HTML lu par l'app mobile (Instagram)
     const f  = fd.get('image')
     if (f && typeof f === 'object' && 'arrayBuffer' in f) image = f as File
   } catch {
@@ -246,7 +302,7 @@ export async function POST(req: NextRequest) {
   if (url) {
     if (!/^https?:\/\//i.test(url)) return NextResponse.json({ error: 'Lien invalide' }, { status: 400 })
     const k = detectKind(url)
-    src = k === 'tiktok' ? await extractTikTok(url) : k === 'instagram' ? await extractInstagram(url) : await extractWeb(url)
+    src = k === 'tiktok' ? await extractTikTok(url) : k === 'instagram' ? await extractInstagram(url, pageHtml) : await extractWeb(url)
   }
   const sourceKind: SourceKind = src?.kind ?? (kind === 'photo' ? 'photo' : kind === 'capture' ? 'capture' : 'texte')
 
@@ -326,10 +382,12 @@ export async function POST(req: NextRequest) {
       conseils_chef:   data.conseils_chef ? String(data.conseils_chef) : '',
       accompagnements: Array.isArray(data.accompagnements) ? data.accompagnements.map(String).slice(0, 6) : [],
       photo_keyword:   String(data.photo_keyword ?? 'dish').slice(0, 40),
+      completions:     Array.isArray(data.completions) ? data.completions.map((c: any) => String(c).slice(0, 140)).slice(0, 12) : [],
       source_kind:     sourceKind,
       source_url:      src?.url ?? null,
       source_author:   src?.author ?? (data.source_author ? String(data.source_author) : null),
       category:        'import',
+      photoUrl:        (await pexelsPhoto(String(data.photo_keyword ?? '') || String(data.titre ?? 'dish'))) ?? undefined,
     }
 
     return NextResponse.json({

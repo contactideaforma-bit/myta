@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { Capacitor, CapacitorHttp } from '@capacitor/core'
 import { Waty } from '@/components/ui/Waty'
 import { RecipeNutritionGuide } from '@/components/ui/RecipeNutritionGuide'
 import { scoreRecipe, type ScoreMyta } from '@/lib/score-myta'
@@ -68,6 +69,15 @@ export default function ImportRecipePage() {
       const fd = new FormData()
       fd.append('kind', image ? 'capture' : url ? 'link' : 'text')
       if (url)         fd.append('url', url.trim())
+      // Instagram bloque les serveurs mais pas les téléphones : dans l'app, on lit la page
+      // depuis l'appareil et on envoie son HTML (la légende) au serveur pour analyse.
+      if (url && /instagram\.com/i.test(url) && Capacitor.isNativePlatform()) {
+        try {
+          const r = await CapacitorHttp.get({ url: url.trim(), headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1', 'Accept-Language': 'fr-FR,fr;q=0.9', Accept: 'text/html' }, responseType: 'text', connectTimeout: 8000, readTimeout: 8000 })
+          const html = typeof r.data === 'string' ? r.data : ''
+          if (html.length > 500) fd.append('pageHtml', html.slice(0, 600000))
+        } catch { /* on laisse le serveur tenter */ }
+      }
       if (text.trim()) fd.append('text', text.trim())
       if (image)       fd.append('image', image)
       const res  = await fetch('/api/import-recipe', {
@@ -181,6 +191,17 @@ export default function ImportRecipePage() {
 
         <textarea value={recipe.description} onChange={e => setRecipe({ ...recipe, description: e.target.value })}
           rows={2} className="input text-sm" placeholder="Description" />
+
+        {/* Ce que Waty a complété (la source était incomplète) : visible et corrigeable */}
+        {recipe.completions && recipe.completions.length > 0 && (
+          <div className="card-sm border border-amber-100 bg-amber-50/60">
+            <p className="text-[10px] font-bold text-amber-700 uppercase flex items-center gap-1"><Sparkles size={11} />Complété par Waty</p>
+            <p className="text-[11px] text-amber-800/80 mt-0.5 mb-1.5">La publication ne disait pas tout. Vérifie ces points, tu peux les corriger ci-dessous.</p>
+            <ul className="flex flex-col gap-1">
+              {recipe.completions.map((c, i) => <li key={i} className="text-xs text-amber-900 flex gap-2"><span className="text-amber-400">–</span><span>{c}</span></li>)}
+            </ul>
+          </div>
+        )}
 
         {/* Temps / portions / niveau */}
         <div className="grid grid-cols-3 gap-2">

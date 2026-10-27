@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { Clock, Users, Flame, Star, ExternalLink } from 'lucide-react'
 import { SOURCE_LABELS, type SourceKind } from '@/lib/recipes'
+import { AddToCatalog } from './AddToCatalog'
 
 const GRADE_BG: Record<string, string> = {
   A: 'bg-green-500 text-white', B: 'bg-green-600 text-white', C: 'bg-amber-300 text-amber-900',
@@ -13,53 +14,39 @@ function ingLabel(ing: any): string {
   if (ing && typeof ing === 'object') return [ing.qte, ing.nom, ing.note ? `(${ing.note})` : ''].filter(Boolean).join(' ')
   return String(ing ?? '')
 }
-function stepLabel(et: any): string {
-  if (typeof et === 'string') return et
-  if (et && typeof et === 'object') return [et.titre ? `${et.titre} — ` : '', et.detail].filter(Boolean).join('')
-  return String(et ?? '')
-}
-
 interface Props {
-  searchParams: { id?: string }
+  searchParams: { id?: string; t?: string }
 }
 
-const DIFF_COLOR: Record<string, string> = {
-  'Facile': 'bg-green-100 text-green-700',
-  'Moyen':  'bg-amber-100 text-amber-700',
-  'Avancé': 'bg-red-100 text-red-700',
+/** Recette partagée : par jeton public (t) — lisible par tout le monde — ou par id (propriétaire connecté). */
+async function loadShared(searchParams: Props['searchParams']) {
+  const supabase = createClient()
+  const token = (searchParams.t ?? '').replace(/[^a-z0-9]/gi, '').slice(0, 32)
+  if (token) {
+    const { data } = await supabase.rpc('get_shared_recipe', { p_token: token })
+    return data ? { recipe: data as any, token } : null
+  }
+  if (searchParams.id) {
+    const { data } = await supabase.from('saved_recipes').select('*').eq('recipe_id', searchParams.id).limit(1).maybeSingle()
+    return data ? { recipe: data as any, token: (data as any).share_token as string | null } : null
+  }
+  return null
 }
 
 export async function generateMetadata({ searchParams }: Props) {
-  const id = searchParams.id
-  if (!id) return { title: 'Recette — MYTA' }
-  const supabase = createClient()
-  const { data } = await supabase
-    .from('saved_recipes')
-    .select('titre, description')
-    .eq('recipe_id', id)
-    .limit(1)
-    .single()
+  const found = await loadShared(searchParams)
+  const data = found?.recipe
   return {
     title: data ? `${data.titre} — MYTA` : 'Recette — MYTA',
     description: data?.description ?? 'Recette partagée depuis My Twin App',
+    openGraph: data?.photo_url ? { images: [{ url: data.photo_url }] } : undefined,
   }
 }
 
 export default async function SharedRecipePage({ searchParams }: Props) {
-  const id = searchParams.id
-  if (!id) notFound()
-
-  const supabase = createClient()
-
-  // Cherche la recette dans les recettes sauvegardées (première occurrence)
-  const { data: recipe } = await supabase
-    .from('saved_recipes')
-    .select('*')
-    .eq('recipe_id', id)
-    .limit(1)
-    .single()
-
-  if (!recipe) notFound()
+  const found = await loadShared(searchParams)
+  if (!found) notFound()
+  const { recipe, token } = found
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -111,6 +98,8 @@ export default async function SharedRecipePage({ searchParams }: Props) {
           </div>
         )}
 
+        {token && <AddToCatalog token={token} recipe={recipe} />}
+
         {/* Score MYTA + macros */}
         {(recipe.score_grade || recipe.proteines) && (
           <div className="bg-white border border-zinc-200 rounded-xl p-4 flex items-center gap-4">
@@ -148,12 +137,9 @@ export default async function SharedRecipePage({ searchParams }: Props) {
           ))}
         </div>
 
-        {/* Niveau badge */}
-        {recipe.difficulte && (
-          <div className="flex">
-            <span className={`text-xs font-semibold px-3 py-1 rounded-full ${DIFF_COLOR[recipe.difficulte] ?? 'bg-zinc-100 text-zinc-500'}`}>
-              {recipe.difficulte}
-            </span>
+        {Array.isArray(recipe.ustensiles) && recipe.ustensiles.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {recipe.ustensiles.map((u: string, i: number) => <span key={i} className="text-xs bg-white border border-zinc-200 text-zinc-600 px-2.5 py-1 rounded-full">{u}</span>)}
           </div>
         )}
 
@@ -172,18 +158,50 @@ export default async function SharedRecipePage({ searchParams }: Props) {
 
         {/* Étapes */}
         <div className="bg-white border border-zinc-200 rounded-xl p-4">
-          <h2 className="text-sm font-bold text-zinc-900 mb-3">Préparation</h2>
-          <ol className="flex flex-col gap-3">
-            {(recipe.etapes as any[]).map((etape: any, i: number) => (
-              <li key={i} className="flex gap-3 items-start">
-                <span className="w-6 h-6 rounded-full bg-green-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
-                  {i + 1}
-                </span>
-                <p className="text-sm text-zinc-600 leading-relaxed flex-1">{stepLabel(etape)}</p>
-              </li>
-            ))}
+          <h2 className="text-sm font-bold text-zinc-900 mb-3">Préparation, étape par étape</h2>
+          <ol className="flex flex-col gap-4">
+            {(recipe.etapes as any[]).map((etape: any, i: number) => {
+              const obj = etape && typeof etape === 'object'
+              return (
+                <li key={i} className="flex gap-3 items-start">
+                  <span className="w-7 h-7 rounded-xl bg-green-500 text-white text-xs font-extrabold flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                  <div className="flex-1">
+                    {obj && etape.titre && (
+                      <div className="flex items-center justify-between gap-2 mb-0.5">
+                        <p className="text-sm font-bold text-zinc-900">{etape.titre}</p>
+                        {etape.duree && <span className="text-[10px] text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full flex-shrink-0">{etape.duree}</span>}
+                      </div>
+                    )}
+                    <p className="text-sm text-zinc-600 leading-relaxed">{obj ? etape.detail : String(etape)}</p>
+                    {obj && etape.astuce && <p className="mt-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5"><span className="font-semibold">Astuce :</span> {etape.astuce}</p>}
+                  </div>
+                </li>
+              )
+            })}
           </ol>
         </div>
+
+        {recipe.conseils_chef && (
+          <div className="bg-green-50 border border-green-100 rounded-xl p-4">
+            <p className="text-xs font-extrabold text-green-800 mb-1">Le conseil de Waty</p>
+            <p className="text-sm text-green-900 leading-relaxed">{recipe.conseils_chef}</p>
+          </div>
+        )}
+
+        {Array.isArray(recipe.accompagnements) && recipe.accompagnements.length > 0 && (
+          <div className="bg-white border border-zinc-200 rounded-xl p-4">
+            <p className="text-xs font-extrabold text-zinc-500 mb-2">Accompagnements</p>
+            <div className="flex flex-wrap gap-1.5">{recipe.accompagnements.map((a: string, i: number) => <span key={i} className="text-xs bg-zinc-100 text-zinc-600 px-2.5 py-1 rounded-full">{a}</span>)}</div>
+          </div>
+        )}
+
+        {Array.isArray(recipe.completions) && recipe.completions.length > 0 && (
+          <div className="bg-amber-50/70 border border-amber-100 rounded-xl p-4">
+            <p className="text-[10px] font-bold text-amber-700 uppercase">Complété par Waty</p>
+            <p className="text-[11px] text-amber-800/80 mt-0.5 mb-1.5">La publication d'origine ne précisait pas tout ; ces éléments ont été estimés.</p>
+            <ul className="flex flex-col gap-1">{recipe.completions.map((c: string, i: number) => <li key={i} className="text-xs text-amber-900">– {c}</li>)}</ul>
+          </div>
+        )}
 
         {/* CTA rejoindre */}
         <div className="bg-white border border-zinc-200 rounded-xl p-4 text-center">

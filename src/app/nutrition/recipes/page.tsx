@@ -11,7 +11,7 @@ import {
   ChevronLeft, Clock, Users, Flame,
   Loader2, ChefHat, Star,
   Bookmark, BookmarkCheck, Share2, Check, Search, X,
-  Link2, ExternalLink,
+  Link2, ExternalLink, FileDown, Sparkles,
 } from 'lucide-react'
 
 const CATEGORIES = [
@@ -31,13 +31,21 @@ const DIFF_COLOR: Record<string, string> = {
   'Avancé': 'bg-red-100 text-red-700',
 }
 
+/** Photo libre de droits correspondant au plat (Pexels, via le serveur : la clé ne sort jamais). */
 async function fetchPexelsPhoto(keyword: string): Promise<string | null> {
   try {
-    // Unsplash source — aucune clé API requise
-    const url = `https://source.unsplash.com/400x300/?${encodeURIComponent(keyword)},food`
-    return url
+    const { data: { session } } = await createClient().auth.getSession()
+    const res = await fetch(`/api/photos?keyword=${encodeURIComponent(keyword || 'dish')}`, {
+      headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+    })
+    const j = await res.json()
+    return j?.url ?? null
   } catch { return null }
 }
+
+const SOURCE_FILTERS: { key: string; label: string }[] = [
+  { key: '', label: 'Toutes' }, { key: 'import', label: 'Importées' }, { key: 'ia', label: 'Créées par Waty' },
+]
 
 // ─── Carte recette ─────────────────────────────────────────────────────────────
 function RecipeCard({ recipe, onOpen, onSave, onUnsave, onShare, isSaved }: {
@@ -107,9 +115,29 @@ export default function RecipesPage() {
   // ── Recherche par mots-clés ─────────────────────────────────────────────────
   const [searchQuery, setSearchQuery]     = useState('')
   const [searchCategory, setSearchCategory] = useState<string>('')
+  // ── Catalogue personnel : filtres locaux ───────────────────────────────────
+  const [catQuery, setCatQuery]           = useState('')
+  const [catSource, setCatSource]         = useState('')
+  const [pdfBusy, setPdfBusy]             = useState(false)
 
   useEffect(() => {
     loadSavedIds()
+    // Recette reçue d'un ami avant la création du compte : on l'ajoute au catalogue à la première visite
+    ;(async () => {
+      let token = ''
+      try { token = localStorage.getItem('myta_pending_recipe') ?? '' } catch { /* ignoré */ }
+      if (!token) return
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: shared } = await supabase.rpc('get_shared_recipe', { p_token: token })
+      if (shared) {
+        const row: any = { ...(shared as any), user_id: user.id, recipe_id: `copy-${token}` }
+        delete row.share_token; delete row.created_at
+        const { error } = await supabase.from('saved_recipes').upsert(row, { onConflict: 'user_id,recipe_id' })
+        if (!error) { showToast('La recette de ton ami est dans ton catalogue'); setView('saved'); loadSavedRecipes(); loadSavedIds() }
+      }
+      try { localStorage.removeItem('myta_pending_recipe') } catch { /* ignoré */ }
+    })()
     // Retour depuis /nutrition/recipes/import → ouvrir directement « Mes recettes »
     if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('view') === 'saved') {
       setView('saved'); loadSavedRecipes()
@@ -198,10 +226,20 @@ export default function RecipesPage() {
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 2500) }
 
+  /** Jeton public de partage (la recette doit être dans le catalogue). */
+  async function shareTokenFor(recipe: Recipe): Promise<string | null> {
+    if (recipe.share_token) return recipe.share_token
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+    const { data } = await supabase.from('saved_recipes').select('share_token').eq('user_id', user.id).eq('recipe_id', recipe.id).maybeSingle()
+    return data?.share_token ?? null
+  }
+
   async function shareRecipe(recipe: Recipe, e: React.MouseEvent) {
     e.stopPropagation()
     if (!savedIds.has(recipe.id)) await saveRecipe(recipe, e)
-    const url = `${window.location.origin}/nutrition/recipes/share?id=${recipe.id}`
+    const token = await shareTokenFor(recipe)
+    const url = token ? `${window.location.origin}/nutrition/recipes/share?t=${token}` : `${window.location.origin}/nutrition/recipes/share?id=${recipe.id}`
     if (navigator.share) {
       try { await navigator.share({ title: recipe.titre, text: recipe.description, url }) } catch { }
     } else {
@@ -210,7 +248,40 @@ export default function RecipesPage() {
     }
   }
 
-  const displayed = view === 'saved' ? savedRecipes : recipes
+  /** Fiche PDF : partage natif du fichier quand c'est possible (iOS/Android), sinon ouverture. */
+  async function exportPdf(recipe: Recipe) {
+    setPdfBusy(true)
+    try {
+      if (!savedIds.has(recipe.id)) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) { await supabase.from('saved_recipes').upsert(toSavedRow(user.id, recipe), { onConflict: 'user_id,recipe_id' }); setSavedIds(prev => new Set([...prev, recipe.id])) }
+      }
+      const token = await shareTokenFor(recipe)
+      if (!token) { showToast('Sauvegarde la recette d\'abord'); return }
+      const url = `/api/recipes/pdf?t=${token}`
+      const res = await fetch(url)
+      if (!res.ok) { showToast('PDF indisponible pour le moment'); return }
+      const blob = await res.blob()
+      const file = new File([blob], `myta-${recipe.titre.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 50)}.pdf`, { type: 'application/pdf' })
+      const nav: any = navigator
+      if (nav.canShare && nav.canShare({ files: [file] })) {
+        try { await nav.share({ files: [file], title: recipe.titre }) } catch { /* annulé */ }
+      } else {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; a.click()
+        setTimeout(() => URL.revokeObjectURL(a.href), 10000)
+      }
+    } finally { setPdfBusy(false) }
+  }
+
+  const catalogue = savedRecipes.filter(r => {
+    if (catSource === 'import' && (!r.source_kind || r.source_kind === 'ia')) return false
+    if (catSource === 'ia' && r.source_kind && r.source_kind !== 'ia') return false
+    if (!catQuery.trim()) return true
+    const q = catQuery.toLowerCase()
+    const ings = (r.ingredients ?? []).map((i: any) => typeof i === 'string' ? i : i?.nom ?? '').join(' ').toLowerCase()
+    return r.titre.toLowerCase().includes(q) || ings.includes(q) || (r.source_author ?? '').toLowerCase().includes(q)
+  })
+  const displayed = view === 'saved' ? catalogue : recipes
 
   // ── Vue détail ─────────────────────────────────────────────────────────────
   if (detail) return (
@@ -257,6 +328,22 @@ export default function RecipesPage() {
           </div>
         ))}
       </div>
+
+      <div className="flex gap-2">
+        <button onClick={() => exportPdf(detail)} disabled={pdfBusy} className="btn-ghost flex-1 justify-center bg-raised disabled:opacity-50">
+          {pdfBusy ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}{pdfBusy ? 'Préparation…' : 'Fiche PDF'}
+        </button>
+        <button onClick={e => shareRecipe(detail, e)} className="btn-ghost flex-1 justify-center bg-raised"><Share2 size={14} />Envoyer à un ami</button>
+      </div>
+
+      {detail.completions && detail.completions.length > 0 && (
+        <div className="card-sm border border-amber-100 bg-amber-50/60">
+          <p className="text-[10px] font-bold text-amber-700 uppercase flex items-center gap-1"><Sparkles size={11} />Complété par Waty</p>
+          <ul className="flex flex-col gap-1 mt-1">
+            {detail.completions.map((c, i) => <li key={i} className="text-xs text-amber-900 flex gap-2"><span className="text-amber-400">–</span><span>{c}</span></li>)}
+          </ul>
+        </div>
+      )}
 
       {/* Crédit source (recette importée) */}
       {detail.source_kind && detail.source_kind !== 'ia' && (
@@ -481,11 +568,30 @@ export default function RecipesPage() {
 
       </div></PremiumGate>}
 
-      {/* Retour depuis sauvegardées */}
+      {/* ── Mon catalogue ── */}
       {view === 'saved' && (
-        <button onClick={() => setView('categories')} className="btn-ghost self-start -ml-1">
-          <ChevronLeft size={16} />Parcourir les catégories
-        </button>
+        <>
+          <button onClick={() => setView('categories')} className="btn-ghost self-start -ml-1">
+            <ChevronLeft size={16} />Parcourir les catégories
+          </button>
+          <div className="card flex flex-col gap-2.5">
+            <div>
+              <p className="text-sm font-bold text-zinc-900">Mon catalogue</p>
+              <p className="text-[11px] text-zinc-400">Tes recettes, étape par étape, avec photo, ingrédients et Score MYTA. Chaque fiche s'exporte en PDF ou s'envoie à un ami.</p>
+            </div>
+            <div className="relative">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <input type="text" value={catQuery} onChange={e => setCatQuery(e.target.value)} placeholder="Chercher un plat, un ingrédient, un créateur…" className="input pl-10 pr-8" />
+              {catQuery && <button onClick={() => setCatQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400"><X size={14} /></button>}
+            </div>
+            <div className="flex gap-1.5">
+              {SOURCE_FILTERS.map(f => (
+                <button key={f.key} onClick={() => setCatSource(f.key)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${catSource === f.key ? 'bg-nutri text-white border-nutri' : 'border-zinc-200 text-zinc-600'}`}>{f.label}</button>
+              ))}
+              <button onClick={() => router.push('/nutrition/recipes/import')} className="ml-auto px-3 py-1.5 rounded-full text-xs font-bold bg-nutri-light text-nutri-dark"><Link2 size={12} className="inline mr-1 -mt-0.5" />Importer</button>
+            </div>
+          </div>
+        </>
       )}
 
       {view === 'saved' && loadingSaved && (
@@ -500,7 +606,7 @@ export default function RecipesPage() {
           <div className="flex items-center justify-between">
             <p className="text-sm text-zinc-500">
               {view === 'saved'
-                ? `${displayed.length} recette${displayed.length > 1 ? 's' : ''} sauvegardée${displayed.length > 1 ? 's' : ''}`
+                ? `${displayed.length} recette${displayed.length > 1 ? 's' : ''} dans ton catalogue${catQuery || catSource ? ' (filtré)' : ''}`
                 : `${displayed.length} recettes${searchQuery ? ` · "${searchQuery}"` : ''}`
               }
             </p>
@@ -530,7 +636,9 @@ export default function RecipesPage() {
       {view === 'saved' && !loadingSaved && displayed.length === 0 && (
         <div className="card text-center py-12 text-zinc-400">
           <BookmarkCheck size={36} className="mx-auto mb-3 text-zinc-300" />
-          <Waty mode="nutrition" message={WATY_MESSAGES.recipes_encourage} size="md" dismissible={false} />
+          {savedRecipes.length > 0
+            ? <p className="text-sm">Aucune recette ne correspond à ce filtre.</p>
+            : <Waty mode="nutrition" message={WATY_MESSAGES.recipes_encourage} size="md" dismissible={false} />}
         </div>
       )}
     </div>
