@@ -17,6 +17,7 @@ import OnboardingCoach from '@/components/ui/OnboardingCoach'
 import { useOnboarding } from '@/lib/onboarding'
 import { calcMicros, MICROS_AJR, MICROS_NAMES } from '@/lib/nutrition-analysis'
 import { HORMONAL_PHASES, getHormonalPhase } from '@/lib/hormonal'
+import { buildCoverage, summarizeCoverage, coverageLabel, lastDays } from '@/lib/coverage'
 import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, AreaChart, Area,
@@ -41,7 +42,7 @@ interface Profile {
   health_conditions: string[] | null
 }
 interface WeightLog { date: string; weight_kg: number }
-interface JournalDay { date: string; cal: number }
+interface JournalDay { date: string; cal: number; entries: number }
 interface SessionDay { date: string; calories_burned: number }
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -527,9 +528,9 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
     } else {
       setSmokingWeek(null)
     }
-    const jMap: Record<string, number> = {}
-    for (const r of jnl ?? []) jMap[r.date] = (jMap[r.date] ?? 0) + Number(r.cal)
-    setJournalDays(Object.entries(jMap).map(([date, cal]) => ({ date, cal })).sort((a, b) => a.date.localeCompare(b.date)))
+    const jMap: Record<string, { cal: number; entries: number }> = {}
+    for (const r of jnl ?? []) { const m = (jMap[r.date] ??= { cal: 0, entries: 0 }); m.cal += Number(r.cal); m.entries += 1 }
+    setJournalDays(Object.entries(jMap).map(([date, m]) => ({ date, cal: m.cal, entries: m.entries })).sort((a, b) => a.date.localeCompare(b.date)))
     const sMap: Record<string, number> = {}
     for (const r of ses ?? []) sMap[r.session_date] = (sMap[r.session_date] ?? 0) + Number(r.calories_burned ?? 0)
     setSessionDays(Object.entries(sMap).map(([date, calories_burned]) => ({ date, calories_burned })).sort((a, b) => a.date.localeCompare(b.date)))
@@ -624,14 +625,23 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
         .filter(r => r.food_id && r.quantity)
         .map(r => ({ food_id: r.food_id as string, food_name: r.food_name as string, quantity: Number(r.quantity) }))
       const micros7 = calcMicros(foodEntries)
-      // Carences = < 60% de l'AJR sur 7 jours (AJR journalier × 7)
-      const deficits = micros7
-        .filter(m => m.hasData && m.ajr > 0 && m.value < m.ajr * 7 * 0.6)
+      // Couverture : les apports ne sont comparés qu'aux journées complètes réellement notées
+      // (AJR journalier × jours complets), jamais à 7 jours théoriques.
+      const calTarget7 = profile?.calorie_target ?? 2000
+      const cov7 = summarizeCoverage(buildCoverage((jnl ?? []).map(r => ({ date: r.date, cal: r.cal })), calTarget7, lastDays(7)))
+      const nDays = cov7.complete
+      const deficits = nDays >= 2 ? micros7
+        .filter(m => m.hasData && m.ajr > 0 && m.value < m.ajr * nDays * 0.6)
         .map(m => {
-          const pct7 = Math.round((m.value / (m.ajr * 7)) * 100)
-          return `${m.name} ${pct7}% de l'AJR (${Math.round(m.value)}${m.unit}/${m.ajr * 7}${m.unit} sur 7j)`
-        })
-      const microsText = deficits.length > 0 ? `Carences détectées : ${deficits.join(', ')}` : ''
+          const pctN = Math.round((m.value / (m.ajr * nDays)) * 100)
+          return `${m.name} ${pctN}% de l'AJR (${Math.round(m.value)}${m.unit}/${Math.round(m.ajr * nDays)}${m.unit} sur ${nDays} journées complètes)`
+        }) : []
+      const microsText = deficits.length > 0 ? `Carences possibles (sur ${nDays} journées complètes) : ${deficits.join(', ')}` : ''
+      const coverageText = [
+        `Nutrition : ${coverageLabel(cov7)}`,
+        `Sommeil : ${(slp ?? []).length} nuit${(slp ?? []).length > 1 ? 's' : ''} renseignée${(slp ?? []).length > 1 ? 's' : ''} sur 7`,
+        `Sport : ${(ses ?? []).length} séance${(ses ?? []).length > 1 ? 's' : ''} notée${(ses ?? []).length > 1 ? 's' : ''}`,
+      ].join(' · ')
 
       const res = await fetch('/api/health-report', {
         method: 'POST',
@@ -647,6 +657,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
           age:          form.birth_date ? `${new Date().getFullYear() - new Date(form.birth_date).getFullYear()} ans` : null,
           condition:    conditionNote,
           micros:       microsText || null,
+          coverage:     coverageText,
         }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -795,9 +806,13 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
   const bilanStats = (() => {
     if (!weights.length && !journalDays.length && !sleepLogs.length) return null
     const calTarget = profile?.calorie_target ?? tdee ?? 2000
-    const avgCal = journalDays.length ? Math.round(journalDays.reduce((s, d) => s + d.cal, 0) / journalDays.length) : 0
+    // Moyenne sur les journées réellement complètes : un jour sans saisie n'est pas un jour à 0 kcal,
+    // et une collation isolée n'est pas une journée. Les jours partiels sont ignorés, pas inventés.
+    const periodDays = PERIODS.find(p => p.key === period)?.days ?? 7
+    const coverage = summarizeCoverage(buildCoverage(journalDays, calTarget, periodDays < 9999 ? lastDays(periodDays) : undefined))
+    const avgCal = coverage.avgCal ?? 0
     const totalCalBurned = sessionDays.reduce((s, d) => s + d.calories_burned, 0)
-    const avgDeficit = avgCal ? avgCal - calTarget : null
+    const avgDeficit = coverage.avgCal !== null ? coverage.avgCal - calTarget : null
     const sortedW = [...weights].sort((a, b) => a.date.localeCompare(b.date))
     const firstWeight = sortedW[0]?.weight_kg ?? null
     const lastWeight  = sortedW[sortedW.length - 1]?.weight_kg ?? null
@@ -805,7 +820,8 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
     const weightData  = sortedW.map(w => ({ date: format(parseISO(w.date), 'd MMM', { locale: fr }), poids: w.weight_kg }))
     const avgSleepMin   = sleepLogs.length ? Math.round(sleepLogs.reduce((s, l) => s + l.duration_min, 0) / sleepLogs.length) : 0
     const sleepDebtMin  = avgSleepMin > 0 && avgSleepMin < 420 ? 420 - avgSleepMin : 0
-    return { avgCal, totalCalBurned, avgDeficit, weightDiff, firstWeight, lastWeight, weightData, avgSleepMin, sleepDebtMin }
+    const nightsLabel   = sleepLogs.length ? `${sleepLogs.length} nuit${sleepLogs.length > 1 ? 's' : ''} renseignée${sleepLogs.length > 1 ? 's' : ''}` : ''
+    return { avgCal, totalCalBurned, avgDeficit, weightDiff, firstWeight, lastWeight, weightData, avgSleepMin, sleepDebtMin, coverage, nightsLabel }
   })()
 
   if (loading) return (
@@ -911,14 +927,14 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
             <>
               {/* KPIs */}
               <div className="grid grid-cols-2 gap-3">
-                <KpiCard label="Moy. calories/jour" value={`${bilanStats.avgCal} kcal`} Icon={Flame} color="text-orange-500"
-                  sub={profile?.calorie_target ? `Objectif : ${profile.calorie_target} kcal` : undefined} />
+                <KpiCard label="Moy. calories/jour" value={bilanStats.coverage.avgCal !== null ? `${bilanStats.avgCal} kcal` : '—'} Icon={Flame} color="text-orange-500"
+                  sub={bilanStats.coverage.avgCal === null ? 'pas de journée complète notée' : `${profile?.calorie_target ? `Objectif ${profile.calorie_target} kcal · ` : ''}${coverageLabel(bilanStats.coverage)}`} />
                 <KpiCard label="Cal. brûlées sport" value={Math.round(bilanStats.totalCalBurned)} Icon={Dumbbell} color="text-tta-mid" sub="total période" />
                 {bilanStats.avgDeficit !== null && (
                   <KpiCard label="Déficit moy." Icon={bilanStats.avgDeficit < 0 ? TrendingDown : TrendingUp}
                     value={`${bilanStats.avgDeficit > 0 ? '+' : ''}${bilanStats.avgDeficit} kcal`}
                     color={bilanStats.avgDeficit < 0 ? 'text-nutri-dark' : 'text-orange-500'}
-                    sub={bilanStats.avgDeficit < 0 ? 'Déficit — perte de poids' : 'Surplus calorique'} />
+                    sub={`${bilanStats.avgDeficit < 0 ? 'Déficit' : 'Surplus'} par journée renseignée${bilanStats.coverage.reliable ? '' : ' (peu de jours)'}`} />
                 )}
                 {bilanStats.avgSleepMin > 0 && (
                   <KpiCard
@@ -927,8 +943,8 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
                     value={`${Math.floor(bilanStats.avgSleepMin / 60)}h${bilanStats.avgSleepMin % 60 > 0 ? (bilanStats.avgSleepMin % 60) + 'm' : ''}`}
                     color={bilanStats.avgSleepMin >= 420 ? 'text-nutri-dark' : bilanStats.avgSleepMin >= 360 ? 'text-yellow-500' : 'text-red-500'}
                     sub={bilanStats.sleepDebtMin > 0
-                      ? `Dette : -${Math.floor(bilanStats.sleepDebtMin / 60)}h${bilanStats.sleepDebtMin % 60 > 0 ? (bilanStats.sleepDebtMin % 60) + 'm' : ''}/nuit`
-                      : 'Sommeil optimal'}
+                      ? `-${Math.floor(bilanStats.sleepDebtMin / 60)}h${bilanStats.sleepDebtMin % 60 > 0 ? (bilanStats.sleepDebtMin % 60) + 'm' : ''}/nuit vs 7 h · ${bilanStats.nightsLabel}`
+                      : `Sommeil optimal · ${bilanStats.nightsLabel}`}
                   />
                 )}
               </div>

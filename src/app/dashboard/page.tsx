@@ -23,6 +23,7 @@ import {
 import { getDailyTip } from '@/lib/daily-tips'
 import { getActiveProfile } from '@/lib/active-profile'
 import type { Profile } from '@/types'
+import { buildCoverage, summarizeCoverage } from '@/lib/coverage'
 
 type Period = 'semaine' | 'mois'
 
@@ -33,6 +34,8 @@ interface Stats {
   calConsumed:         number
   calBurned:           number
   totalProt:           number
+  loggedDays:          number   // jours avec au moins une saisie sur la période (les jours vides ne sont pas des jours à 0 kcal)
+  partialDays:         number   // jours avec une saisie isolée (collation seule…)
   weekSessions:        number
   weekMinutes:         number
   streak:              number
@@ -46,22 +49,23 @@ interface Stats {
 
 
 // ── Indicateur de progression mensuel ────────────────────────────────────────
-function MonthProgress({ calConsumed, calTarget, sessions, sessionTarget, calBurned }: {
-  calConsumed: number; calTarget: number; sessions: number; sessionTarget: number; calBurned: number
+function MonthProgress({ calConsumed, calTarget, sessions, sessionTarget, calBurned, loggedDays }: {
+  calConsumed: number; calTarget: number; sessions: number; sessionTarget: number; calBurned: number; loggedDays: number
 }) {
   const now         = new Date()
   const dayOfMonth  = now.getDate()
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
   const monthPct    = Math.round((dayOfMonth / daysInMonth) * 100)
   const prorata     = dayOfMonth / daysInMonth
-  const calExpected = Math.round(calTarget * 30 * prorata)
+  // Nutrition : objectif rapporté aux jours réellement renseignés (un jour sans saisie n'est pas un jour à 0 kcal)
+  const calExpected = Math.round(calTarget * loggedDays)
   const sesExpected = Math.round(sessionTarget * prorata)
   const calPct      = calExpected > 0 ? Math.min(150, Math.round((calConsumed / calExpected) * 100)) : 0
   const sesPct      = sesExpected > 0 ? Math.min(150, Math.round((sessions / Math.max(1, sesExpected)) * 100)) : 0
   const burnPct     = Math.min(150, Math.round((calBurned / Math.max(1, 6000 * prorata)) * 100))
 
   const items: { label: string; pct: number; icon: 'journal' | 'sport' | 'flame'; color: string }[] = [
-    { label: 'Nutrition',    pct: calPct,  icon: 'journal', color: '#f97316' },
+    { label: loggedDays > 0 ? `Nutrition (${loggedDays} j renseigné${loggedDays > 1 ? 's' : ''})` : 'Nutrition (rien de noté)', pct: calPct, icon: 'journal', color: '#f97316' },
     { label: 'Séances',      pct: sesPct,  icon: 'sport',   color: '#7b7fd4' },
     { label: 'Cal. brûlées', pct: burnPct, icon: 'flame',   color: '#22c55e' },
   ]
@@ -330,7 +334,7 @@ export default function DashboardPage() {
     ] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
       supabase.from('journal_entries').select('cal,prot').eq('user_id', user.id).eq('date', today),
-      supabase.from('journal_entries').select('cal,prot').eq('user_id', user.id).gte('date', dateFrom).lte('date', dateTo),
+      supabase.from('journal_entries').select('cal,prot,date').eq('user_id', user.id).gte('date', dateFrom).lte('date', dateTo),
       supabase.from('sessions').select('*').eq('user_id', user.id).gte('session_date', dateFrom).lte('session_date', dateTo),
       // Série cumulative = nombre de jours DISTINCTS loggés, compté côté base.
       // (L'ancienne requête ramenait toutes les lignes : plafonnée à 1 000
@@ -349,6 +353,7 @@ export default function DashboardPage() {
     const lz = (lastSleeps ?? [])[0] as any
     const calConsumed = (journalPeriod ?? []).reduce((s, e) => s + Number(e.cal), 0)
     const totalProt   = (journalPeriod ?? []).reduce((s, e) => s + Number(e.prot ?? 0), 0)
+    const coverage    = summarizeCoverage(buildCoverage((journalPeriod ?? []) as { date: string; cal: number }[], prof?.calorie_target ?? 2000))
     const sessList    = sessions ?? []
     const calBurned   = sessList.reduce((s, e) => s + Number(e.calories_burned ?? 0), 0)
     const streak      = typeof loggedDays === 'number' ? loggedDays : 0
@@ -361,6 +366,8 @@ export default function DashboardPage() {
       calConsumed,
       calBurned,
       totalProt,
+      loggedDays:          coverage.complete + coverage.partial,
+      partialDays:         coverage.partial,
       weekSessions:        sessList.length,
       weekMinutes:         sessList.reduce((s, e) => s + Number(e.duration_min ?? 0), 0),
       streak,
@@ -592,19 +599,22 @@ export default function DashboardPage() {
         ) : period === 'semaine' ? (
           <div className="flex flex-col gap-4">
             {(() => {
-              const days    = 7
+              // Objectifs nutrition rapportés aux jours renseignés : pas de « trou » de 2 000 kcal
+              // pour un jour où rien n'a été noté — on ne compare que ce qui a été saisi.
+              const days    = Math.max(1, s.loggedDays)
               const calObj  = (s.profile?.calorie_target ?? 2000) * days
               const protObj = (s.profile?.prot_target ?? 120) * days
+              const nutriSub = s.loggedDays === 0 ? 'aucun jour renseigné' : `sur ${s.loggedDays} jour${s.loggedDays > 1 ? 's' : ''} renseigné${s.loggedDays > 1 ? 's' : ''}`
               const calPct2 = calObj  > 0 ? Math.min(150, Math.round((s.calConsumed / calObj)  * 100)) : 0
               const protPct = protObj > 0 ? Math.min(150, Math.round((s.totalProt   / protObj)  * 100)) : 0
               const sportPct = Math.min(150, Math.round((s.weekSessions / 3) * 100))
               const burnPct  = Math.min(150, Math.round((s.calBurned / 1500) * 100))
 
               return [
-                { label: 'Calories consommées', current: Math.round(s.calConsumed), target: calObj,   pct: calPct2,  unit: 'kcal',    color: '#f97316', icon: 'flame' as const },
-                { label: 'Protéines',            current: Math.round(s.totalProt),  target: protObj,  pct: protPct,  unit: 'g',       color: '#3b82f6', icon: 'journal' as const },
-                { label: 'Séances sport',         current: s.weekSessions,          target: 3,        pct: sportPct, unit: 'séances', color: '#7b7fd4', icon: 'sport' as const },
-                { label: 'Calories brûlées',      current: Math.round(s.calBurned), target: 1500,     pct: burnPct,  unit: 'kcal',    color: '#22c55e', icon: 'flame' as const },
+                { label: 'Calories consommées', current: Math.round(s.calConsumed), target: calObj,   pct: calPct2,  unit: 'kcal',    color: '#f97316', icon: 'flame' as const, sub: nutriSub },
+                { label: 'Protéines',            current: Math.round(s.totalProt),  target: protObj,  pct: protPct,  unit: 'g',       color: '#3b82f6', icon: 'journal' as const, sub: nutriSub },
+                { label: 'Séances sport',         current: s.weekSessions,          target: 3,        pct: sportPct, unit: 'séances', color: '#7b7fd4', icon: 'sport' as const, sub: '' },
+                { label: 'Calories brûlées',      current: Math.round(s.calBurned), target: 1500,     pct: burnPct,  unit: 'kcal',    color: '#22c55e', icon: 'flame' as const, sub: '' },
               ].map(obj => (
                 <div key={obj.label}>
                   <div className="flex items-center justify-between mb-1.5">
@@ -619,7 +629,8 @@ export default function DashboardPage() {
                     <div className="h-full rounded-full transition-all duration-700"
                       style={{ width: `${Math.min(100, obj.pct)}%`, background: obj.pct >= 100 ? obj.color : `${obj.color}99` }} />
                   </div>
-                  <div className="flex justify-end mt-0.5">
+                  <div className="flex justify-between mt-0.5">
+                    <span className="text-[10px] text-zinc-400">{obj.sub}</span>
                     <span className={`text-[10px] font-bold ${obj.pct >= 100 ? 'text-nutri-mid' : obj.pct >= 70 ? 'text-yellow-500' : 'text-zinc-400'}`}>
                       {obj.pct}%
                     </span>
@@ -631,6 +642,7 @@ export default function DashboardPage() {
         ) : (
           <MonthProgress
             calConsumed={s.calConsumed}
+            loggedDays={s.loggedDays}
             calTarget={s.profile?.calorie_target ?? 2000}
             sessions={s.weekSessions}
             sessionTarget={12}

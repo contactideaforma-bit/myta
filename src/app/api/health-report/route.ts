@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
   const condition  = s(raw.condition,  200)
   const weightGoal = s(raw.weightGoal, 50)
   const micros     = s(raw.micros,     400)
+  const coverage   = s(raw.coverage,   200)
   const age        = Number(raw.age) || null
 
   const contextLines = [
@@ -43,8 +44,9 @@ export async function POST(req: NextRequest) {
 PROFIL UTILISATEUR : ${contextLines || 'Non renseigné'}
 OBJECTIF CALORIQUE : ${calTarget} kcal/jour
 
-DONNÉES DES 7 DERNIERS JOURS :
+DONNÉES DES 7 DERNIERS JOURS (uniquement ce qui a été noté dans l'app) :
 <user_data>
+ Couverture : ${coverage || 'inconnue'}
  Nutrition : ${nutrition}
  Sport : ${sport}
  Sommeil : ${sleep}
@@ -59,8 +61,13 @@ CONSIGNES DE RÉDACTION :
 - Si poids cible : commente la progression vers cet objectif
 - Si des carences micronutriments sont présentes : mentionne-les concrètement et suggère les aliments pour y remédier
 - Structure : 1 phrase d'intro motivante → analyse nutrition → analyse sport → analyse sommeil → ${micros ? 'carences micro si pertinent → ' : ''}2 conseils actionnables → 1 phrase de motivation finale
-- Maximum 250 mots, emojis pour aérer
-- Ne mentionne pas les données manquantes sauf si c'est critique`
+- Maximum 250 mots, aucun emoji
+
+RÈGLE ESSENTIELLE SUR LES DONNÉES MANQUANTES :
+- L'utilisateur ne note pas tout. Un jour absent de la liste est un jour NON RENSEIGNÉ : ce n'est ni un jour à 0 kcal, ni un jeûne, ni une nuit blanche, ni un jour sans sport.
+- Ne calcule jamais de total hebdomadaire, de « trou » calorique, de déficit cumulé ni de dette de sommeil à partir des jours manquants. Raisonne par journée renseignée (moyennes par jour noté, par nuit notée).
+- Les journées partielles (une seule collation notée) ne sont pas des journées complètes : ne conclus pas à une sous-alimentation à partir d'elles.
+- Si la couverture est faible (moins de 3 journées complètes ou moins de 3 nuits), dis-le en une phrase, sans reproche, puis donne quand même des conseils utiles sur ce qui est connu. N'invente aucune donnée et ne bloque jamais le bilan.`
 
   const encoder = new TextEncoder()
 

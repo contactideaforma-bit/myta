@@ -145,10 +145,12 @@ export default function SleepPage() {
   // Date du coucher = veille de la date de réveil sélectionnée
   const bedDate = addDaysStr(selectedDate, -1)
 
+  // Moyenne calculée sur les nuits renseignées uniquement : une nuit non notée n'est pas une nuit blanche.
+  const nightsTxt = last7.length < 7 ? ` (sur ${last7.length} nuit${last7.length > 1 ? 's' : ''} renseignée${last7.length > 1 ? 's' : ''})` : ' cette semaine'
   const watyMsg = avgSleep
     ? avgSleep >= 420
-      ? `Super ! Tu dors en moyenne ${formatDuration(avgSleep)} par nuit cette semaine. Continue comme ça`
-      : `Tu dors en moyenne ${formatDuration(avgSleep)} par nuit. Essaie de viser 7h minimum pour une meilleure récupération`
+      ? `Super, tu dors en moyenne ${formatDuration(avgSleep)} par nuit${nightsTxt}. Continue comme ça`
+      : `Tu dors en moyenne ${formatDuration(avgSleep)} par nuit${nightsTxt}. Essaie de viser 7 h minimum pour une meilleure récupération`
     : "Commence à enregistrer tes nuits pour que je puisse analyser ton sommeil"
 
   if (loading) return (
