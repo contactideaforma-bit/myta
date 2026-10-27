@@ -15,10 +15,16 @@ import { MytaIcon } from '@/components/ui/MytaIcon'
 import { MytaIllustration } from '@/components/ui/MytaIllustration'
 
 interface Code { code: string; partner_user_id: string | null; partner_name: string | null; days: number; max_uses: number | null; uses: number; redemptions: number; expires_at: string | null; active: boolean; note: string | null; created_at: string }
-interface Partner { id: string; email: string | null; full_name: string | null; subscription_status: string; access_until: string | null; partner_note: string | null; partner_since: string | null; active: boolean; codes: Code[] }
+interface Activity { createdAt: string | null; lastSignIn: string | null; activated: boolean; lastDay: string | null; days7: number; days30: number; meals30: number; sessions30: number; sleeps30: number; recipes: number; games30: number; lastMeal: string | null }
+interface Partner { id: string; email: string | null; full_name: string | null; subscription_status: string; access_until: string | null; partner_note: string | null; partner_since: string | null; active: boolean; codes: Code[]; activity?: Activity }
 
 const DURATIONS = [30, 60, 90, 180, 365]
 const fmt = (iso: string | null) => iso ? new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
+const ago = (iso: string | null) => {
+  if (!iso) return null
+  const d = Math.floor((Date.now() - new Date(iso + (iso.length === 10 ? 'T12:00:00' : '')).getTime()) / 86_400_000)
+  return d <= 0 ? "aujourd'hui" : d === 1 ? 'hier' : `il y a ${d} j`
+}
 
 export default function AdminPage() {
   const router = useRouter()
@@ -33,7 +39,7 @@ export default function AdminPage() {
   // formulaire partenaire
   const [pEmail, setPEmail] = useState(''); const [pName, setPName] = useState(''); const [pDays, setPDays] = useState(90)
   const [pCustom, setPCustom] = useState(''); const [pNote, setPNote] = useState(''); const [pBusy, setPBusy] = useState(false)
-  const [created, setCreated] = useState<{ email: string; password: string | null; until: string; emailSent: boolean } | null>(null)
+  const [created, setCreated] = useState<{ email: string; password: string | null; until: string; emailSent: boolean; emailError?: string | null } | null>(null)
   // formulaire code
   const [cPartner, setCPartner] = useState(''); const [cCode, setCCode] = useState(''); const [cDays, setCDays] = useState(30)
   const [cMax, setCMax] = useState(''); const [cExp, setCExp] = useState(''); const [cNote, setCNote] = useState(''); const [cNotify, setCNotify] = useState(true)
@@ -70,7 +76,7 @@ export default function AdminPage() {
     const d = await res.json()
     setPBusy(false)
     if (!res.ok) { showToast(d.error ?? 'Erreur'); return }
-    setCreated({ email: pEmail.trim().toLowerCase(), password: d.password, until: d.until, emailSent: d.emailSent })
+    setCreated({ email: pEmail.trim().toLowerCase(), password: d.password, until: d.until, emailSent: d.emailSent, emailError: d.emailError })
     setPEmail(''); setPName(''); setPNote(''); setPCustom('')
     load()
   }
@@ -79,7 +85,7 @@ export default function AdminPage() {
     const res = await fetch('/api/admin/partners', { method: 'PATCH', headers: await headers(), body: JSON.stringify({ userId, action, days }) })
     const d = await res.json()
     if (!res.ok) { showToast(d.error ?? 'Erreur'); return }
-    if (action === 'resend') { showToast(d.emailSent ? 'Nouveau mot de passe envoyé' : `Mot de passe : ${d.password}`) }
+    if (action === 'resend') { showToast(d.emailSent ? 'Nouveau mot de passe envoyé' : `Mot de passe : ${d.password} (e-mail non envoyé${d.emailError ? ` : ${d.emailError}` : ''})`) }
     else if (action === 'extend') showToast(`Prolongé jusqu'au ${fmt(d.until)}`)
     else showToast('Accès révoqué')
     load()
@@ -94,7 +100,7 @@ export default function AdminPage() {
     const d = await res.json()
     setCBusy(false)
     if (!res.ok) { showToast(d.error ?? 'Erreur'); return }
-    showToast(`Code ${d.code} créé${d.emailSent ? ' et envoyé' : ''}`)
+    showToast(`Code ${d.code} créé${d.emailSent ? ' et envoyé' : cNotify ? ` — e-mail non envoyé${d.emailError ? ` : ${d.emailError}` : ''}` : ''}`)
     setCCode(''); setCNote(''); setCMax(''); setCExp('')
     load()
   }
@@ -173,7 +179,7 @@ export default function AdminPage() {
                 {created.password && (
                   <button onClick={() => copy(created.password!)} className="self-start font-mono font-bold tracking-wider bg-white rounded-xl px-3 py-1.5 border border-nutri/30">{created.password} · copier</button>
                 )}
-                <p className="text-xs t-muted">{created.emailSent ? 'E-mail envoyé au partenaire.' : 'E-mail non envoyé (vérifie RESEND_API_KEY) — transmets le mot de passe toi-même.'}</p>
+                <p className="text-xs t-muted">{created.emailSent ? 'E-mail envoyé au partenaire.' : `E-mail non envoyé — transmets le mot de passe toi-même. ${created.emailError ? `Resend : ${created.emailError}` : ''}`}</p>
               </div>
             )}
           </div>
@@ -193,6 +199,39 @@ export default function AdminPage() {
                   {p.active ? `jusqu'au ${fmt(p.access_until)}` : 'inactif'}
                 </span>
               </div>
+              {/* ── Activation + usage (comptages seulement) ── */}
+              {p.activity && (
+                <div className="rounded-2xl bg-raised p-3 flex flex-col gap-2">
+                  <div className="flex items-center gap-2 text-xs font-bold">
+                    <span className={`w-2 h-2 rounded-full ${p.activity.activated ? (p.activity.days7 > 0 ? 'bg-green-500' : 'bg-amber-400') : 'bg-red-400'}`} />
+                    {p.activity.activated
+                      ? <span className="t-text">Compte activé · dernière connexion {ago(p.activity.lastSignIn)}{p.activity.lastDay ? ` · app ouverte ${ago(p.activity.lastDay)}` : ''}</span>
+                      : <span className="text-red-600">Jamais connecté — e-mail envoyé le {fmt(p.partner_since)}</span>}
+                  </div>
+                  {p.activity.activated && (
+                    <>
+                      <div className="flex items-center gap-3 text-[11px] t-muted">
+                        <span><b className="t-text">{p.activity.days7}</b>/7 j actifs</span>
+                        <span><b className="t-text">{p.activity.days30}</b>/30 j actifs</span>
+                        {p.activity.lastMeal && <span>dernier repas {ago(p.activity.lastMeal)}</span>}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          ['Repas', p.activity.meals30, 'bg-green-50 text-green-700'],
+                          ['Séances', p.activity.sessions30, 'bg-sport-light text-tta-mid'],
+                          ['Nuits', p.activity.sleeps30, 'bg-violet-50 text-violet-700'],
+                          ['Jeux', p.activity.games30, 'bg-orange-50 text-orange-700'],
+                          ['Recettes', p.activity.recipes, 'bg-amber-50 text-amber-700'],
+                        ].map(([l, n, cls]) => (
+                          <span key={l as string} className={`text-[11px] font-bold rounded-full px-2 py-0.5 ${n ? cls : 'bg-white t-faint'}`}>{l} {n as number}</span>
+                        ))}
+                        <span className="text-[10px] t-faint self-center">30 derniers jours</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
               {p.codes.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {p.codes.map(c => (
@@ -206,7 +245,7 @@ export default function AdminPage() {
                 <button onClick={() => patchPartner(p.id, 'extend', 30)} className="btn-ghost text-xs px-3 py-1.5 bg-raised">+30 j</button>
                 <button onClick={() => patchPartner(p.id, 'extend', 90)} className="btn-ghost text-xs px-3 py-1.5 bg-raised">+90 j</button>
                 <button onClick={() => createCode(p.id)} className="btn-ghost text-xs px-3 py-1.5 bg-raised">+ code {cDays} j</button>
-                <button onClick={() => patchPartner(p.id, 'resend')} className="btn-ghost text-xs px-3 py-1.5 bg-raised">Nouveau mdp</button>
+                <button onClick={() => patchPartner(p.id, 'resend')} className="btn-ghost text-xs px-3 py-1.5 bg-raised">Renvoyer l'accès</button>
                 {p.active && <button onClick={() => { if (confirm(`Révoquer l'accès de ${p.email} et désactiver ses codes ?`)) patchPartner(p.id, 'revoke') }} className="btn-ghost text-xs px-3 py-1.5 text-red-500">Révoquer</button>}
               </div>
             </div>

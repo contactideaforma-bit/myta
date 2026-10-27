@@ -69,17 +69,27 @@ export function escapeHtml(str: string): string {
 }
 
 /** Envoi d'e-mail via Resend (même expéditeur que les autres e-mails de l'app). */
+/** Dernière erreur d'envoi (remontée à l'écran admin pour ne pas chercher dans les logs). */
+export let lastEmailError: string | null = null
+
 export async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) { console.warn('[admin] RESEND_API_KEY manquante'); return false }
+  lastEmailError = null
+  if (!process.env.RESEND_API_KEY) { lastEmailError = 'RESEND_API_KEY manquante sur Vercel'; console.warn('[admin]', lastEmailError); return false }
+  // Expéditeur : le domaine doit être vérifié chez Resend (DNS). EMAIL_FROM permet de le changer sans redéployer le code.
+  const from = process.env.EMAIL_FROM ?? 'Waty de MYTA <contact@mytwinapp.fr>'
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
-      body: JSON.stringify({ from: 'Waty de MYTA <contact@mytwinapp.fr>', to: [to], subject, html }),
+      body: JSON.stringify({ from, to: [to], subject, html }),
     })
-    if (!res.ok) console.error('[admin] Resend', await res.text())
+    if (!res.ok) {
+      const txt = await res.text()
+      try { lastEmailError = JSON.parse(txt).message ?? txt } catch { lastEmailError = txt }
+      console.error('[admin] Resend', txt)
+    }
     return res.ok
-  } catch (e) { console.error('[admin] Resend', e); return false }
+  } catch (e: any) { lastEmailError = e?.message ?? 'erreur réseau'; console.error('[admin] Resend', e); return false }
 }
 
 export function emailShell(title: string, body: string): string {

@@ -6,7 +6,7 @@
  * PATCH → { code, action: 'toggle' | 'send' }
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin, supabaseAdmin, promoCode, sendEmail, emailShell, escapeHtml } from '@/lib/admin'
+import { requireAdmin, supabaseAdmin, promoCode, sendEmail, emailShell, escapeHtml, lastEmailError } from '@/lib/admin'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://mytwinapp.fr'
 
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     const { data: p } = await supabaseAdmin.from('profiles').select('full_name').eq('id', partnerId).single()
     if (email) emailSent = await sendEmail(email, `Ton code MYTA : ${code}`, codeEmail(code, days, maxUses, expiresAt, p?.full_name ?? null))
   }
-  return NextResponse.json({ ok: true, code, emailSent })
+  return NextResponse.json({ ok: true, code, emailSent, emailError: emailSent ? null : lastEmailError })
 }
 
 export async function PATCH(req: NextRequest) {
@@ -75,7 +75,7 @@ export async function PATCH(req: NextRequest) {
     if (!email) return NextResponse.json({ error: 'Aucun partenaire rattaché' }, { status: 400 })
     const { data: p } = await supabaseAdmin.from('profiles').select('full_name').eq('id', c.partner_user_id).single()
     const sent = await sendEmail(email, `Ton code MYTA : ${code}`, codeEmail(code, c.days, c.max_uses, c.expires_at, p?.full_name ?? null))
-    return NextResponse.json({ ok: true, emailSent: sent })
+    return NextResponse.json({ ok: true, emailSent: sent, emailError: sent ? null : lastEmailError })
   }
   return NextResponse.json({ error: 'Action inconnue' }, { status: 400 })
 }
