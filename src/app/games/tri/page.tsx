@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * 🥗 Le Grand Tri — jeu d'arcade (palier 14 jours).
+ * Le Grand Tri — jeu d'arcade (palier 14 jours).
  * Les aliments tombent du ciel : déplace Waty au doigt (ou aux flèches)
  * pour ATTRAPER les aliments sains et ÉVITER la malbouffe.
  * 3 vies, combos, ça va de plus en plus vite !
@@ -322,7 +322,7 @@ export default function TriGamePage() {
                 <X size={17} />
               </button>
               <div className="flex items-center gap-2 text-[13px] font-bold text-white">
-                <span className="bg-black/35 backdrop-blur rounded-full px-2.5 py-1">🥗 {score}</span>
+                <span className="bg-black/35 backdrop-blur rounded-full px-2.5 py-1">{score}</span>
                 <span className="bg-black/35 backdrop-blur rounded-full px-2.5 py-1">
                   {'❤️'.repeat(Math.max(0, lives))}{'🖤'.repeat(Math.max(0, 3 - lives))}
                 </span>
@@ -330,7 +330,7 @@ export default function TriGamePage() {
             </div>
             {combo >= 3 && (
               <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-orange-500 text-white text-sm font-black px-4 py-1.5 rounded-full animate-pulse shadow-lg">
-                🔥 COMBO ×{combo}
+ COMBO ×{combo}
               </div>
             )}
           </>
@@ -350,18 +350,18 @@ export default function TriGamePage() {
 
             {phase === 'intro' ? (
               <>
-                <h1 className="text-2xl font-extrabold text-zinc-900">🥗 Le Grand Tri</h1>
+                <h1 className="text-2xl font-extrabold text-zinc-900">Le Grand Tri</h1>
                 <p className="text-sm text-zinc-600 leading-relaxed max-w-xs">
                   Les aliments pleuvent ! <span className="font-bold">Glisse ton doigt</span> pour déplacer Waty :
-                  attrape les aliments <span className="font-bold text-green-600">sains</span> (+10, combo ×5 = bonus 🔥)
-                  et <span className="font-bold text-pink-500">évite la malbouffe</span> (-1 ❤️).
+                  attrape les aliments <span className="font-bold text-green-600">sains</span> (+10, combo ×5 = bonus)
+                  et <span className="font-bold text-pink-500">évite la malbouffe</span> (-1).
                   Ça tombe de plus en plus vite…
                 </p>
               </>
             ) : (
               <>
                 <h1 className="text-2xl font-extrabold text-zinc-900">
-                  {newRecord ? '🏆 NOUVEAU RECORD !' : 'Plus de vies ! 💔'}
+                  {newRecord ? 'NOUVEAU RECORD !' : 'Plus de vies !'}
                 </h1>
                 <p className="text-5xl font-black text-green-600">{score}</p>
                 {!newRecord && best > 0 && <p className="text-xs text-zinc-400">Record : {best} points</p>}

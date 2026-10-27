@@ -45,11 +45,11 @@ OBJECTIF CALORIQUE : ${calTarget} kcal/jour
 
 DONNÉES DES 7 DERNIERS JOURS :
 <user_data>
-📊 Nutrition : ${nutrition}
-🏋️ Sport : ${sport}
-😴 Sommeil : ${sleep}
-⚖️ Poids : ${weight}
-${micros ? `🔬 Micronutriments (carences semaine) : ${micros}` : ''}
+ Nutrition : ${nutrition}
+ Sport : ${sport}
+ Sommeil : ${sleep}
+ Poids : ${weight}
+${micros ? `Micronutriments (carences semaine) : ${micros}` : ''}
 </user_data>
 
 CONSIGNES DE RÉDACTION :

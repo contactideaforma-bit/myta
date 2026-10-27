@@ -300,10 +300,10 @@ export default function TabataPage() {
   const totalMin  = Math.floor(totalSecs / 60)
 
   const phaseConfig = {
-    effort: { label: 'EFFORT 🔥', bg: 'bg-red-500',   ring: 'border-red-400',   text: 'text-red-500' },
-    pause:  { label: 'PAUSE 💚',  bg: 'bg-green-500', ring: 'border-green-400', text: 'text-green-500' },
-    repos:  { label: 'REPOS 💧',  bg: 'bg-blue-500',  ring: 'border-blue-400',  text: 'text-blue-500' },
-    idle:   { label: 'PRÊT ⚡',   bg: 'bg-zinc-400',  ring: 'border-zinc-300',  text: 'text-zinc-400' },
+    effort: { label: 'EFFORT', bg: 'bg-red-500',   ring: 'border-red-400',   text: 'text-red-500' },
+    pause:  { label: 'PAUSE',  bg: 'bg-green-500', ring: 'border-green-400', text: 'text-green-500' },
+    repos:  { label: 'REPOS',  bg: 'bg-blue-500',  ring: 'border-blue-400',  text: 'text-blue-500' },
+    idle:   { label: 'PRÊT',   bg: 'bg-zinc-400',  ring: 'border-zinc-300',  text: 'text-zinc-400' },
   }
   const pc = phaseConfig[phase]
 
@@ -355,7 +355,7 @@ export default function TabataPage() {
             <div className="flex justify-between"><span>Durée estimée</span><span className="font-mono font-medium">{totalMin} min {totalSecs % 60} sec</span></div>
           </div>
           <div className="bg-tta-light rounded-xl p-3 text-xs text-tta-mid">
-            🔊 Active le son de ton téléphone pour le guidage vocal
+ Active le son de ton téléphone pour le guidage vocal
           </div>
           <button onClick={start} className="btn-primary justify-center py-3 text-base">
             <Play size={18} />Démarrer
@@ -404,11 +404,11 @@ export default function TabataPage() {
       {/* Terminé + Waty */}
       {finished && (
         <div className="flex flex-col items-center gap-5 py-4">
-          <div className="text-6xl animate-bounce">🏆</div>
+          <div className="text-6xl animate-bounce"></div>
 
           <Waty
             mode="sport"
-            message={`Incroyable ! Tu viens de terminer ${series * tours} séries de Tabata — ${totalMin} minutes d'effort intense ! La récupération est aussi importante que l'entraînement. Pense à t'étirer et à bien t'hydrater 💧🎉`}
+            message={`Incroyable ! Tu viens de terminer ${series * tours} séries de Tabata — ${totalMin} minutes d'effort intense ! La récupération est aussi importante que l'entraînement. Pense à t'étirer et à bien t'hydrater`}
             size="lg"
             dismissible={false}
             animate={true}
@@ -420,7 +420,7 @@ export default function TabataPage() {
             <p className="text-sm text-zinc-400 mt-1">{totalMin} min {totalSecs % 60} sec d'effort</p>
             {sessionSaved && (
               <p className="text-xs text-nutri-mid font-semibold mt-2">
-                ✓ Séance enregistrée dans l'historique sport
+ Séance enregistrée dans l'historique sport
               </p>
             )}
           </div>

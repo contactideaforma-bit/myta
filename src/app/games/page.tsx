@@ -30,7 +30,7 @@ export default function GamesPage() {
         style={{ background: 'linear-gradient(135deg, #f0f0ff 0%, #e8fbf8 100%)', border: '2px solid #c7d2fe' }}>
         <img src="/waty-sport.png" alt="Waty" className="w-16 h-16 object-contain drop-shadow-sm" />
         <div className="flex-1">
-          <h1 className="text-xl font-extrabold text-zinc-900">Mini-jeux Waty 🎮</h1>
+          <h1 className="text-xl font-extrabold text-zinc-900">Mini-jeux Waty</h1>
           <p className="text-sm text-zinc-500 leading-snug mt-0.5">
             Utilise MYTA régulièrement pour débloquer les jeux — pas besoin de jours consécutifs !
           </p>
@@ -40,7 +40,7 @@ export default function GamesPage() {
       {/* ── Progression ── */}
       <div className="card flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-extrabold text-zinc-900">📅 Tes jours d&apos;utilisation</p>
+          <p className="text-sm font-extrabold text-zinc-900">Tes jours d&apos;utilisation</p>
           <p className="text-xl font-black text-tta-mid">{daysUsed} <span className="text-xs font-semibold text-zinc-400">jour{daysUsed > 1 ? 's' : ''}</span></p>
         </div>
         {nextLocked ? (
@@ -58,7 +58,7 @@ export default function GamesPage() {
             </p>
           </>
         ) : (
-          <p className="text-xs text-zinc-500">🏆 Tous les jeux sont débloqués — bravo pour ta régularité !</p>
+          <p className="text-xs text-zinc-500">Tous les jeux sont débloqués — bravo pour ta régularité !</p>
         )}
       </div>
 

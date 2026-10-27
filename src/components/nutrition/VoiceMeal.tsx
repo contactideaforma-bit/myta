@@ -183,7 +183,7 @@ export function VoiceMeal({ onConfirm, onCancel }: Props) {
   if (mode === 'text') return (
     <div className="card flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <p className="font-extrabold text-zinc-900">✍️ Décris ton repas</p>
+        <p className="font-extrabold text-zinc-900">Décris ton repas</p>
         <button onClick={reset} className="w-8 h-8 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-400">
           <X size={14} />
         </button>
@@ -271,7 +271,7 @@ export function VoiceMeal({ onConfirm, onCancel }: Props) {
   if (mode === 'preview') return (
     <div className="card flex flex-col gap-4">
       <div>
-        <p className="font-extrabold text-zinc-900">✅ Repas détecté</p>
+        <p className="font-extrabold text-zinc-900">Repas détecté</p>
         <p className="text-xs text-zinc-400 mt-0.5 italic">"{transcript}"</p>
       </div>
 

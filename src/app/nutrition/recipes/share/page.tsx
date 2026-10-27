@@ -85,7 +85,7 @@ export default async function SharedRecipePage({ searchParams }: Props) {
             <img src={recipe.photo_url} alt={recipe.titre} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-green-100 to-zinc-100 flex items-center justify-center text-7xl">
-              🍽️
+
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
@@ -159,7 +159,7 @@ export default async function SharedRecipePage({ searchParams }: Props) {
 
         {/* Ingrédients */}
         <div className="bg-white border border-zinc-200 rounded-xl p-4">
-          <h2 className="text-sm font-bold text-zinc-900 mb-3">🛒 Ingrédients</h2>
+          <h2 className="text-sm font-bold text-zinc-900 mb-3">Ingrédients</h2>
           <div className="flex flex-col gap-1.5">
             {(recipe.ingredients as any[]).map((ing: any, i: number) => (
               <div key={i} className="flex items-center gap-2 text-sm">
@@ -172,7 +172,7 @@ export default async function SharedRecipePage({ searchParams }: Props) {
 
         {/* Étapes */}
         <div className="bg-white border border-zinc-200 rounded-xl p-4">
-          <h2 className="text-sm font-bold text-zinc-900 mb-3">👨‍🍳 Préparation</h2>
+          <h2 className="text-sm font-bold text-zinc-900 mb-3">Préparation</h2>
           <ol className="flex flex-col gap-3">
             {(recipe.etapes as any[]).map((etape: any, i: number) => (
               <li key={i} className="flex gap-3 items-start">

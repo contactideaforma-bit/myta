@@ -95,7 +95,7 @@ export default function SleepPage() {
     await loadLogs()
     setNotes('')
     setSaving(false)
-    showToast('✓ Nuit enregistrée !')
+    showToast('Nuit enregistrée !')
     // Parcours guidé : première nuit → dernière étape (compte).
     if (obStep === 'sleep') {
       await obAdvance('sleep')
@@ -147,9 +147,9 @@ export default function SleepPage() {
 
   const watyMsg = avgSleep
     ? avgSleep >= 420
-      ? `Super ! Tu dors en moyenne ${formatDuration(avgSleep)} par nuit cette semaine. Continue comme ça 😴✨`
-      : `Tu dors en moyenne ${formatDuration(avgSleep)} par nuit. Essaie de viser 7h minimum pour une meilleure récupération 🌙`
-    : "Commence à enregistrer tes nuits pour que je puisse analyser ton sommeil 😴"
+      ? `Super ! Tu dors en moyenne ${formatDuration(avgSleep)} par nuit cette semaine. Continue comme ça`
+      : `Tu dors en moyenne ${formatDuration(avgSleep)} par nuit. Essaie de viser 7h minimum pour une meilleure récupération`
+    : "Commence à enregistrer tes nuits pour que je puisse analyser ton sommeil"
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
@@ -164,7 +164,7 @@ export default function SleepPage() {
       {obStep === 'sleep' && (
         <OnboardingCoach
           mode="nutrition"
-          title="Suis ton sommeil 😴"
+          title="Suis ton sommeil"
           message="Renseigne ton heure de coucher et de réveil. Le sommeil fait partie de ta forme globale : Waty en tient compte dans ton bilan."
           onSkip={obSkip}
         />
@@ -177,7 +177,7 @@ export default function SleepPage() {
       )}
 
       <div>
-        <h1 className="text-xl font-extrabold text-zinc-900">🌙 Sommeil</h1>
+        <h1 className="text-xl font-extrabold text-zinc-900">Sommeil</h1>
         <p className="text-sm text-zinc-400 mt-0.5">Suivi de tes nuits</p>
       </div>
 
@@ -186,9 +186,9 @@ export default function SleepPage() {
       {last7.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
           {[
-            { label: 'Nuits loggées', value: `${last7.length}/7`, icon: '📅' },
-            { label: 'Moyenne',       value: avgSleep ? formatDuration(avgSleep) : '—', icon: '⏱️' },
-            { label: 'Qualité moy.',  value: avgSleep ? sleepQuality(avgSleep).label : '—', icon: '⭐' },
+            { label: 'Nuits loggées', value: `${last7.length}/7`, icon: '' },
+            { label: 'Moyenne',       value: avgSleep ? formatDuration(avgSleep) : '—', icon: '' },
+            { label: 'Qualité moy.',  value: avgSleep ? sleepQuality(avgSleep).label : '—', icon: '' },
           ].map(({ label, value, icon }) => (
             <div key={label} className="kpi-card items-center text-center p-3">
               <span className="text-xl">{icon}</span>
@@ -202,7 +202,7 @@ export default function SleepPage() {
       {/* ── Formulaire ─────────────────────────────────────────────────────── */}
       <div className="card flex flex-col gap-5">
         <h2 className="font-extrabold text-zinc-900">
-          {existingForDate ? '✏️ Modifier la nuit' : '➕ Ajouter une nuit'}
+          {existingForDate ? 'Modifier la nuit' : 'Ajouter une nuit'}
         </h2>
 
         {/* ── Sélection de la nuit ─────────────────────────────────────────── */}
@@ -334,7 +334,7 @@ export default function SleepPage() {
       {/* ── Historique ───────────────────────────────────────────────────── */}
       {logs.length > 0 && (
         <div className="flex flex-col gap-3">
-          <h2 className="font-extrabold text-zinc-900">📅 Historique (30 jours)</h2>
+          <h2 className="font-extrabold text-zinc-900">Historique (30 jours)</h2>
           {logs.map(log => {
             const q          = sleepQuality(log.duration_min)
             const logBedDate = addDaysStr(log.date, -1)

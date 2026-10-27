@@ -38,7 +38,7 @@ async function getPurchases() {
     RC_TIMEOUT_MS,
     'import'
   )
-  // ⚠️ NE JAMAIS retourner mod.Purchases nu depuis une fonction async :
+  // NE JAMAIS retourner mod.Purchases nu depuis une fonction async :
   // l'objet Purchases est un proxy Capacitor "thenable". Le `return`/`await`
   // déclenche alors Purchases.then(), rejeté par le natif avec
   // « "Purchases.then()" is not implemented on ios » → achats cassés.
@@ -201,7 +201,7 @@ export async function purchaseRcPackage(packageId: string): Promise<RcPurchaseRe
       return { ok: false, error: 'package_not_found' }
     }
 
-    // ⚠️ Pas de timeout ici : la feuille d'achat Apple peut rester ouverte
+    // Pas de timeout ici : la feuille d'achat Apple peut rester ouverte
     // longtemps (Face ID, sandbox review…). Si purchasePackage RÉSOUT sans
     // erreur, l'achat StoreKit a ABOUTI → on retourne TOUJOURS ok:true,
     // même si l'entitlement n'apparaît pas encore dans customerInfo

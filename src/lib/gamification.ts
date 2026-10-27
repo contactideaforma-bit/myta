@@ -34,7 +34,7 @@ export const BADGE_LEVELS: BadgeLevel[] = [
   {
     key:         'stagiaire',
     label:       'Stagiaire de Waty',
-    emoji:       '😅',
+    emoji:       '',
     minStreak:   1,
     watyMessage: "Tu débutes — et c'est déjà énorme ! Chaque jour noté est une victoire.",
     color:       'bg-zinc-100',
@@ -44,7 +44,7 @@ export const BADGE_LEVELS: BadgeLevel[] = [
   {
     key:         'acolyte',
     label:       'Acolyte de Waty',
-    emoji:       '💪',
+    emoji:       '',
     minStreak:   7,
     watyMessage: '7 jours consécutifs ! Tu commences à prendre de bonnes habitudes. Je suis fier de toi.',
     color:       'bg-amber-50',
@@ -54,7 +54,7 @@ export const BADGE_LEVELS: BadgeLevel[] = [
   {
     key:         'heros',
     label:       'Héros de Waty',
-    emoji:       '🦸',
+    emoji:       '',
     minStreak:   30,
     watyMessage: '30 jours ! Tu es officiellement un héros. Ton engagement est une inspiration.',
     color:       'bg-zinc-100',
@@ -64,7 +64,7 @@ export const BADGE_LEVELS: BadgeLevel[] = [
   {
     key:         'waty',
     label:       'Waty lui-même',
-    emoji:       '🤖✨',
+    emoji:       '',
     minStreak:   90,
     watyMessage: "90 jours ! Tu ES Waty désormais. On ne fait plus qu'un. Légendaire.",
     color:       'bg-yellow-50',
@@ -74,7 +74,7 @@ export const BADGE_LEVELS: BadgeLevel[] = [
   {
     key:         'legende',
     label:       'Légende Waty',
-    emoji:       '💎',
+    emoji:       '',
     minStreak:   150,
     watyMessage: '150 jours ! Tu es une légende absolue. Waty se prosterne devant toi.',
     color:       'bg-purple-50',
@@ -109,63 +109,63 @@ const CHALLENGE_POOL: DailyChallenge[] = [
   {
     key:         'water',
     label:       'Boire un verre d\'eau',
-    emoji:       '💧',
+    emoji:       '',
     watyMessage: 'L\'hydratation c\'est la base ! Un verre, et c\'est parti.',
   },
   {
     key:         'log_meal',
     label:       'Noter au moins 1 repas',
-    emoji:       '📝',
+    emoji:       '',
     watyMessage: 'Un repas noté, c\'est un pas de plus vers tes objectifs.',
   },
   {
     key:         'walk',
     label:       'Faire 10 min de marche',
-    emoji:       '🚶',
-    watyMessage: '10 minutes, c\'est accessible pour tout le monde. Même toi 😉',
+    emoji:       '',
+    watyMessage: '10 minutes, c\'est accessible pour tout le monde. Même toi',
     sportDuration: 10,
   },
   {
     key:         'fruit',
     label:       'Manger au moins un fruit',
-    emoji:       '🍎',
+    emoji:       '',
     watyMessage: 'Un fruit par jour, Waty se porte mieux !',
   },
   {
     key:         'weigh',
     label:       'Te peser ce matin',
-    emoji:       '⚖️',
+    emoji:       '',
     watyMessage: 'Suivre son poids régulièrement, c\'est la clé de la progression.',
   },
   {
     key:         'no_soda',
     label:       'Zéro soda aujourd\'hui',
-    emoji:       '🚫🥤',
+    emoji:       '',
     watyMessage: 'Remplace par de l\'eau ou une tisane. Ton corps te dira merci.',
   },
   {
     key:         'homemade',
     label:       'Préparer un repas maison',
-    emoji:       '🍳',
+    emoji:       '',
     watyMessage: 'Cuisiner soi-même, c\'est contrôler ce qu\'on mange. Bravo chef !',
   },
   {
     key:         'stretch',
     label:       '5 min d\'étirements',
-    emoji:       '🧘',
+    emoji:       '',
     watyMessage: 'Prendre soin de son corps c\'est aussi savoir se détendre.',
     sportDuration: 5,
   },
   {
     key:         'sleep_early',
     label:       'Se coucher avant minuit',
-    emoji:       '🌙',
+    emoji:       '',
     watyMessage: 'Le sommeil c\'est 50% de la récupération. Dodo tôt !',
   },
   {
     key:         'log_3meals',
     label:       'Noter 3 repas complets',
-    emoji:       '🍽️',
+    emoji:       '',
     watyMessage: 'Petit-déj, déjeuner, dîner — la trilogie gagnante !',
   },
 ]
@@ -204,37 +204,37 @@ export function getWatyProactifMessage(params: {
   const hour = new Date().getHours()
 
   // Série longue → félicitation
-  if (streak >= 30) return `🔥 ${streak} jours de série — tu es une légende, ${name} ! Continuons ensemble.`
-  if (streak >= 7)  return `💪 ${streak} jours consécutifs, ${name} ! Ton objectif : ${goal ?? 'bien-être'} — tu es sur la bonne voie.`
+  if (streak >= 30) return `${streak} jours de série — tu es une légende, ${name} ! Continuons ensemble.`
+  if (streak >= 7)  return `${streak} jours consécutifs, ${name} ! Ton objectif : ${goal ?? 'bien-être'} — tu es sur la bonne voie.`
 
   // Matin
   if (hour < 11) {
-    if (calToday === 0) return `☀️ Bonjour ${name} ! Commence par noter ton petit-déjeuner — chaque repas compte pour ${goal ?? 'tes objectifs'}.`
-    return `☀️ Bien commencé, ${name} ! Tu as déjà ${Math.round(calToday)} kcal. Encore ${Math.round(remaining > 0 ? remaining : 0)} kcal pour atteindre ton objectif.`
+    if (calToday === 0) return `Bonjour ${name} ! Commence par noter ton petit-déjeuner — chaque repas compte pour ${goal ?? 'tes objectifs'}.`
+    return `Bien commencé, ${name} ! Tu as déjà ${Math.round(calToday)} kcal. Encore ${Math.round(remaining > 0 ? remaining : 0)} kcal pour atteindre ton objectif.`
   }
 
   // Après-midi
   if (hour < 17) {
-    if (calToday < calTarget * 0.5) return `🌤️ ${name}, tu as mangé ${Math.round(calToday)} kcal — pense à un déjeuner équilibré pour atteindre ${calTarget} kcal aujourd'hui.`
-    if (weekSessions === 0) return `💡 ${name}, une petite séance sport aujourd'hui aiderait beaucoup pour ${goal ?? 'tes objectifs'} !`
-    return `✅ Bonne progression ${name} ! ${Math.round(calToday)} kcal sur ${calTarget}. ${Math.round(remaining > 0 ? remaining : 0)} kcal restantes.`
+    if (calToday < calTarget * 0.5) return `${name}, tu as mangé ${Math.round(calToday)} kcal — pense à un déjeuner équilibré pour atteindre ${calTarget} kcal aujourd'hui.`
+    if (weekSessions === 0) return `${name}, une petite séance sport aujourd'hui aiderait beaucoup pour ${goal ?? 'tes objectifs'} !`
+    return `Bonne progression ${name} ! ${Math.round(calToday)} kcal sur ${calTarget}. ${Math.round(remaining > 0 ? remaining : 0)} kcal restantes.`
   }
 
   // Soir
-  if (calToday < calTarget * 0.6) return `🌆 ${name}, tu n'as mangé que ${Math.round(calToday)} kcal. Pense à dîner pour bien récupérer cette nuit.`
-  if (calToday > calTarget * 1.15) return `🌇 ${name}, tu as légèrement dépassé ton objectif (${Math.round(calToday)} kcal). Pas de panique — demain c'est un nouveau départ !`
-  return `🌆 Bonne journée ${name} ! ${Math.round(calToday)} kcal — tu es proche de ton objectif de ${calTarget} kcal.`
+  if (calToday < calTarget * 0.6) return `${name}, tu n'as mangé que ${Math.round(calToday)} kcal. Pense à dîner pour bien récupérer cette nuit.`
+  if (calToday > calTarget * 1.15) return `${name}, tu as légèrement dépassé ton objectif (${Math.round(calToday)} kcal). Pas de panique — demain c'est un nouveau départ !`
+  return `Bonne journée ${name} ! ${Math.round(calToday)} kcal — tu es proche de ton objectif de ${calTarget} kcal.`
 }
 
 // ── Analyse tabac ────────────────────────────────────────────
 export function getSmokingWatyMessage(today: number, yesterday: number | null, streak0days: number): string {
   if (today === 0 && streak0days >= 1) {
-    if (streak0days === 1) return '🎉 Première journée à zéro cigarette ! Waty est TELLEMENT fier de toi !'
-    if (streak0days >= 7) return `🏆 ${streak0days} jours sans fumer ! Tu mérites le badge or — continue !`
-    return `✨ ${streak0days} jours sans fumer ! Waty danse de joie pour toi !`
+    if (streak0days === 1) return 'Première journée à zéro cigarette ! Waty est TELLEMENT fier de toi !'
+    if (streak0days >= 7) return `${streak0days} jours sans fumer ! Tu mérites le badge or — continue !`
+    return `${streak0days} jours sans fumer ! Waty danse de joie pour toi !`
   }
-  if (yesterday !== null && today < yesterday) return `💪 ${today} cigarettes aujourd'hui — c'est moins qu'hier (${yesterday}). Chaque cigarette en moins compte !`
-  if (yesterday !== null && today > yesterday) return `💙 ${today} cigarettes aujourd'hui — c'est une journée difficile. Demain tu repars à zéro, Waty est là.`
-  if (today === 0) return '🌟 Zéro cigarette pour l\'instant — garde le cap !'
-  return `📊 ${today} cigarette${today > 1 ? 's' : ''} aujourd'hui. Tu peux y arriver — Waty croit en toi.`
+  if (yesterday !== null && today < yesterday) return `${today} cigarettes aujourd'hui — c'est moins qu'hier (${yesterday}). Chaque cigarette en moins compte !`
+  if (yesterday !== null && today > yesterday) return `${today} cigarettes aujourd'hui — c'est une journée difficile. Demain tu repars à zéro, Waty est là.`
+  if (today === 0) return 'Zéro cigarette pour l\'instant — garde le cap !'
+  return `${today} cigarette${today > 1 ? 's' : ''} aujourd'hui. Tu peux y arriver — Waty croit en toi.`
 }

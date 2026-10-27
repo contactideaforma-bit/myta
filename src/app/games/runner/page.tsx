@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * 🏃 Waty Runner — mini-jeu Waty (palier 30 jours).
+ * Waty Runner — mini-jeu Waty (palier 30 jours).
  * Runner infini : Waty court, tape l'écran pour sauter par-dessus la
  * malbouffe. La vitesse augmente avec la distance. Score = mètres parcourus.
  */
@@ -171,7 +171,7 @@ export default function RunnerGamePage() {
     <div className="page">
       <div className="card flex flex-col items-center gap-4 py-10 text-center">
         <Lock size={36} className="text-zinc-300" />
-        <p className="font-extrabold text-zinc-900">Le boss final des mini-jeux ! 👑</p>
+        <p className="font-extrabold text-zinc-900">Le boss final des mini-jeux !</p>
         <p className="text-sm text-zinc-500">Utilise MYTA {30 - daysUsed} jour{30 - daysUsed > 1 ? 's' : ''} de plus pour débloquer Waty Runner ({daysUsed}/30).</p>
         <button onClick={() => router.push('/games')} className="text-sm font-bold text-tta-mid hover:underline">← Retour aux mini-jeux</button>
       </div>
@@ -191,9 +191,9 @@ export default function RunnerGamePage() {
             style={{ background: 'linear-gradient(180deg, #e0f2fe 0%, #f0f9ff 65%, #dcfce7 100%)' }}>
 
             {/* Décor */}
-            <span className="absolute text-3xl" style={{ left: '78%', top: '10%' }}>☀️</span>
-            <span className="absolute text-xl opacity-70" style={{ left: '18%', top: '18%' }}>☁️</span>
-            <span className="absolute text-lg opacity-60" style={{ left: '55%', top: '28%' }}>☁️</span>
+            <span className="absolute text-3xl" style={{ left: '78%', top: '10%' }}></span>
+            <span className="absolute text-xl opacity-70" style={{ left: '18%', top: '18%' }}></span>
+            <span className="absolute text-lg opacity-60" style={{ left: '55%', top: '28%' }}></span>
 
             {/* Sol */}
             <div className="absolute left-0 right-0 bg-emerald-300/70 border-t-2 border-emerald-400"
@@ -219,14 +219,14 @@ export default function RunnerGamePage() {
                 <X size={17} />
               </button>
               <div className="flex items-center gap-2 text-[13px] font-bold">
-                <span className="bg-white/75 backdrop-blur rounded-full px-2.5 py-1 text-tta-mid">🏃 {meters} m</span>
-                <span className="bg-white/75 backdrop-blur rounded-full px-2.5 py-1 text-zinc-500">🏆 {best} m</span>
+                <span className="bg-white/75 backdrop-blur rounded-full px-2.5 py-1 text-tta-mid">{meters} m</span>
+                <span className="bg-white/75 backdrop-blur rounded-full px-2.5 py-1 text-zinc-500">{best} m</span>
               </div>
             </div>
 
             {meters < 15 && (
               <p className="absolute inset-x-0 text-center text-sm font-bold text-indigo-400 animate-pulse" style={{ top: '42%' }}>
-                👆 Tape pour sauter !
+ Tape pour sauter !
               </p>
             )}
           </div>
@@ -246,7 +246,7 @@ export default function RunnerGamePage() {
 
             {phase === 'intro' ? (
               <>
-                <h1 className="text-2xl font-extrabold text-zinc-900">🏃 Waty Runner</h1>
+                <h1 className="text-2xl font-extrabold text-zinc-900">Waty Runner</h1>
                 <p className="text-sm text-zinc-600 leading-relaxed max-w-xs">
                   Waty court vers ses objectifs ! <span className="font-bold">Tape l&apos;écran pour sauter</span> par-dessus
                   la malbouffe. Ça va de plus en plus vite… jusqu&apos;où iras-tu ?
@@ -255,7 +255,7 @@ export default function RunnerGamePage() {
             ) : (
               <>
                 <h1 className="text-2xl font-extrabold text-zinc-900">
-                  {newRecord ? '🏆 NOUVEAU RECORD !' : 'Aïe, un obstacle ! 💥'}
+                  {newRecord ? 'NOUVEAU RECORD !' : 'Aïe, un obstacle !'}
                 </h1>
                 <p className="text-5xl font-black text-tta-mid">{meters} <span className="text-sm text-zinc-400 font-semibold">m</span></p>
                 {!newRecord && best > 0 && <p className="text-xs text-zinc-400">Record : {best} m</p>}

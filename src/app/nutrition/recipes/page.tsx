@@ -15,14 +15,14 @@ import {
 } from 'lucide-react'
 
 const CATEGORIES = [
-  { key: 'anti-inflammatoire', label: '🌿 Anti-inflammatoire', desc: 'Oméga-3, antioxydants' },
-  { key: 'sans-gluten',        label: '🌾 Sans gluten',        desc: 'Riz, quinoa, sarrasin' },
-  { key: 'faible-calories',    label: '🔥 Faible calories',    desc: 'Moins de 400 kcal' },
-  { key: 'rapide',             label: '⚡ Rapide',             desc: 'Prêt en 20 min' },
-  { key: 'cheat-meal',         label: '😈 Cheat meal',         desc: 'Burger, pizza, desserts' },
-  { key: 'proteinee',          label: '💪 Protéinée',          desc: '+30g de protéines' },
-  { key: 'vegetarien',         label: '🥗 Végétarien',         desc: 'Sans viande ni poisson' },
-  { key: 'monde',              label: '🌍 Cuisine du monde',   desc: 'Maroc, Asie, Mexique...' },
+  { key: 'anti-inflammatoire', label: 'Anti-inflammatoire', desc: 'Oméga-3, antioxydants' },
+  { key: 'sans-gluten',        label: 'Sans gluten',        desc: 'Riz, quinoa, sarrasin' },
+  { key: 'faible-calories',    label: 'Faible calories',    desc: 'Moins de 400 kcal' },
+  { key: 'rapide',             label: 'Rapide',             desc: 'Prêt en 20 min' },
+  { key: 'cheat-meal',         label: 'Cheat meal',         desc: 'Burger, pizza, desserts' },
+  { key: 'proteinee',          label: 'Protéinée',          desc: '+30g de protéines' },
+  { key: 'vegetarien',         label: 'Végétarien',         desc: 'Sans viande ni poisson' },
+  { key: 'monde',              label: 'Cuisine du monde',   desc: 'Maroc, Asie, Mexique...' },
 ]
 
 const DIFF_COLOR: Record<string, string> = {
@@ -54,7 +54,7 @@ function RecipeCard({ recipe, onOpen, onSave, onUnsave, onShare, isSaved }: {
       <div className="relative h-40 bg-zinc-100">
         {recipe.photoUrl
           ? <img src={recipe.photoUrl} alt={recipe.titre} className="w-full h-full object-cover" />
-          : <div className="w-full h-full bg-gradient-to-br from-nutri-light to-zinc-100 flex items-center justify-center text-5xl">🍽️</div>
+          : <div className="w-full h-full bg-gradient-to-br from-nutri-light to-zinc-100 flex items-center justify-center text-5xl"></div>
         }
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         <div className="absolute top-2 right-2 flex gap-1">
@@ -183,7 +183,7 @@ export default function RecipesPage() {
     if (!user) return
     const { error } = await supabase.from('saved_recipes')
       .upsert(toSavedRow(user.id, recipe), { onConflict: 'user_id,recipe_id' })
-    if (!error) { setSavedIds(prev => new Set([...prev, recipe.id])); showToast('✓ Recette sauvegardée') }
+    if (!error) { setSavedIds(prev => new Set([...prev, recipe.id])); showToast('Recette sauvegardée') }
   }
 
   async function unsaveRecipe(recipe: Recipe, e: React.MouseEvent) {
@@ -206,7 +206,7 @@ export default function RecipesPage() {
       try { await navigator.share({ title: recipe.titre, text: recipe.description, url }) } catch { }
     } else {
       await navigator.clipboard.writeText(url)
-      setCopied(true); showToast('🔗 Lien copié !'); setTimeout(() => setCopied(false), 2000)
+      setCopied(true); showToast('Lien copié !'); setTimeout(() => setCopied(false), 2000)
     }
   }
 
@@ -224,7 +224,7 @@ export default function RecipesPage() {
       <div className="relative rounded-2xl overflow-hidden h-56">
         {detail.photoUrl
           ? <img src={detail.photoUrl} alt={detail.titre} className="w-full h-full object-cover" />
-          : <div className="w-full h-full bg-gradient-to-br from-nutri-light to-zinc-100 flex items-center justify-center text-7xl">🍽️</div>
+          : <div className="w-full h-full bg-gradient-to-br from-nutri-light to-zinc-100 flex items-center justify-center text-7xl"></div>
         }
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
         <div className="absolute bottom-4 left-4 right-12">
@@ -279,7 +279,7 @@ export default function RecipesPage() {
 
       {detail.ustensiles && detail.ustensiles.length > 0 && (
         <div className="card">
-          <h2 className="text-sm font-bold text-zinc-900 mb-2">🔧 Ustensiles</h2>
+          <h2 className="text-sm font-bold text-zinc-900 mb-2">Ustensiles</h2>
           <div className="flex flex-wrap gap-1.5">
             {detail.ustensiles.map((u, i) => <span key={i} className="text-xs bg-zinc-100 text-zinc-600 px-2.5 py-1 rounded-full">{u}</span>)}
           </div>
@@ -287,7 +287,7 @@ export default function RecipesPage() {
       )}
 
       <div className="card">
-        <h2 className="text-sm font-bold text-zinc-900 mb-3">🛒 Ingrédients</h2>
+        <h2 className="text-sm font-bold text-zinc-900 mb-3">Ingrédients</h2>
         <div className="flex flex-col gap-2">
           {detail.ingredients.map((ing, i) => {
             const isObj = typeof ing === 'object' && ing !== null
@@ -310,7 +310,7 @@ export default function RecipesPage() {
       </div>
 
       <div className="card">
-        <h2 className="text-sm font-bold text-zinc-900 mb-3">👨‍🍳 Préparation</h2>
+        <h2 className="text-sm font-bold text-zinc-900 mb-3">Préparation</h2>
         <div className="flex flex-col gap-4">
           {detail.etapes.map((etape, i) => {
             const isObj = typeof etape === 'object' && etape !== null
@@ -332,7 +332,7 @@ export default function RecipesPage() {
                       <p className="text-sm text-zinc-600 leading-relaxed">{(etape as Etape).detail}</p>
                       {(etape as Etape).astuce && (
                         <div className="mt-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 text-xs text-amber-700">
-                          💡 <span className="font-semibold">Astuce :</span> {(etape as Etape).astuce}
+ <span className="font-semibold">Astuce :</span> {(etape as Etape).astuce}
                         </div>
                       )}
                     </>
@@ -346,14 +346,14 @@ export default function RecipesPage() {
 
       {detail.conseils_chef && (
         <div className="card bg-nutri-light border-nutri/20">
-          <p className="text-xs font-extrabold text-nutri-dark mb-1">👨‍🍳 Conseil du chef</p>
+          <p className="text-xs font-extrabold text-nutri-dark mb-1">Conseil du chef</p>
           <p className="text-sm text-nutri-dark leading-relaxed">{detail.conseils_chef}</p>
         </div>
       )}
 
       {detail.accompagnements && detail.accompagnements.length > 0 && (
         <div className="card">
-          <p className="text-xs font-extrabold text-zinc-500 mb-2">🍽️ Accompagnements</p>
+          <p className="text-xs font-extrabold text-zinc-500 mb-2">Accompagnements</p>
           <div className="flex flex-wrap gap-1.5">
             {detail.accompagnements.map((a, i) => <span key={i} className="text-xs bg-zinc-100 text-zinc-600 px-2.5 py-1 rounded-full">{a}</span>)}
           </div>
@@ -442,7 +442,7 @@ export default function RecipesPage() {
       {view === 'generated' && recipes.length > 0 && !loading && (
         <Waty
           mode="nutrition"
-          message="N'oublie pas de sauvegarder les recettes qui te plaisent 🔖 — elles seront perdues si tu changes de catégorie !"
+          message="N'oublie pas de sauvegarder les recettes qui te plaisent — elles seront perdues si tu changes de catégorie !"
           size="sm"
           dismissible={true}
         />
@@ -475,7 +475,7 @@ export default function RecipesPage() {
         <div className="card text-center py-14">
           <Loader2 size={32} className="animate-spin text-nutri mx-auto mb-3" />
           <p className="text-sm font-medium text-zinc-700">Génération des recettes…</p>
-          <p className="text-xs text-zinc-400 mt-1">Waty prépare 4 recettes pour toi ✨</p>
+          <p className="text-xs text-zinc-400 mt-1">Waty prépare 4 recettes pour toi</p>
         </div>
       )}
 
@@ -508,7 +508,7 @@ export default function RecipesPage() {
               <button
                 onClick={() => searchQuery ? searchRecipes() : activeCategory ? loadCategory(activeCategory) : null}
                 className="btn-ghost text-xs gap-1.5">
-                🔄 Régénérer
+ Régénérer
               </button>
             )}
           </div>

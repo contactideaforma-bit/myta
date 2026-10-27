@@ -118,7 +118,7 @@ export default function ResetPasswordPage() {
 
           {ready && sessionOk && !done && (
             <>
-              <h1 className="text-xl font-extrabold text-zinc-900 mb-0.5">Nouveau mot de passe 🔑</h1>
+              <h1 className="text-xl font-extrabold text-zinc-900 mb-0.5">Nouveau mot de passe</h1>
               <p className="text-zinc-400 text-sm mb-5">Choisis ton nouveau mot de passe MYTA</p>
 
               <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -158,7 +158,7 @@ export default function ResetPasswordPage() {
           {done && (
             <div className="flex flex-col items-center gap-3 py-6 text-center">
               <CheckCircle2 size={36} className="text-green-500" />
-              <p className="text-sm font-bold text-zinc-900">Mot de passe mis à jour ✓</p>
+              <p className="text-sm font-bold text-zinc-900">Mot de passe mis à jour</p>
               <p className="text-xs text-zinc-400">Retour à la connexion…</p>
             </div>
           )}

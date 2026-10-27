@@ -8,7 +8,7 @@
  * ne doit être visible dans l'app iOS. Utiliser isIosApp() pour masquer
  * pricing, boutons d'upgrade et gestion de paiement.
  *
- * ⚠️ À n'appeler que côté client (dans un useEffect) pour éviter
+ * À n'appeler que côté client (dans un useEffect) pour éviter
  * les mismatchs d'hydratation.
  */
 export function isIosApp(): boolean {

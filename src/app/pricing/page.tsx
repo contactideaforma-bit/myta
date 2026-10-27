@@ -85,7 +85,7 @@ function PlanCard({ plan, onSubscribe, loading }: {
     }`}>
       {plan.badge && (
         <div className={`text-center text-[11px] font-bold text-white py-2 ${plan.badgeColor}`}>
-          ⭐ {plan.badge}
+ {plan.badge}
         </div>
       )}
 
@@ -241,7 +241,7 @@ function PricingContent() {
         await new Promise(r => setTimeout(r, 1500))
         products = await getRcProducts()
       }
-      // ⚠️ Ne JAMAIS écraser des offres déjà affichées par un résultat vide
+      // Ne JAMAIS écraser des offres déjà affichées par un résultat vide
       // (un appel StoreKit qui échoue ne doit pas faire disparaître le paywall).
       setRcProducts(prev => (products.length > 0 ? products : prev))
     } catch (err) {

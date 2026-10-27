@@ -48,7 +48,7 @@ const STATUS_LABEL: Record<string, { text: string; color: string; bg: string }> 
   active:   { text: 'Actif',              color: 'text-green-700',  bg: 'bg-green-50'  },
   canceled: { text: 'Résilié',            color: 'text-red-600',    bg: 'bg-red-50'    },
   past_due: { text: 'Paiement en retard', color: 'text-orange-700', bg: 'bg-orange-50' },
-  vip:      { text: 'VIP ⭐',             color: 'text-purple-700', bg: 'bg-purple-50' },
+  vip:      { text: 'VIP',             color: 'text-purple-700', bg: 'bg-purple-50' },
   free:     { text: 'Gratuit',            color: 'text-zinc-600',   bg: 'bg-zinc-100'  },
 }
 
@@ -74,7 +74,7 @@ export default function AccountPage() {
     setRestoring(false)
     if (res.ok) {
       if (res.planId) localStorage.setItem('myta_plan', res.planId)
-      setRestoreMsg('Achats restaurés ✅')
+      setRestoreMsg('Achats restaurés')
       setTimeout(() => window.location.reload(), 800)
     } else {
       setRestoreMsg('Aucun achat à restaurer sur ce compte Apple.')
@@ -184,7 +184,7 @@ export default function AccountPage() {
       const { error } = await supabase.from('profiles')
         .upsert({ id: user.id, full_name: fullName.trim() }, { onConflict: 'id' })
       if (error) throw error
-      setNameFb({ type: 'ok', msg: 'Nom mis à jour ✓' })
+      setNameFb({ type: 'ok', msg: 'Nom mis à jour' })
     } catch (e: any) {
       setNameFb({ type: 'err', msg: e.message ?? 'Erreur' })
     }
@@ -217,7 +217,7 @@ export default function AccountPage() {
     try {
       const { error } = await supabase.auth.updateUser({ password: newPw })
       if (error) throw error
-      setPwFb({ type: 'ok', msg: 'Mot de passe mis à jour ✓' })
+      setPwFb({ type: 'ok', msg: 'Mot de passe mis à jour' })
       setCurrentPw(''); setNewPw(''); setConfirmPw('')
     } catch (e: any) {
       setPwFb({ type: 'err', msg: e.message ?? 'Erreur' })
@@ -244,7 +244,7 @@ export default function AccountPage() {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ paymentMethodId: setupIntent.payment_method }),
       })
-      setCardFb({ type: 'ok', msg: 'Carte mise à jour avec succès ✓' })
+      setCardFb({ type: 'ok', msg: 'Carte mise à jour avec succès' })
       setShowCardForm(false)
     } catch (e: any) {
       setCardFb({ type: 'err', msg: e.message ?? 'Erreur carte' })
@@ -306,7 +306,7 @@ export default function AccountPage() {
       {obStep === 'account' && (
         <OnboardingCoach
           mode="nutrition"
-          title="Tu as fait le tour ! 🎉"
+          title="Tu as fait le tour !"
           message="Ici tu gères ton compte, ton abonnement et tes infos. C'est la dernière étape du guide — tu es prêt(e) à utiliser MYTA au quotidien."
           ctaLabel="Terminer le guide"
           onCta={async () => { await obAdvance('account'); router.push('/dashboard') }}
@@ -455,7 +455,7 @@ export default function AccountPage() {
                   background: isPremium(userPlan) ? 'linear-gradient(90deg, #4B47A0, #2BA8B0)' : '#f4f4f5',
                   color:      isPremium(userPlan) ? '#fff' : '#18181b',
                 }}>
-                {isPremium(userPlan) ? '⭐' : '🔹'} {getPlanLabel(userPlan)}
+                {getPlanLabel(userPlan)}
               </div>
             )}
             <div className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold ${sc.bg} ${sc.color}`}>
@@ -472,13 +472,13 @@ export default function AccountPage() {
               {planChanged && (
             <div className="bg-green-50 border border-green-200 rounded-2xl px-4 py-3 text-sm text-green-700 flex items-center gap-2">
               <CheckCircle2 size={14} className="flex-shrink-0" />
-              Forfait mis à jour avec succès ✓
+              Forfait mis à jour avec succès
             </div>
           )}
 
           {subStatus === 'past_due' && (
             <div className="bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 text-sm text-orange-700">
-              ⚠️ Ton paiement a échoué. Mets à jour ta carte ci-dessus pour rétablir l'accès.
+ Ton paiement a échoué. Mets à jour ta carte ci-dessus pour rétablir l'accès.
             </div>
           )}
 

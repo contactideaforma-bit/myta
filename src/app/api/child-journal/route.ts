@@ -3,7 +3,7 @@
  * Utilise supabaseAdmin pour bypasser RLS — vérifie toujours que
  * l'enfant appartient bien à l'utilisateur authentifié.
  *
- * ⚠️  MIGRATION SQL REQUISE dans Supabase :
+ * MIGRATION SQL REQUISE dans Supabase :
  *   ALTER TABLE journal_entries
  *     ADD COLUMN IF NOT EXISTS child_profile_id uuid
  *     REFERENCES child_profiles(id) ON DELETE CASCADE;

@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         from:    'Waty de MYTA <contact@mytwinapp.fr>',
         to:      [email],
-        subject: `🚀 ${firstName ? firstName + ', ton' : 'Ton'} essai gratuit MYTA t'attend !`,
+        subject: `${firstName ? firstName + ', ton' : 'Ton'} essai gratuit MYTA t'attend !`,
         html:    pricingEmailHtml(firstName),
       }),
     })
@@ -82,12 +82,12 @@ function pricingEmailHtml(firstName: string): string {
 
         <tr><td style="background:#ffffff;border-radius:24px;padding:40px 36px;box-shadow:0 4px 32px rgba(75,71,160,0.08);text-align:center">
 
-          <p style="margin:0 0 8px;font-size:40px">🚀</p>
+          <p style="margin:0 0 8px;font-size:40px"></p>
           <h1 style="margin:0 0 12px;color:#18181b;font-size:22px;font-weight:800">
             ${firstName ? `${firstName}, plus` : 'Plus'} qu'une étape !
           </h1>
           <p style="margin:0 0 28px;color:#374151;font-size:15px;line-height:1.65">
-            Ton compte MYTA est créé ✓<br>
+            Ton compte MYTA est créé<br>
             Clique sur le bouton pour choisir ton forfait et démarrer
             tes <strong>3 jours d'essai gratuit</strong> :
           </p>
@@ -98,13 +98,13 @@ function pricingEmailHtml(firstName: string): string {
           </a>
 
           <p style="margin:28px 0 0;font-size:13px;color:#6b7280;line-height:1.6">
-            Ensuite, retourne simplement dans ton application —<br>tout sera activé automatiquement ✨
+            Ensuite, retourne simplement dans ton application —<br>tout sera activé automatiquement
           </p>
 
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px">
             <tr><td style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:12px 16px">
               <p style="margin:0;font-size:12px;color:#166534;line-height:1.5">
-                🎁 3 jours gratuits · aucun débit avant la fin de l'essai · annulable en 1 clic
+ 3 jours gratuits · aucun débit avant la fin de l'essai · annulable en 1 clic
               </p>
             </td></tr>
           </table>

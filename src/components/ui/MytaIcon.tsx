@@ -15,6 +15,7 @@ export type MytaIconName =
   | 'bell' | 'menu' | 'back' | 'chevron' | 'calendar' | 'water' | 'flame' | 'sparkle'
   | 'check' | 'chart' | 'user' | 'friends' | 'games' | 'settings' | 'logout' | 'help'
   | 'sun' | 'moon' | 'report' | 'timer' | 'history' | 'advice' | 'target' | 'news' | 'eye'
+  | 'pill' | 'trophy' | 'crown'
 
 interface Props {
   name: MytaIconName
@@ -176,6 +177,22 @@ const FILL: Record<MytaIconName, JSX.Element> = {
     <path d="M2 16c3.5-6 8-9 14-9s10.5 3 14 9c-3.5 6-8 9-14 9S5.5 22 2 16z" />
     <circle cx="16" cy="16" r="5" fill={CUT} />
     <circle cx="16" cy="16" r="2.2" />
+  </>,
+  pill: <>
+    <rect x="3" y="10" width="26" height="12" rx="6" transform="rotate(-35 16 16)" />
+    <path d="M12.5 9.5l7 13" stroke={CUT} strokeWidth="2.4" strokeLinecap="round" />
+  </>,
+  trophy: <>
+    <path d="M9 4h14v9a7 7 0 0 1-14 0z" />
+    <path d="M9 7H5a1 1 0 0 0-1 1v2a5 5 0 0 0 5 5M23 7h4a1 1 0 0 1 1 1v2a5 5 0 0 1-5 5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+    <rect x="13.5" y="19" width="5" height="5" />
+    <rect x="9" y="24" width="14" height="4.5" rx="2" />
+    <path d="M13 8a3 3 0 0 1 2-2" fill="none" stroke={CUT} strokeWidth="2" strokeLinecap="round" />
+  </>,
+  crown: <>
+    <path d="M4 10l6 5 6-9 6 9 6-5-3 15H7z" />
+    <rect x="7" y="25" width="18" height="3.5" rx="1.75" />
+    <circle cx="16" cy="18.5" r="2" fill={CUT} />
   </>,
 }
 

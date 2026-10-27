@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { X, Clock, ChevronRight, ChevronDown } from 'lucide-react'
 import { Waty, WATY_MESSAGES } from '@/components/ui/Waty'
+import { MytaIcon } from '@/components/ui/MytaIcon'
 
 interface Step { title: string; content: string }
 interface Conseil {
@@ -16,7 +17,7 @@ interface Conseil {
 
 const CONSEILS: Conseil[] = [
   {
-    id: 1, emoji: '🥗', cat: 'nutrition', readMin: 6,
+    id: 1, emoji: '', cat: 'nutrition', readMin: 6,
     title: 'Les bases du rééquilibrage alimentaire',
     summary: 'Pas de régime, pas de privation. Le rééquilibrage alimentaire c\'est apprendre à bien manger durablement, sans frustration ni calcul obsessionnel.',
     steps: [
@@ -34,7 +35,7 @@ const CONSEILS: Conseil[] = [
     ],
   },
   {
-    id: 2, emoji: '⚗️', cat: 'nutrition', readMin: 7,
+    id: 2, emoji: '', cat: 'nutrition', readMin: 7,
     title: 'Comprendre les macronutriments',
     summary: 'Protéines, glucides, lipides : chaque macronutriment a un rôle précis dans ton corps. Comprendre leurs fonctions te permet de manger intelligemment sans te priver.',
     steps: [
@@ -47,7 +48,7 @@ const CONSEILS: Conseil[] = [
     avoid: ['Les régimes "no carb" ou "no fat" — incomplets et dangereux sur le long terme', 'Les protéines en poudre comme seule source de protéines', 'Confondre "faible en gras" et "sain" — souvent compensé par du sucre'],
   },
   {
-    id: 3, emoji: '💧', cat: 'nutrition', readMin: 4,
+    id: 3, emoji: '', cat: 'nutrition', readMin: 4,
     title: 'Hydratation : bien plus que boire de l\'eau',
     summary: 'Ton corps est composé à 60% d\'eau. Une déshydratation de seulement 2% réduit les performances cognitives de 20% et les performances physiques de 30%.',
     steps: [
@@ -64,7 +65,7 @@ const CONSEILS: Conseil[] = [
     ],
   },
   {
-    id: 4, emoji: '🌅', cat: 'nutrition', readMin: 5,
+    id: 4, emoji: '', cat: 'nutrition', readMin: 5,
     title: 'Le petit-déjeuner idéal selon ton objectif',
     summary: 'Le petit-déjeuner casse le jeûne nocturne et donne le ton métabolique de la journée. Mais il n\'est pas obligatoire — l\'important c\'est ce qui convient à ton rythme.',
     steps: [
@@ -77,7 +78,7 @@ const CONSEILS: Conseil[] = [
     avoid: ['Céréales avec >15g de sucre/100g', 'Jus de fruits industriels', 'Manger devant ton téléphone'],
   },
   {
-    id: 5, emoji: '😤', cat: 'nutrition', readMin: 5,
+    id: 5, emoji: '', cat: 'nutrition', readMin: 5,
     title: 'Gérer les fringales et l\'alimentation émotionnelle',
     summary: 'On mange pour bien plus que la faim — stress, ennui, tristesse, récompense. Comprendre pourquoi tu manges est aussi important que ce que tu manges.',
     steps: [
@@ -89,7 +90,7 @@ const CONSEILS: Conseil[] = [
     tips: ['Tiens un journal "faim-émotion" pendant 2 semaines — les patterns apparaissent vite', 'Substituts sains pour les envies de sucré : dattes + amandes, chocolat noir 70%, yaourt grec + miel', 'L\'exercice physique réduit les envies d\'alimentation émotionnelle de 50%'],
   },
   {
-    id: 6, emoji: '🏃', cat: 'sport', readMin: 6,
+    id: 6, emoji: '', cat: 'sport', readMin: 6,
     title: 'Nutrition sportive : avant, pendant, après l\'effort',
     summary: 'Ce que tu manges autour de tes entraînements impacte directement tes performances, ta récupération et tes résultats. Voici le protocole complet.',
     steps: [
@@ -106,7 +107,7 @@ const CONSEILS: Conseil[] = [
     ],
   },
   {
-    id: 7, emoji: '🦠', cat: 'nutrition', readMin: 5,
+    id: 7, emoji: '', cat: 'nutrition', readMin: 5,
     title: 'Microbiote intestinal : le 2ème cerveau',
     summary: 'Ton intestin abrite 100 000 milliards de bactéries qui influencent ton humeur, ton immunité, ton poids et même tes envies alimentaires.',
     steps: [
@@ -118,7 +119,7 @@ const CONSEILS: Conseil[] = [
     tips: ['Le kéfir de lait contient 10x plus de bonnes bactéries qu\'un yaourt classique', 'La choucroute crue (non pasteurisée) est l\'une des meilleures sources de probiotiques', 'Mange les pelures de légumes et fruits biologiques — riches en fibres prébiotiques'],
   },
   {
-    id: 8, emoji: '🌙', cat: 'mindset', readMin: 4,
+    id: 8, emoji: '', cat: 'mindset', readMin: 4,
     title: 'Sommeil et alimentation : le lien méconnu',
     summary: 'Mal dormir rend affamé, fait grossir et sabote tous tes efforts. Le sommeil est le pilier le plus sous-estimé de la santé.',
     steps: [
@@ -130,7 +131,7 @@ const CONSEILS: Conseil[] = [
     tips: ['Le magnésium (200-400mg avant de dormir) améliore la qualité du sommeil profond', 'Même 20 minutes de marche le matin améliore le sommeil de la nuit suivante', 'La caféine a une demi-vie de 5-7h — un café à 15h peut encore perturber ton sommeil à minuit'],
   },
   {
-    id: 9, emoji: '🔥', cat: 'nutrition', readMin: 5,
+    id: 9, emoji: '', cat: 'nutrition', readMin: 5,
     title: 'Anti-inflammation par l\'alimentation',
     summary: 'L\'inflammation chronique est à l\'origine de la plupart des maladies modernes. Tu peux l\'influencer directement par tes choix alimentaires quotidiens.',
     steps: [
@@ -147,7 +148,7 @@ const CONSEILS: Conseil[] = [
     ],
   },
   {
-    id: 10, emoji: '🛒', cat: 'mindset', readMin: 4,
+    id: 10, emoji: '', cat: 'mindset', readMin: 4,
     title: 'Faire ses courses comme un nutritionniste',
     summary: 'Un caddie bien pensé c\'est une semaine réussie. 80% de tes choix alimentaires se font au supermarché, pas devant ton frigo.',
     steps: [
@@ -162,9 +163,9 @@ const CONSEILS: Conseil[] = [
 
 const CATS = [
   { key: 'all',       label: 'Tous' },
-  { key: 'nutrition', label: '🥗 Nutrition' },
-  { key: 'sport',     label: '🏃 Sport' },
-  { key: 'mindset',   label: '🧘 Mindset' },
+  { key: 'nutrition', label: 'Nutrition' },
+  { key: 'sport',     label: 'Sport' },
+  { key: 'mindset',   label: 'Mindset' },
 ]
 
 export default function AdvicePage() {
@@ -189,7 +190,7 @@ export default function AdvicePage() {
           <div className="bg-white w-full rounded-t-3xl max-h-[92vh] overflow-y-auto">
             <div className="sticky top-0 bg-white px-5 py-4 border-b border-zinc-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-2xl">{open.emoji}</span>
+                <span className="w-9 h-9 rounded-xl bg-yellow-50 text-yellow-600 flex items-center justify-center flex-shrink-0"><MytaIcon name="advice" size={18} /></span>
                 <div>
                   <h2 className="font-extrabold text-zinc-900 text-sm leading-tight pr-6">{open.title}</h2>
                   <span className="text-xs text-zinc-400 flex items-center gap-1"><Clock size={10} />{open.readMin} min de lecture</span>
@@ -241,7 +242,7 @@ export default function AdvicePage() {
               {/* À faire */}
               {open.tips && (
                 <div className="bg-nutri-light rounded-2xl p-4">
-                  <p className="text-xs font-extrabold text-nutri-dark mb-2 uppercase tracking-wide">✅ À appliquer</p>
+                  <p className="text-xs font-extrabold text-nutri-dark mb-2 uppercase tracking-wide">À appliquer</p>
                   {open.tips.map((t, i) => (
                     <div key={i} className="flex gap-2 mb-2 last:mb-0">
                       <span className="text-nutri-mid flex-shrink-0 mt-0.5">•</span>
@@ -254,7 +255,7 @@ export default function AdvicePage() {
               {/* À éviter */}
               {open.avoid && (
                 <div className="bg-red-50 rounded-2xl p-4">
-                  <p className="text-xs font-extrabold text-red-700 mb-2 uppercase tracking-wide">⚠️ À éviter</p>
+                  <p className="text-xs font-extrabold text-red-700 mb-2 uppercase tracking-wide">À éviter</p>
                   {open.avoid.map((t, i) => (
                     <div key={i} className="flex gap-2 mb-2 last:mb-0">
                       <span className="text-red-400 flex-shrink-0 mt-0.5">•</span>
@@ -274,7 +275,7 @@ export default function AdvicePage() {
         <p className="text-sm text-zinc-400">{CONSEILS.length} guides complets</p>
       </div>
 
-      <Waty mode="nutrition" message="Clique sur un guide pour le lire en détail — chaque étape est déroulable 📖" size="sm" />
+      <Waty mode="nutrition" message="Clique sur un guide pour le lire en détail — chaque étape est déroulable" size="sm" />
 
       {/* Recherche + filtres */}
       <div className="flex flex-col gap-3">
@@ -296,7 +297,7 @@ export default function AdvicePage() {
           <button key={c.id} onClick={() => { setOpen(c); setOpenStep(0) }}
             className="card text-left hover:shadow-md transition-all active:scale-[0.98] group">
             <div className="flex items-start gap-3">
-              <span className="text-3xl flex-shrink-0">{c.emoji}</span>
+              <span className="w-11 h-11 rounded-2xl bg-yellow-50 text-yellow-600 flex items-center justify-center flex-shrink-0"><MytaIcon name="advice" size={22} /></span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="font-extrabold text-sm text-zinc-900 leading-tight">{c.title}</h3>
@@ -317,7 +318,7 @@ export default function AdvicePage() {
 
       {visible.length === 0 && (
         <div className="card text-center py-10 text-zinc-400">
-          <p className="text-2xl mb-2">🔍</p>
+          <p className="text-2xl mb-2"></p>
           <p className="text-sm">Aucun conseil trouvé.</p>
         </div>
       )}

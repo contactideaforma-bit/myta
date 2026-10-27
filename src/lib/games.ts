@@ -25,17 +25,17 @@ export interface GameDef {
 
 export const GAMES: GameDef[] = [
   {
-    key: 'lava', title: 'Floor is Lava', emoji: '🌋',
+    key: 'lava', title: 'Floor is Lava', emoji: '',
     desc: 'La lave monte ! Grimpe les 5 tours, esquive les pierres et les boules de feu, attrape les fruits magiques.',
-    unlockDays: 7, href: '/games/lava', scoreUnit: '⭐', color: '#f97316',
+    unlockDays: 7, href: '/games/lava', scoreUnit: '', color: '#f97316',
   },
   {
-    key: 'tri', title: 'Le Grand Tri', emoji: '🥗',
+    key: 'tri', title: 'Le Grand Tri', emoji: '',
     desc: 'Les aliments pleuvent ! Déplace Waty au doigt : attrape les sains, évite la malbouffe.',
     unlockDays: 14, href: '/games/tri', scoreUnit: 'points', color: '#22c55e',
   },
   {
-    key: 'runner', title: 'Waty Runner', emoji: '🏃',
+    key: 'runner', title: 'Waty Runner', emoji: '',
     desc: 'Waty court ! Saute par-dessus la malbouffe et tiens la distance le plus longtemps possible.',
     unlockDays: 30, href: '/games/runner', scoreUnit: 'mètres', color: '#4B47A0',
   },

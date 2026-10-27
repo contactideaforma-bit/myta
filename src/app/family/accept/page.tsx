@@ -82,7 +82,7 @@ function AcceptContent() {
     return (
       <div className="text-center flex flex-col items-center gap-4 py-10">
         <CheckCircle size={52} className="text-green-500" />
-        <h1 className="text-xl font-extrabold text-zinc-900">Bienvenue dans la famille ! 🎉</h1>
+        <h1 className="text-xl font-extrabold text-zinc-900">Bienvenue dans la famille !</h1>
         <p className="text-sm text-zinc-500">Redirection vers ton tableau de bord…</p>
       </div>
     )

@@ -234,7 +234,7 @@ export default function HistoryPage() {
                   {format(day, 'd')}
                 </span>
                 {hasSport && (
-                  <span className="text-[8px] mt-0.5 opacity-80">✓</span>
+                  <span className="text-[8px] mt-0.5 opacity-80"></span>
                 )}
               </div>
             )

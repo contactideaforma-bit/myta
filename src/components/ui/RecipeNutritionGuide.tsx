@@ -78,7 +78,7 @@ export function RecipeNutritionGuide({ recipe, score, allowJournal = true, onToa
     if (res.ok) {
       setAdded(true)
       setToday(t => t ? { cal: t.cal + cal, prot: t.prot + prot, carb: t.carb + carb, fat: t.fat + fat } : t)
-      onToast?.('✓ Une portion ajoutée à ton journal')
+      onToast?.('Une portion ajoutée à ton journal')
     } else onToast?.("Erreur lors de l'ajout au journal")
   }
 
@@ -147,7 +147,7 @@ export function RecipeNutritionGuide({ recipe, score, allowJournal = true, onToa
       {/* ── Impact sur ta journée ── */}
       {!isChild && (
         <div className="card-nutri">
-          <p className="text-xs font-extrabold text-nutri-dark mb-2">🎯 Impact sur ta journée</p>
+          <p className="text-xs font-extrabold text-nutri-dark mb-2">Impact sur ta journée</p>
           {targets && today ? (
             <>
               <div className="flex items-end justify-between mb-2">

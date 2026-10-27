@@ -1462,7 +1462,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
                 <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-2"><Flame size={14} className="text-tta-mid" /> Calcul du TDEE</h2>
                 <Waty
                   mode="nutrition"
-                  message="Le TDEE (Total Daily Energy Expenditure) est ta dépense énergétique totale journalière. C'est le nombre de calories que ton corps brûle en une journée. Ces données sont indicatives — consulte un professionnel de santé pour un suivi personnalisé. 📊"
+                  message="Le TDEE (Total Daily Energy Expenditure) est ta dépense énergétique totale journalière. C'est le nombre de calories que ton corps brûle en une journée. Ces données sont indicatives — consulte un professionnel de santé pour un suivi personnalisé."
                   size="sm"
                   dismissible={true}
                 />
@@ -1527,7 +1527,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
                 <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-2"><Ruler size={14} className="text-tta-mid" /> Calcul de l'IMC</h2>
                 <Waty
                   mode="nutrition"
-                  message="L'IMC (Indice de Masse Corporelle) est un indicateur général. Il ne tient pas compte de la masse musculaire ni de la répartition des graisses. À utiliser à titre indicatif uniquement — ton médecin reste le meilleur interlocuteur. 💡"
+                  message="L'IMC (Indice de Masse Corporelle) est un indicateur général. Il ne tient pas compte de la masse musculaire ni de la répartition des graisses. À utiliser à titre indicatif uniquement — ton médecin reste le meilleur interlocuteur."
                   size="sm"
                   dismissible={true}
                 />
@@ -1598,7 +1598,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
                 <h2 className="text-sm font-semibold text-zinc-700 flex items-center gap-2"><Scale size={14} className="text-tta-mid" /> Répartition des macros</h2>
                 <Waty
                   mode="nutrition"
-                  message="Les macronutriments (protéines, glucides, lipides) sont calculés selon des formules standard. Ces recommandations sont indicatives et peuvent varier selon ton métabolisme, ta santé et tes objectifs précis. Consulte un diététicien pour un plan sur mesure. 🥗"
+                  message="Les macronutriments (protéines, glucides, lipides) sont calculés selon des formules standard. Ces recommandations sont indicatives et peuvent varier selon ton métabolisme, ta santé et tes objectifs précis. Consulte un diététicien pour un plan sur mesure."
                   size="sm"
                   dismissible={true}
                 />

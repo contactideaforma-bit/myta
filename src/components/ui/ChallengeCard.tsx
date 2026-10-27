@@ -5,6 +5,7 @@ import { Plus, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { todayISO } from '@/lib/utils'
 import type { DailyChallenge } from '@/lib/gamification'
+import { MytaIcon } from './MytaIcon'
 
 const CUSTOM_CHALLENGE_KEY = 'myta_custom_challenges'
 
@@ -22,14 +23,14 @@ interface ChallengeCardProps {
   onComplete:          (key: string) => void
 }
 
-const EMOJI_OPTIONS = ['💪','🏃','🚴','🧘','🎯','🔥','⚡','🌟','🥊','🏊','🚶','🍎','💧','😤','🏆']
+const EMOJI_OPTIONS = ['','','','','','','','','','','','','','','']
 
 export function ChallengeCard({ challenges, completedKeys, onComplete }: ChallengeCardProps) {
   const [saving, setSaving] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [customChallenges, setCustomChallenges] = useState<CustomChallenge[]>([])
   const [newLabel, setNewLabel] = useState('')
-  const [newEmoji, setNewEmoji] = useState('💪')
+  const [newEmoji, setNewEmoji] = useState('')
   const [newIsSport, setNewIsSport]     = useState(false)
   const [newDuration, setNewDuration]   = useState(15)
   const supabase = createClient()
@@ -55,7 +56,7 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
     setCustomChallenges(updated)
     setShowCreateModal(false)
     setNewLabel('')
-    setNewEmoji('💪')
+    setNewEmoji('')
     setNewIsSport(false)
     setNewDuration(15)
   }
@@ -99,7 +100,7 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
             session_date:    todayISO(),
             duration_min:    challenge.sportDuration,
             calories_burned: Math.round(5 * weight * (challenge.sportDuration / 60)),
-            notes:           `🎯 Défi du jour : ${challenge.label}`,
+            notes:           `Défi du jour : ${challenge.label}`,
           })
         }
       } catch { /* ignore */ }
@@ -115,12 +116,12 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
     <div className="card flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <h2 className="font-extrabold text-zinc-900 text-sm flex items-center gap-1.5">
-          🎯 Challenge du jour
+ Challenge du jour
         </h2>
         <div className="flex items-center gap-2">
           {allDone && (
             <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-1 rounded-full">
-              ✓ Complété !
+ Complété !
             </span>
           )}
           <button
@@ -159,14 +160,14 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
                     : 'bg-zinc-50 border-zinc-100 hover:border-tta-mid/50 hover:bg-tta-light active:scale-[0.98]'
                 }`}
             >
-              <span className="text-xl flex-shrink-0">{challenge.emoji}</span>
+              <span className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${done ? 'bg-green-100 text-green-700' : 'bg-white text-tta-mid'}`}><MytaIcon name={done ? 'check' : 'target'} size={16} /></span>
               <div className="flex-1 min-w-0">
                 <p className={`text-sm font-semibold ${done ? 'text-green-700' : 'text-zinc-800'}`}>
                   {challenge.label}
                 </p>
                 {done && (
                   <p className="text-[10px] text-green-600 mt-0.5">
-                    💬 {challenge.watyMessage}
+ {challenge.watyMessage}
                   </p>
                 )}
               </div>
@@ -175,7 +176,7 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
                 {isSaving
                   ? <div className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                   : done
-                    ? <span className="text-white text-xs font-bold">✓</span>
+                    ? <span className="text-white text-xs font-bold"></span>
                     : <span className="text-zinc-400 text-xs">→</span>
                 }
               </div>
@@ -188,7 +189,7 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
       {allDone && (
         <div className="bg-green-50 rounded-2xl px-4 py-3 text-center">
           <p className="text-sm font-bold text-green-700">
-            🎉 Waty est fier de toi aujourd'hui !
+ Waty est fier de toi aujourd'hui !
           </p>
           <p className="text-xs text-green-600 mt-0.5">Tous les challenges du jour complétés</p>
         </div>
@@ -200,7 +201,7 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
           onClick={(e) => e.target === e.currentTarget && setShowCreateModal(false)}>
           <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-zinc-100">
-              <h3 className="font-extrabold text-zinc-900">✍️ Mon challenge perso</h3>
+              <h3 className="font-extrabold text-zinc-900">Mon challenge perso</h3>
               <button onClick={() => setShowCreateModal(false)}
                 className="w-7 h-7 rounded-full bg-zinc-100 flex items-center justify-center hover:bg-zinc-200">
                 <X size={14} />
@@ -236,7 +237,7 @@ export function ChallengeCard({ challenges, completedKeys, onComplete }: Challen
               {/* Objectif sportif */}
               <div className="bg-zinc-50 rounded-2xl p-3 flex flex-col gap-2">
                 <button onClick={() => setNewIsSport(v => !v)} className="flex items-center justify-between w-full">
-                  <span className="text-xs font-bold text-zinc-600">🏋️ Objectif sportif</span>
+                  <span className="text-xs font-bold text-zinc-600">Objectif sportif</span>
                   <span className={`w-10 h-6 rounded-full p-0.5 transition-colors ${newIsSport ? 'bg-violet-500' : 'bg-zinc-300'}`}>
                     <span className={`block w-5 h-5 bg-white rounded-full shadow transition-transform ${newIsSport ? 'translate-x-4' : ''}`} />
                   </span>

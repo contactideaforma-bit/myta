@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { CheckCircle, ArrowRight, Loader2 } from 'lucide-react'
 import { Waty } from '@/components/ui/Waty'
+import { MytaIcon } from '@/components/ui/MytaIcon'
 
 function SuccessContent() {
   const router   = useRouter()
@@ -53,7 +54,7 @@ function SuccessContent() {
         {/* Titre */}
         <div>
           <h1 className="text-2xl font-extrabold text-zinc-900">
-            Bienvenue{userName ? `, ${userName}` : ''} ! 🎉
+            Bienvenue{userName ? `, ${userName}` : ''} !
           </h1>
           <p className="text-zinc-400 text-sm mt-2">
             Ton essai gratuit de 3 jours commence maintenant.
@@ -64,7 +65,7 @@ function SuccessContent() {
         {/* Waty */}
         <Waty
           mode="nutrition"
-          message="Super, tu fais partie de la famille MYTA ! Je suis Waty, ton coach digital personnel. Commence par remplir ton profil pour que je puisse personnaliser tes objectifs 🎯"
+          message="Super, tu fais partie de la famille MYTA ! Je suis Waty, ton coach digital personnel. Commence par remplir ton profil pour que je puisse personnaliser tes objectifs"
           size="lg"
           dismissible={false}
         />
@@ -73,14 +74,14 @@ function SuccessContent() {
         <div className="w-full bg-white rounded-2xl p-4 border border-zinc-100 shadow-sm flex flex-col gap-3 text-left">
           <p className="text-xs font-bold text-zinc-500 uppercase tracking-wide">Ce qui t'attend</p>
           {[
-            { icon: '🥗', label: 'Journal alimentaire avec IA' },
-            { icon: '🏋️', label: 'Suivi sportif complet' },
-            { icon: '😴', label: 'Analyse du sommeil' },
-            { icon: '📊', label: 'Bilan santé hebdomadaire' },
-            { icon: '🍽️', label: 'Recettes IA personnalisées' },
+            { icon: '', label: 'Journal alimentaire avec IA' },
+            { icon: '', label: 'Suivi sportif complet' },
+            { icon: '', label: 'Analyse du sommeil' },
+            { icon: '', label: 'Bilan santé hebdomadaire' },
+            { icon: '', label: 'Recettes IA personnalisées' },
           ].map(f => (
             <div key={f.label} className="flex items-center gap-3 text-sm text-zinc-700">
-              <span className="text-base">{f.icon}</span>
+              <MytaIcon name="check" size={14} className="text-nutri-mid flex-shrink-0" />
               <span>{f.label}</span>
             </div>
           ))}

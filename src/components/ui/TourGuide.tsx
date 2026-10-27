@@ -15,35 +15,35 @@ interface TourStep {
 const STEPS: TourStep[] = [
   {
     targetId: 'tour-greeting',
-    title: '👋 Ton tableau de bord',
+    title: 'Ton tableau de bord',
     description: 'Ici tu retrouves la date du jour et ton prénom. C\'est ton point de départ — tout part de là.',
   },
   {
     targetId: 'tour-objectives',
-    title: '🎯 Tes objectifs',
+    title: 'Tes objectifs',
     description: 'Suis tes calories, protéines, séances sport et calories brûlées. Bascule entre la vue semaine et la vue mois.',
   },
   {
     targetId: 'tour-weight',
-    title: '⚖️ Suivi du poids',
+    title: 'Suivi du poids',
     description: 'Note ton poids chaque jour pour voir ta courbe de progression sur 30 jours. La régularité fait tout !',
   },
   {
     targetId: 'tour-nutrition',
-    title: '🥗 Journal alimentaire',
+    title: 'Journal alimentaire',
     description: 'Note tes repas ici. MYTA calcule automatiquement calories et macros. Tu peux aussi générer des recettes avec l\'IA !',
     preferTop: true,
   },
   {
     targetId: 'tour-sport',
-    title: '🏋️ Séances sport',
+    title: 'Séances sport',
     description: 'Enregistre tes entraînements, utilise le timer Tabata HIIT ou consulte ton historique de séances.',
     preferTop: true,
   },
   {
     targetId: null,
-    title: '🚀 Tu es prêt(e) !',
-    description: 'Voilà, tu connais les bases de MYTA. Retrouve ce guide à tout moment depuis le menu ☰. Bonne utilisation !',
+    title: 'Tu es prêt(e) !',
+    description: 'Voilà, tu connais les bases de MYTA. Retrouve ce guide à tout moment depuis le menu . Bonne utilisation !',
   },
 ]
 

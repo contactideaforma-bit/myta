@@ -8,6 +8,7 @@ import { linkRevenueCatUser } from '@/lib/revenuecat'
 import { CheckCircle, ArrowRight, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import type { Session } from '@supabase/supabase-js'
+import { MytaIcon } from '@/components/ui/MytaIcon'
 
 export default function ConfirmPage() {
   const [status,   setStatus]   = useState<'loading' | 'success'>('loading')
@@ -132,7 +133,7 @@ export default function ConfirmPage() {
             {/* Titre + sous-titre */}
             <div>
               <h1 className="text-2xl font-extrabold text-zinc-900 tracking-tight">
-                {userName ? `Bienvenue ${userName} ! 🎉` : 'Email confirmé ! 🎉'}
+                {userName ? `Bienvenue ${userName} !` : 'Email confirmé !'}
               </h1>
               <p className="text-zinc-500 text-sm mt-2 leading-relaxed">
                 Ton compte MYTA est activé.<br />
@@ -143,13 +144,13 @@ export default function ConfirmPage() {
             {/* Aperçu des fonctionnalités */}
             <div className="w-full bg-zinc-50 rounded-2xl p-4 flex flex-col gap-2.5 text-left border border-zinc-100">
               {[
-                { e: '🥗', l: 'Journal alimentaire intelligent' },
-                { e: '🏋️', l: 'Suivi sport & Timer Tabata' },
-                { e: '😴', l: 'Analyse de ton sommeil' },
-                { e: '🤖', l: 'Coach IA Waty personnalisé' },
+                { e: '', l: 'Journal alimentaire intelligent' },
+                { e: '', l: 'Suivi sport & Timer Tabata' },
+                { e: '', l: 'Analyse de ton sommeil' },
+                { e: '', l: 'Coach IA Waty personnalisé' },
               ].map(f => (
                 <div key={f.l} className="flex items-center gap-2.5 text-sm text-zinc-700">
-                  <span className="text-base">{f.e}</span>
+                  <MytaIcon name="check" size={14} className="text-nutri-mid flex-shrink-0" />
                   <span className="font-medium">{f.l}</span>
                 </div>
               ))}

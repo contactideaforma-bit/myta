@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import type { BadgeLevel } from '@/lib/gamification'
 import { getNextBadge, BADGE_LEVELS } from '@/lib/gamification'
+import { MytaIcon } from './MytaIcon'
 
 interface BadgeDisplayProps {
   badge:  BadgeLevel
@@ -42,7 +43,7 @@ export function BadgeDisplay({ badge, streak, size = 'md' }: BadgeDisplayProps) 
               className="w-full h-full rounded-2xl bg-tta-light flex items-center justify-center text-3xl"
               style={{ display: badge.image ? 'none' : 'flex' }}
             >
-              {badge.emoji}
+              <MytaIcon name="flame" size={28} className="text-orange-500" />
             </div>
           </div>
 
@@ -54,7 +55,7 @@ export function BadgeDisplay({ badge, streak, size = 'md' }: BadgeDisplayProps) 
               {badge.label}
             </p>
             <div className="flex items-center gap-1 mt-1">
-              <span>🔥</span>
+              <span></span>
               <span className="text-sm font-bold text-orange-500">
                 {streak} jour{streak > 1 ? 's' : ''} de série
               </span>
@@ -69,7 +70,7 @@ export function BadgeDisplay({ badge, streak, size = 'md' }: BadgeDisplayProps) 
               <div className="flex items-center gap-1.5">
                 {next.image
                   ? <img src={next.image} alt={next.label} className="w-4 h-4 object-contain opacity-50" />
-                  : <span className="text-sm opacity-50">{next.emoji}</span>
+                  : <MytaIcon name="flame" size={14} className="opacity-50" />
                 }
                 <span className="text-xs text-zinc-400">
                   Prochain : <span className="font-semibold text-zinc-600">{next.label}</span>
@@ -88,7 +89,7 @@ export function BadgeDisplay({ badge, streak, size = 'md' }: BadgeDisplayProps) 
 
         {!next && (
           <div className="flex items-center justify-center gap-2 bg-yellow-50 rounded-2xl py-2">
-            <span className="text-sm">🏆</span>
+            <span className="text-sm"></span>
             <p className="text-yellow-700 text-xs font-bold">Niveau maximum atteint !</p>
           </div>
         )}
@@ -110,7 +111,7 @@ export function BadgeDisplay({ badge, streak, size = 'md' }: BadgeDisplayProps) 
                   <img src={b.image} alt={b.label} className="w-full h-full object-contain" />
                 ) : (
                   <div className="w-full h-full rounded-full bg-zinc-100 flex items-center justify-center text-xl">
-                    {b.emoji}
+                    <MytaIcon name="flame" size={18} />
                   </div>
                 )}
                 {!earned && (
@@ -134,15 +135,15 @@ export function BadgeDisplay({ badge, streak, size = 'md' }: BadgeDisplayProps) 
             <div className={`w-10 h-10 flex-shrink-0 ${streak < tooltip.minStreak ? 'opacity-40 grayscale' : ''}`}>
               {tooltip.image
                 ? <img src={tooltip.image} alt={tooltip.label} className="w-full h-full object-contain" />
-                : <div className="w-full h-full rounded-full bg-white/10 flex items-center justify-center text-xl">{tooltip.emoji}</div>
+                : <div className="w-full h-full rounded-full bg-white/10 flex items-center justify-center"><MytaIcon name="flame" size={22} /></div>
               }
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-extrabold text-sm leading-tight">{tooltip.label}</p>
               <p className="text-xs text-zinc-400 mt-0.5">
                 {streak >= tooltip.minStreak
-                  ? `✅ Débloqué — ${tooltip.minStreak} jour${tooltip.minStreak > 1 ? 's' : ''} de série`
-                  : `🔒 Nécessite ${tooltip.minStreak} jours de série (encore ${tooltip.minStreak - streak} jours)`}
+                  ? `Débloqué — ${tooltip.minStreak} jour${tooltip.minStreak > 1 ? 's' : ''} de série`
+                  : `Nécessite ${tooltip.minStreak} jours de série (encore ${tooltip.minStreak - streak} jours)`}
               </p>
               <p className="text-xs text-zinc-300 mt-1 italic">"{tooltip.watyMessage}"</p>
             </div>

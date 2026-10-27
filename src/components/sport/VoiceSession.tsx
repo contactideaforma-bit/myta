@@ -34,7 +34,7 @@ function fmtDuration(sec: number | null): string {
 }
 
 const DISC_EMOJI: Record<string, string> = {
-  natation: '🏊', musculation: '🏋️', cardio: '🚴', boxe: '🥊',
+  natation: '', musculation: '', cardio: '', boxe: '',
 }
 
 export function VoiceSession({ onConfirm, onCancel, allowDatePick = false }: Props) {
@@ -111,7 +111,7 @@ export function VoiceSession({ onConfirm, onCancel, allowDatePick = false }: Pro
   if (state === 'idle') return (
     <div className="card flex flex-col items-center gap-5 py-8">
       <div className="text-center">
-        <p className="font-bold text-zinc-900">🎤 Décrire ma séance</p>
+        <p className="font-bold text-zinc-900">Décrire ma séance</p>
         <p className="text-sm text-zinc-400 mt-1 max-w-xs">
           Appuie sur le bouton et décris ta séance à voix haute
         </p>
@@ -177,7 +177,7 @@ export function VoiceSession({ onConfirm, onCancel, allowDatePick = false }: Pro
       <Loader2 size={40} className="animate-spin text-tta-mid" />
       <div className="text-center">
         <p className="font-bold text-zinc-900">Analyse en cours…</p>
-        <p className="text-sm text-zinc-400 mt-1">Waty analyse ta séance 🎙️</p>
+        <p className="text-sm text-zinc-400 mt-1">Waty analyse ta séance</p>
       </div>
     </div>
   )
@@ -203,7 +203,7 @@ export function VoiceSession({ onConfirm, onCancel, allowDatePick = false }: Pro
   if (state === 'preview' && session) return (
     <div className="card flex flex-col gap-4">
       <div>
-        <p className="text-sm font-bold text-zinc-900">✅ Séance détectée</p>
+        <p className="text-sm font-bold text-zinc-900">Séance détectée</p>
         <p className="text-xs text-zinc-400 mt-0.5 italic">"{transcript}"</p>
       </div>
 
@@ -211,7 +211,7 @@ export function VoiceSession({ onConfirm, onCancel, allowDatePick = false }: Pro
       <div className="bg-tta-light rounded-xl p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">{DISC_EMOJI[session.discipline] ?? '🏃'}</span>
+            <span className="text-2xl">{DISC_EMOJI[session.discipline] ?? ''}</span>
             <div>
               <p className="font-bold text-tta-mid capitalize">{session.discipline}</p>
               <p className="text-xs text-zinc-500">{session.notes}</p>

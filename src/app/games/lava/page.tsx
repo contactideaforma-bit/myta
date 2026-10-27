@@ -1,16 +1,16 @@
 'use client'
 
 /**
- * 🌋 Floor is Lava — ASCENSION (palier 7 jours).
+ * Floor is Lava — ASCENSION (palier 7 jours).
  *
  * Waty grimpe une tour de plateformes de basalte pendant que la lave monte
  * sous ses pieds. 5 tours, difficulté crescendo : les paliers s'écartent, les
  * plateformes rétrécissent, la lave accélère, puis arrivent les plateformes
  * qui s'effritent, les mobiles, les chutes de pierres et les boules de feu.
  *
- * Fruits magiques : 🍌 double saut · 🫐 lave ralentie · 🍎 bouclier · 🍍 aimant.
+ * Fruits magiques : double saut · lave ralentie · bouclier · aimant.
  *
- * Rendu plein écran (GameShell). Contrôles : ◀ ▶ SAUT + clavier.
+ * Rendu plein écran (GameShell). Contrôles :  SAUT + clavier.
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -159,7 +159,7 @@ function buildLevel(idx: number, worldW: number): Level {
     }
   })
 
-  // ⭐ au-dessus d'un palier sur deux (jamais sur le sol de départ)
+  // au-dessus d'un palier sur deux (jamais sur le sol de départ)
   const stars: Star[] = []
   for (let i = 1; i < steps.length; i++) {
     if (i % 2 === 0 || rng() < 0.35) {
@@ -167,7 +167,7 @@ function buildLevel(idx: number, worldW: number): Level {
     }
   }
 
-  // 🍌🫐🍎🍍 répartis régulièrement dans la montée
+  // répartis régulièrement dans la montée
   const fruits: Fruit[] = []
   for (let f = 0; f < PARAMS[idx].fruits; f++) {
     const si = Math.round(((f + 1) / (PARAMS[idx].fruits + 1)) * (steps.length - 2)) + 1
@@ -465,7 +465,7 @@ export default function LavaGamePage() {
       }
     }
 
-    // ── Étoiles (aimant 🍍) ──
+    // ── Étoiles (aimant) ──
     const magnet = pw.magnet > 0
     for (const s of lvl.stars) {
       if (s.got) continue
@@ -837,7 +837,7 @@ export default function LavaGamePage() {
               </button>
               <div className="flex items-center gap-2 text-[13px] font-bold text-white">
                 <span className="bg-black/45 backdrop-blur rounded-full px-2.5 py-1">Tour {level + 1}/5</span>
-                <span className="bg-black/45 backdrop-blur rounded-full px-2.5 py-1 text-amber-300">⭐ {stars}</span>
+                <span className="bg-black/45 backdrop-blur rounded-full px-2.5 py-1 text-amber-300">{stars}</span>
                 <span className="bg-black/45 backdrop-blur rounded-full px-2.5 py-1">
                   {'❤️'.repeat(Math.max(0, lives))}{'🖤'.repeat(Math.max(0, 3 - lives))}
                 </span>
@@ -874,7 +874,7 @@ export default function LavaGamePage() {
             {/* Transition de niveau */}
             {phase === 'clear' && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/65 gap-2">
-                <p className="text-4xl">🏆</p>
+                <p className="text-4xl"></p>
                 <p className="text-white font-extrabold text-xl">Tour {level + 1} franchie !</p>
                 <p className="text-orange-200 text-sm font-bold">Tour {level + 2}, ça chauffe…</p>
               </div>
@@ -884,11 +884,11 @@ export default function LavaGamePage() {
             <div className="absolute inset-x-0 bottom-0 px-3 grid grid-cols-3 gap-2.5" style={safeBottom}>
               <button {...bindHold(leftRef)}
                 className="py-5 rounded-2xl bg-white/15 backdrop-blur border border-white/25 text-2xl font-black text-white active:bg-white/30">
-                ◀
+
               </button>
               <button {...bindHold(rightRef)}
                 className="py-5 rounded-2xl bg-white/15 backdrop-blur border border-white/25 text-2xl font-black text-white active:bg-white/30">
-                ▶
+
               </button>
               <button
                 onPointerDown={e => { e.preventDefault(); jumpRef.current = 9 }}
@@ -914,10 +914,10 @@ export default function LavaGamePage() {
 
             {phase === 'intro' && (
               <>
-                <h1 className="text-2xl font-extrabold text-white">🌋 Floor is Lava</h1>
+                <h1 className="text-2xl font-extrabold text-white">Floor is Lava</h1>
                 <p className="text-sm text-orange-100/85 leading-relaxed max-w-xs">
                   La lave monte. <span className="font-bold text-white">Grimpe</span> de plateforme en
-                  plateforme jusqu&apos;au portail, ramasse les ⭐ et attrape les fruits magiques.
+                  plateforme jusqu&apos;au portail, ramasse les et attrape les fruits magiques.
                   <br />5 tours, 3 vies — et ça va de plus en plus vite.
                 </p>
                 <div className="grid grid-cols-2 gap-2 text-[11px] text-orange-100/80 max-w-xs">
@@ -928,29 +928,29 @@ export default function LavaGamePage() {
                     </div>
                   ))}
                 </div>
-                <p className="text-[11px] text-white/45">◀ ▶ pour se déplacer · SAUT pour sauter (ou flèches + espace)</p>
+                <p className="text-[11px] text-white/45"> pour se déplacer · SAUT pour sauter (ou flèches + espace)</p>
               </>
             )}
 
             {phase === 'over' && (
               <>
                 <h1 className="text-2xl font-extrabold text-white">
-                  {newRecord ? '🏆 NOUVEAU RECORD !' : 'La lave a eu Waty ! 🫠'}
+                  {newRecord ? 'NOUVEAU RECORD !' : 'La lave a eu Waty !'}
                 </h1>
                 <p className="text-5xl font-black text-amber-400">{stars}</p>
                 <p className="text-xs text-orange-100/70">
-                  Tour atteinte : {level + 1}/5{!newRecord && best > 0 ? ` · Record : ${best} ⭐` : ''}
+                  Tour atteinte : {level + 1}/5{!newRecord && best > 0 ? ` · Record : ${best}` : ''}
                 </p>
               </>
             )}
 
             {phase === 'win' && (
               <>
-                <h1 className="text-2xl font-extrabold text-white">🏆 VICTOIRE ! 🎉</h1>
+                <h1 className="text-2xl font-extrabold text-white">VICTOIRE !</h1>
                 <p className="text-sm text-orange-100/85">Waty a grimpé les 5 tours sans finir en grillade !</p>
                 <p className="text-5xl font-black text-amber-400">{stars}</p>
                 <p className="text-xs text-orange-100/70">
-                  (⭐ + fruits + 5 pts par ❤️ restante){newRecord ? ' · NOUVEAU RECORD 🏆' : ''}
+                  (+ fruits + 5 pts par restante){newRecord ? ' · NOUVEAU RECORD' : ''}
                 </p>
               </>
             )}

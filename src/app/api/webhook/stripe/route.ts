@@ -45,7 +45,7 @@ function welcomeEmailHtml(firstName: string): string {
                 style="margin-bottom:28px">
                 <tr>
                   <td style="background:linear-gradient(90deg,#4B47A0,#2BA8B0);border-radius:16px;padding:28px 24px;text-align:center">
-                    <p style="margin:0 0 6px;font-size:32px">🎉</p>
+                    <p style="margin:0 0 6px;font-size:32px"></p>
                     <h1 style="margin:0 0 6px;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.3px">
                       Bienvenue ${firstName ? `${firstName} !` : 'sur MYTA !'}
                     </h1>
@@ -68,11 +68,11 @@ function welcomeEmailHtml(firstName: string): string {
               <!-- Features -->
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
                 style="background:#f9fafb;border-radius:14px;padding:20px;margin-bottom:28px">
-                <tr><td style="padding:7px 0;font-size:14px;color:#374151">🥗 &nbsp;<strong>Journal alimentaire</strong> — macros en temps réel</td></tr>
-                <tr><td style="padding:7px 0;font-size:14px;color:#374151">🏋️ &nbsp;<strong>Suivi sport</strong> — séances, Tabata vocal, historique</td></tr>
-                <tr><td style="padding:7px 0;font-size:14px;color:#374151">😴 &nbsp;<strong>Sommeil</strong> — analyse de tes nuits</td></tr>
-                <tr><td style="padding:7px 0;font-size:14px;color:#374151">🤖 &nbsp;<strong>Coach Waty</strong> — conseils personnalisés basés sur tes données</td></tr>
-                <tr><td style="padding:7px 0;font-size:14px;color:#374151">📊 &nbsp;<strong>Bilan hebdo</strong> — rapport complet chaque dimanche</td></tr>
+                <tr><td style="padding:7px 0;font-size:14px;color:#374151">&nbsp;<strong>Journal alimentaire</strong> — macros en temps réel</td></tr>
+                <tr><td style="padding:7px 0;font-size:14px;color:#374151">&nbsp;<strong>Suivi sport</strong> — séances, Tabata vocal, historique</td></tr>
+                <tr><td style="padding:7px 0;font-size:14px;color:#374151">&nbsp;<strong>Sommeil</strong> — analyse de tes nuits</td></tr>
+                <tr><td style="padding:7px 0;font-size:14px;color:#374151">&nbsp;<strong>Coach Waty</strong> — conseils personnalisés basés sur tes données</td></tr>
+                <tr><td style="padding:7px 0;font-size:14px;color:#374151">&nbsp;<strong>Bilan hebdo</strong> — rapport complet chaque dimanche</td></tr>
               </table>
 
               <!-- CTA -->
@@ -93,7 +93,7 @@ function welcomeEmailHtml(firstName: string): string {
                 <tr>
                   <td style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 16px">
                     <p style="margin:0;font-size:13px;color:#166534;line-height:1.5">
-                      🎁 <strong>Essai gratuit 3 jours</strong> — aucun débit avant la fin de l'essai.
+ <strong>Essai gratuit 3 jours</strong> — aucun débit avant la fin de l'essai.
                       Annulable à tout moment depuis ton espace <em>Abonnement</em>.
                     </p>
                   </td>
@@ -160,7 +160,7 @@ function paymentFailedEmailHtml(firstName: string): string {
                 style="margin-bottom:28px">
                 <tr>
                   <td style="background:linear-gradient(90deg,#ea580c,#f97316);border-radius:16px;padding:28px 24px;text-align:center">
-                    <p style="margin:0 0 6px;font-size:36px">⚠️</p>
+                    <p style="margin:0 0 6px;font-size:36px"></p>
                     <h1 style="margin:0 0 6px;color:#ffffff;font-size:20px;font-weight:800">
                       Problème de paiement${firstName ? `, ${firstName}` : ''}
                     </h1>
@@ -299,7 +299,7 @@ export async function POST(req: NextRequest) {
                   await stripe.customers.createBalanceTransaction(referrer.stripe_customer_id, {
                     amount:      -amount,
                     currency:    price.currency,
-                    description: '🎁 Parrainage — 1 mois offert',
+                    description: 'Parrainage — 1 mois offert',
                   })
                 }
               }
@@ -333,7 +333,7 @@ export async function POST(req: NextRequest) {
               body: JSON.stringify({
                 from:    'Waty de MYTA <contact@mytwinapp.fr>',
                 to:      [email],
-                subject: `🎉 Bienvenue sur MYTA${firstName ? `, ${firstName}` : ''} — ton essai commence !`,
+                subject: `Bienvenue sur MYTA${firstName ? `, ${firstName}` : ''} — ton essai commence !`,
                 html:    welcomeEmailHtml(firstName),
               }),
             })
@@ -406,7 +406,7 @@ export async function POST(req: NextRequest) {
             body: JSON.stringify({
               from:    'Waty de MYTA <contact@mytwinapp.fr>',
               to:      [email],
-              subject: `⚠️ Problème de paiement MYTA${firstName ? ` — ${firstName}` : ''} — action requise`,
+              subject: `Problème de paiement MYTA${firstName ? ` — ${firstName}` : ''} — action requise`,
               html:    paymentFailedEmailHtml(firstName),
             }),
           })

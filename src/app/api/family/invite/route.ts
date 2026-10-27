@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
         <tr><td style="background:#fff;border-radius:24px;padding:40px 36px;box-shadow:0 4px 32px rgba(75,71,160,.08)">
           <table role="presentation" width="100%" style="margin-bottom:24px">
             <tr><td style="background:linear-gradient(90deg,#4B47A0,#2BA8B0);border-radius:16px;padding:28px 24px;text-align:center">
-              <p style="margin:0 0 6px;font-size:32px">👋</p>
+              <p style="margin:0 0 6px;font-size:32px"></p>
               <h1 style="margin:0 0 6px;color:#fff;font-size:20px;font-weight:800">Tu es invité(e) sur MYTA !</h1>
               <p style="margin:0;color:rgba(255,255,255,.85);font-size:14px">Compte ${roleLabel} · Forfait famille</p>
             </td></tr>
@@ -117,8 +117,8 @@ export async function POST(req: NextRequest) {
             Un membre de ta famille t'invite à rejoindre <strong>MYTA</strong> en tant que <strong>${roleLabel}</strong>.
           </p>
           ${role === 'child'
-            ? '<p style="margin:0 0 20px;color:#374151;font-size:14px;line-height:1.65;background:#f9fafb;border-radius:12px;padding:14px">🍎 Ton compte te donnera accès au <strong>journal alimentaire</strong> MYTA.</p>'
-            : '<p style="margin:0 0 20px;color:#374151;font-size:14px;line-height:1.65;background:#f9fafb;border-radius:12px;padding:14px">✨ Ton compte aura accès à <strong>toutes les fonctionnalités</strong> du forfait.</p>'
+            ? '<p style="margin:0 0 20px;color:#374151;font-size:14px;line-height:1.65;background:#f9fafb;border-radius:12px;padding:14px">Ton compte te donnera accès au <strong>journal alimentaire</strong> MYTA.</p>'
+            : '<p style="margin:0 0 20px;color:#374151;font-size:14px;line-height:1.65;background:#f9fafb;border-radius:12px;padding:14px">Ton compte aura accès à <strong>toutes les fonctionnalités</strong> du forfait.</p>'
           }
           <table role="presentation" width="100%" style="margin-bottom:24px">
             <tr><td style="text-align:center">
@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         from:    'MYTA <contact@mytwinapp.fr>',
         to:      [email],
-        subject: `👋 Tu es invité(e) à rejoindre MYTA en famille !`,
+        subject: `Tu es invité(e) à rejoindre MYTA en famille !`,
         html:    emailHtml,
       }),
     })

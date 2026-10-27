@@ -6,7 +6,7 @@
  *  - le calcul des rappels « dus » pour un créneau de 15 min,
  *  - les textes des notifications, adaptés à l'objectif.
  *
- * 🩺 Garde-fous santé (cf. CLAUDE.md) : aucun rappel ne culpabilise ni ne
+ * Garde-fous santé (cf. CLAUDE.md) : aucun rappel ne culpabilise ni ne
  * pousse à manger moins. La pesée est DÉSACTIVÉE par défaut. On ne parle
  * jamais de calories restantes, seulement d'hydratation, de régularité
  * et (en prise de masse) de protéines.

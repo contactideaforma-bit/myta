@@ -30,6 +30,7 @@ import {
 } from '@/lib/supplements-db'
 import { getActiveProfile } from '@/lib/active-profile'
 import type { JournalEntry, WeightLog, Profile } from '@/types'
+import { MytaIcon } from '@/components/ui/MytaIcon'
 
 interface DayMacros { cal: number; prot: number; carb: number; fat: number }
 
@@ -487,13 +488,13 @@ export default function JournalPage() {
         method: 'POST', headers,
         body: JSON.stringify({ child_id: ap.childId, ...entryBase }),
       })
-      if (res.ok) { await loadDay(currentDate); showToast(`${supp.emoji} ${supp.name} ajouté`, 'ok') }
+      if (res.ok) { await loadDay(currentDate); showToast(`${supp.name} ajouté`, 'ok') }
       else { showToast('Erreur ajout complément', 'err') }
     } else {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { setAddingSuppl(false); return }
       const { error } = await supabase.from('journal_entries').insert({ user_id: user.id, ...entryBase })
-      if (!error) { await loadDay(currentDate); showToast(`${supp.emoji} ${supp.name} ajouté`, 'ok') }
+      if (!error) { await loadDay(currentDate); showToast(`${supp.name} ajouté`, 'ok') }
       else { showToast('Erreur ajout complément', 'err') }
     }
 
@@ -981,7 +982,7 @@ export default function JournalPage() {
               <div className="divide-y divide-zinc-50 max-h-64 overflow-y-auto">
                 {supplResults.map(s => (
                   <div key={s.id} className="flex items-center gap-3 px-4 py-3 hover:bg-violet-50/50 transition-colors">
-                    <span className="text-xl flex-shrink-0">{s.emoji}</span>
+                    <MytaIcon name="pill" size={18} className="text-violet-500 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-zinc-900 truncate">{s.name}</p>
                       <p className="text-xs text-zinc-400 truncate">{s.dose}</p>
@@ -1013,7 +1014,7 @@ export default function JournalPage() {
                       disabled={addingSuppl}
                       className="flex items-center gap-2 p-2.5 rounded-xl border border-zinc-100 hover:border-violet-200 hover:bg-violet-50/50 transition-all text-left disabled:opacity-50"
                     >
-                      <span className="text-lg flex-shrink-0">{s.emoji}</span>
+                      <MytaIcon name="pill" size={16} className="text-violet-500 flex-shrink-0" />
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-zinc-800 truncate">{s.name}</p>
                         {s.antiInflam === true && <p className="text-[9px] text-green-600">Anti-inflam.</p>}
@@ -1033,7 +1034,7 @@ export default function JournalPage() {
                     const def = SUPPLEMENTS.find(s => s.id === (e.food_id ?? '').replace('supp-', ''))
                     return (
                       <div key={e.id} className="flex items-center gap-2 bg-violet-50 rounded-xl px-3 py-2">
-                        <span className="text-base flex-shrink-0">{def?.emoji ?? <Pill size={14} className='text-violet-500' />}</span>
+                        <MytaIcon name="pill" size={14} className="text-violet-500 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-semibold text-violet-900 truncate">{e.food_name}</p>
                           {def?.antiInflam === true && <p className="text-[9px] text-green-600">Anti-inflammatoire</p>}
@@ -1197,7 +1198,7 @@ export default function JournalPage() {
 
             {/* Conseil */}
             <div className={`rounded-xl p-3 border text-xs leading-relaxed ${adv.cls}`}>
-              {adv.icon} {adv.text}
+              {adv.text}
             </div>
 
             {/* Gluten */}
@@ -1346,7 +1347,7 @@ export default function JournalPage() {
                 <div className="flex flex-wrap gap-1">
                   {supplDefs.map(({ supplement }) => (
                     <span key={supplement.id} className="text-[10px] bg-white border border-violet-200 text-violet-700 px-2 py-0.5 rounded-full">
-                      {supplement.emoji} {supplement.name}
+                      {supplement.name}
                       {supplement.antiInflam === true && ' — anti-inflammatoire'}
                     </span>
                   ))}

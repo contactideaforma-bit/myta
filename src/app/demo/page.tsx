@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { MytaIcon } from '@/components/ui/MytaIcon'
 import { useRouter } from 'next/navigation'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine
@@ -25,7 +26,7 @@ const FAKE_WEIGHTS = [
 
 const FAKE_MEALS = [
   {
-    meal: 'Petit-déjeuner', icon: '☀️', time: '07h30',
+    meal: 'Petit-déjeuner', icon: '', time: '07h30',
     items: [
       { name: 'Flocons d\'avoine', qty: 80, cal: 296, prot: 10, carb: 50, fat: 5 },
       { name: 'Lait demi-écrémé', qty: 200, cal: 88, prot: 7, carb: 9, fat: 3 },
@@ -33,7 +34,7 @@ const FAKE_MEALS = [
     ]
   },
   {
-    meal: 'Déjeuner', icon: '🌞', time: '12h30',
+    meal: 'Déjeuner', icon: '', time: '12h30',
     items: [
       { name: 'Blanc de poulet grillé', qty: 180, cal: 198, prot: 42, carb: 0, fat: 2 },
       { name: 'Riz basmati cuit', qty: 200, cal: 246, prot: 5, carb: 53, fat: 0.5 },
@@ -41,7 +42,7 @@ const FAKE_MEALS = [
     ]
   },
   {
-    meal: 'Collation', icon: '🌤️', time: '16h00',
+    meal: 'Collation', icon: '', time: '16h00',
     items: [
       { name: 'Yaourt grec 0%', qty: 150, cal: 84, prot: 12, carb: 5, fat: 0 },
       { name: 'Myrtilles', qty: 80, cal: 46, prot: 1, carb: 11, fat: 0 },
@@ -60,10 +61,10 @@ const CARB_TARGET = 240
 const FAT_TARGET  = 65
 
 const SPORT_TIPS = [
-  { icon: '💧', titre: 'Hydratation', conseil: 'Bois 500ml d\'eau 2h avant l\'effort. Pendant l\'exercice, vise 150-200ml toutes les 20 minutes.' },
-  { icon: '🔥', titre: 'Échauffement', conseil: '10 minutes d\'échauffement dynamique réduisent le risque de blessure de 50%. Ne saute jamais cette étape.' },
-  { icon: '🥩', titre: 'Protéines post-effort', conseil: 'Mange des protéines dans les 30 minutes après ta séance. 20-40g suffisent pour optimiser la récupération musculaire.' },
-  { icon: '😴', titre: 'Récupération', conseil: 'Le muscle se construit pendant le repos. Dors 7 à 9h et laisse 48h entre deux séances du même groupe musculaire.' },
+  { icon: '', titre: 'Hydratation', conseil: 'Bois 500ml d\'eau 2h avant l\'effort. Pendant l\'exercice, vise 150-200ml toutes les 20 minutes.' },
+  { icon: '', titre: 'Échauffement', conseil: '10 minutes d\'échauffement dynamique réduisent le risque de blessure de 50%. Ne saute jamais cette étape.' },
+  { icon: '', titre: 'Protéines post-effort', conseil: 'Mange des protéines dans les 30 minutes après ta séance. 20-40g suffisent pour optimiser la récupération musculaire.' },
+  { icon: '', titre: 'Récupération', conseil: 'Le muscle se construit pendant le repos. Dors 7 à 9h et laisse 48h entre deux séances du même groupe musculaire.' },
 ]
 
 // ─── Composants démo ──────────────────────────────────────────────────────────
@@ -89,7 +90,7 @@ function TipCard({ tip }: { tip: typeof SPORT_TIPS[0] }) {
     <button onClick={() => setOpen(v => !v)}
       className="w-full text-left card-sm transition-all hover:shadow-sm active:scale-[0.98]">
       <div className="flex items-center gap-3">
-        <span className="text-2xl flex-shrink-0">{tip.icon}</span>
+        <span className="w-9 h-9 rounded-xl bg-sport-light text-tta-mid flex items-center justify-center flex-shrink-0"><MytaIcon name="advice" size={18} /></span>
         <div className="flex-1 min-w-0">
           <p className="font-bold text-sm text-zinc-900">{tip.titre}</p>
           {!open && <p className="text-xs text-zinc-400 truncate mt-0.5">{tip.conseil}</p>}
@@ -105,7 +106,7 @@ function DemoToast({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm">
       <div className="bg-zinc-900 text-white rounded-2xl px-4 py-3 flex items-center gap-3 shadow-xl">
-        <span className="text-lg">🔒</span>
+        <span className="text-lg"></span>
         <p className="text-sm flex-1">Fonctionnalité disponible après inscription</p>
         <button onClick={onClose} className="text-zinc-400 hover:text-white">
           <X size={14} />
@@ -154,7 +155,7 @@ export default function DemoPage() {
         <img src="/logo_my_twin_app.png" alt="MYTA" className="h-8 object-contain" />
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-zinc-400">Bonjour,</span>
-          <span className="text-xs font-bold text-zinc-700">Marie 👋</span>
+          <span className="text-xs font-bold text-zinc-700">Marie</span>
         </div>
       </header>
 
@@ -195,32 +196,32 @@ export default function DemoPage() {
               </div>
               <div className="flex items-center gap-1.5 bg-green-50 border border-green-200 rounded-2xl px-3 py-1.5">
                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                <span className="text-xs font-bold text-green-700">En bonne voie 🎯</span>
+                <span className="text-xs font-bold text-green-700">En bonne voie</span>
               </div>
             </div>
 
             {/* KPIs */}
             <div className="grid grid-cols-2 gap-3">
               <div className="kpi-card">
-                <span className="text-lg">🔥</span>
+                <span className="text-lg"></span>
                 <p className="text-xl font-black text-orange-500">{TOTAL_CAL} kcal</p>
                 <p className="text-xs text-zinc-500 font-medium">Calories aujourd'hui</p>
                 <p className="text-[10px] text-zinc-400">Objectif : {CAL_TARGET} kcal</p>
               </div>
               <div className="kpi-card">
-                <span className="text-lg">🏋️</span>
+                <span className="text-lg"></span>
                 <p className="text-xl font-black text-tta-mid">310 kcal</p>
                 <p className="text-xs text-zinc-500 font-medium">Brûlées ce matin</p>
                 <p className="text-[10px] text-zinc-400">Muscu dos/biceps · 45min</p>
               </div>
               <div className="kpi-card">
-                <span className="text-lg">🌙</span>
+                <span className="text-lg"></span>
                 <p className="text-xl font-black text-nutri-dark">7h30</p>
                 <p className="text-xs text-zinc-500 font-medium">Sommeil cette nuit</p>
-                <p className="text-[10px] text-zinc-400">✨ Sommeil optimal</p>
+                <p className="text-[10px] text-zinc-400">Sommeil optimal</p>
               </div>
               <div className="kpi-card">
-                <span className="text-lg">⚖️</span>
+                <span className="text-lg"></span>
                 <p className="text-xl font-black text-zinc-900">63.0 kg</p>
                 <p className="text-xs text-zinc-500 font-medium">Poids ce matin</p>
                 <p className="text-[10px] text-zinc-400">↓ 0.8 kg ce mois</p>
@@ -257,7 +258,7 @@ export default function DemoPage() {
               <div className="flex-1">
                 <p className="text-xs font-semibold text-tta-mid mb-1">Waty dit :</p>
                 <p className="text-sm text-zinc-700 leading-relaxed">
-                  Belle journée Marie ! Déficit de 189 kcal sur la semaine, tu es sur la bonne trajectoire pour atteindre ton objectif 🎯 Pense à manger des protéines au dîner ce soir.
+                  Belle journée Marie ! Déficit de 189 kcal sur la semaine, tu es sur la bonne trajectoire pour atteindre ton objectif Pense à manger des protéines au dîner ce soir.
                 </p>
               </div>
             </div>
@@ -266,7 +267,7 @@ export default function DemoPage() {
             <button onClick={() => router.push('/auth')}
               className="w-full py-4 rounded-3xl text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all"
               style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
-              ✨ Essaie MYTA gratuitement — 14 jours offerts <ArrowRight size={16} />
+ Essaie MYTA gratuitement — 14 jours offerts <ArrowRight size={16} />
             </button>
           </div>
         )}
@@ -308,7 +309,7 @@ export default function DemoPage() {
                   className="flex items-center justify-between px-5 py-4 w-full text-left"
                   onClick={() => setExpandedMeal(expandedMeal === mi ? null : mi)}>
                   <div className="flex items-center gap-3">
-                    <span className="text-xl">{meal.icon}</span>
+                    <MytaIcon name="journal" size={18} className="text-nutri-mid" />
                     <div>
                       <p className="text-sm font-extrabold text-zinc-900">{meal.meal}</p>
                       <p className="text-[10px] text-zinc-400">{meal.time} · {meal.items.reduce((s, i) => s + i.cal, 0)} kcal</p>
@@ -340,7 +341,7 @@ export default function DemoPage() {
             {/* Dîner vide */}
             <button onClick={triggerDemo}
               className="card !border-dashed !border-zinc-200 flex items-center gap-3 hover:border-tta-mid hover:bg-tta-light/30 transition-all group">
-              <span className="text-xl">🌙</span>
+              <span className="text-xl"></span>
               <div className="flex-1">
                 <p className="text-sm font-extrabold text-zinc-400 group-hover:text-tta-mid">Dîner</p>
                 <p className="text-[10px] text-zinc-300">Aucun aliment enregistré</p>
@@ -351,7 +352,7 @@ export default function DemoPage() {
             <button onClick={() => router.push('/auth')}
               className="w-full py-4 rounded-3xl text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all"
               style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
-              Commencer mon journal ✨ <ArrowRight size={16} />
+              Commencer mon journal <ArrowRight size={16} />
             </button>
           </div>
         )}
@@ -368,28 +369,28 @@ export default function DemoPage() {
             {/* KPIs bilan */}
             <div className="grid grid-cols-2 gap-3">
               <div className="kpi-card">
-                <span className="text-lg">🔥</span>
+                <span className="text-lg"></span>
                 <p className="text-xl font-black text-orange-500">1 890 kcal</p>
                 <p className="text-xs text-zinc-500 font-medium">Moy. calories/jour</p>
                 <p className="text-[10px] text-zinc-400">Objectif : 2 100 kcal</p>
               </div>
               <div className="kpi-card">
-                <span className="text-lg">🏋️</span>
+                <span className="text-lg"></span>
                 <p className="text-xl font-black text-tta-mid">2 800 kcal</p>
                 <p className="text-xs text-zinc-500 font-medium">Cal. brûlées sport</p>
                 <p className="text-[10px] text-zinc-400">total 7 jours</p>
               </div>
               <div className="kpi-card">
-                <span className="text-lg">📉</span>
+                <span className="text-lg"></span>
                 <p className="text-xl font-black text-nutri-dark">-210 kcal</p>
                 <p className="text-xs text-zinc-500 font-medium">Déficit moyen</p>
-                <p className="text-[10px] text-zinc-400">Perte de poids 🎯</p>
+                <p className="text-[10px] text-zinc-400">Perte de poids</p>
               </div>
               <div className="kpi-card">
-                <span className="text-lg">🌙</span>
+                <span className="text-lg"></span>
                 <p className="text-xl font-black text-tta-mid">7h15</p>
                 <p className="text-xs text-zinc-500 font-medium">Sommeil moy.</p>
-                <p className="text-[10px] text-zinc-400">✨ Sommeil optimal</p>
+                <p className="text-[10px] text-zinc-400">Sommeil optimal</p>
               </div>
             </div>
 
@@ -439,7 +440,7 @@ export default function DemoPage() {
                 <h3 className="text-sm font-semibold text-zinc-700">Rapport IA — 7 jours</h3>
                 <button onClick={triggerDemo}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-tta-mid text-white text-xs font-bold hover:bg-tta transition-all">
-                  ✨ Générer
+ Générer
                 </button>
               </div>
               <div className="flex gap-3 items-start bg-tta-light rounded-2xl p-4">
@@ -447,7 +448,7 @@ export default function DemoPage() {
                 <div className="flex-1">
                   <p className="text-xs font-semibold text-tta-mid mb-1">Waty dit :</p>
                   <p className="text-sm text-zinc-700 leading-relaxed">
-                    Bravo Marie ! Tu maintiens un déficit régulier de -210 kcal/jour et tu as perdu 0.8 kg en 7 jours 🎉 Ton sommeil est excellent (7h15 en moyenne). Continue sur cette lancée, tu atteindras ton objectif dans environ 6 semaines.
+                    Bravo Marie ! Tu maintiens un déficit régulier de -210 kcal/jour et tu as perdu 0.8 kg en 7 jours Ton sommeil est excellent (7h15 en moyenne). Continue sur cette lancée, tu atteindras ton objectif dans environ 6 semaines.
                   </p>
                 </div>
               </div>
@@ -456,7 +457,7 @@ export default function DemoPage() {
             <button onClick={() => router.push('/auth')}
               className="w-full py-4 rounded-3xl text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all"
               style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
-              Suivre ma progression ✨ <ArrowRight size={16} />
+              Suivre ma progression <ArrowRight size={16} />
             </button>
           </div>
         )}
@@ -473,7 +474,7 @@ export default function DemoPage() {
             {/* Dernière séance */}
             <div className="card bg-sport-light border-sport/20 flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-sport-dark">✅ Séance ce matin</h3>
+                <h3 className="text-sm font-bold text-sport-dark">Séance ce matin</h3>
                 <span className="text-[10px] text-zinc-500 bg-white rounded-full px-2 py-0.5">07h00</span>
               </div>
               <div>
@@ -508,12 +509,12 @@ export default function DemoPage() {
             <button onClick={triggerDemo}
               className="w-full py-4 rounded-3xl text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all"
               style={{ background: 'linear-gradient(90deg, #7b7fd4, #2BA8B0)' }}>
-              🎙️ Logger une nouvelle séance
+ Logger une nouvelle séance
             </button>
 
             {/* Conseils */}
             <div>
-              <p className="text-sm font-bold text-zinc-700 mb-2">💡 Conseils du coach</p>
+              <p className="text-sm font-bold text-zinc-700 mb-2">Conseils du coach</p>
               <div className="flex flex-col gap-2">
                 {SPORT_TIPS.map((tip, i) => <TipCard key={i} tip={tip} />)}
               </div>
@@ -522,7 +523,7 @@ export default function DemoPage() {
             <button onClick={() => router.push('/auth')}
               className="w-full py-4 rounded-3xl text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all"
               style={{ background: 'linear-gradient(90deg, #4B47A0, #2BA8B0)' }}>
-              Commencer mon suivi sport ✨ <ArrowRight size={16} />
+              Commencer mon suivi sport <ArrowRight size={16} />
             </button>
           </div>
         )}

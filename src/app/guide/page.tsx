@@ -2,12 +2,13 @@
 
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Play } from 'lucide-react'
+import { MytaIcon } from '@/components/ui/MytaIcon'
 
 // ─── Données du guide ─────────────────────────────────────────────────────────
 const SECTIONS = [
   {
     id: 'dashboard',
-    emoji: '🏠',
+    emoji: '',
     title: 'Tableau de bord',
     color: '#4B47A0',
     bg: '#EBEBFF',
@@ -21,28 +22,28 @@ const SECTIONS = [
   },
   {
     id: 'nutrition',
-    emoji: '🥗',
+    emoji: '',
     title: 'Journal alimentaire',
     color: '#16A34A',
     bg: '#F0FDF4',
     description: 'Note tous tes repas et suis calories, protéines, glucides et lipides en temps réel. Trois façons d\'ajouter un aliment : recherche, photo ou voix.',
     tips: [
-      'Recherche un aliment et indique la quantité en grammes — tu peux la modifier à tout moment avec le crayon ✏️',
-      '📸 Prends ton repas en photo : Waty identifie les aliments et les macros automatiquement',
-      '🎙️ Dicte ton repas à la voix ("une assiette de pâtes et un yaourt") — Waty fait le reste',
+      'Recherche un aliment et indique la quantité en grammes — tu peux la modifier à tout moment avec le crayon',
+      'Prends ton repas en photo : Waty identifie les aliments et les macros automatiquement',
+      'Dicte ton repas à la voix ("une assiette de pâtes et un yaourt") — Waty fait le reste',
       'Ton objectif calorique est calculé depuis ton profil (TDEE) et ajustable à tout moment',
       'La section Compléments suit aussi tes vitamines et minéraux',
     ],
   },
   {
     id: 'sport',
-    emoji: '🏋️',
+    emoji: '',
     title: 'Sport & Tabata',
     color: '#5C60C0',
     bg: '#F0F0FF',
     description: 'Enregistre tes séances (manuellement ou à la voix), lance le timer Tabata guidé et consulte ton historique complet.',
     tips: [
-      '🎙️ Décris ta séance à la voix : Waty en déduit la discipline, la durée et les calories brûlées',
+      'Décris ta séance à la voix : Waty en déduit la discipline, la durée et les calories brûlées',
       'Le timer Tabata est configurable (effort, récupération, séries) avec guidage vocal',
       'Un défi du jour sportif accompli (ex. 100 pompes) s\'ajoute automatiquement à ton historique comme une séance',
       '"Historique" regroupe toutes tes séances avec durée et calories brûlées',
@@ -50,7 +51,7 @@ const SECTIONS = [
   },
   {
     id: 'sleep',
-    emoji: '😴',
+    emoji: '',
     title: 'Sommeil',
     color: '#4B47A0',
     bg: '#EBEBFF',
@@ -63,7 +64,7 @@ const SECTIONS = [
   },
   {
     id: 'serie',
-    emoji: '🔥',
+    emoji: '',
     title: 'Série & badges',
     color: '#f97316',
     bg: '#FFF7ED',
@@ -77,7 +78,7 @@ const SECTIONS = [
   },
   {
     id: 'friends',
-    emoji: '🤝',
+    emoji: '',
     title: 'Amis & Challenges — Sauver Waty',
     color: '#7c3aed',
     bg: '#F3EEFF',
@@ -87,12 +88,12 @@ const SECTIONS = [
       'Remplis ton journal et atteins au moins 70 % de ton objectif → tu fais monter Waty',
       'Il y a 6 étapes jusqu\'à la coupe — Waty grimpe selon les résultats de chaque membre dans la journée',
       'Un score hebdo d\'équipe ≥ 70 % rapporte une Coupe au classement global',
-      'Discutez dans le groupe : une pastille rouge 🔴 t\'indique les messages non lus, dans le menu et sur le groupe',
+      'Discutez dans le groupe : une pastille rouge t\'indique les messages non lus, dans le menu et sur le groupe',
     ],
   },
   {
     id: 'waty',
-    emoji: '🤖',
+    emoji: '',
     title: 'Coach Waty & IA',
     color: '#2BA8B0',
     bg: '#E8FBF8',
@@ -106,15 +107,15 @@ const SECTIONS = [
   },
   {
     id: 'compte',
-    emoji: '⚙️',
+    emoji: '',
     title: 'Mon compte',
     color: '#52525b',
     bg: '#F4F4F5',
-    description: 'Gère ton profil, ton abonnement et tes préférences depuis le menu ☰ → Mon compte.',
+    description: 'Gère ton profil, ton abonnement et tes préférences depuis le menu → Mon compte.',
     tips: [
       'Change de forfait à tout moment — la différence est calculée au prorata',
       'Mets à jour ta carte bancaire ou résilie en 1 clic via le portail sécurisé Stripe',
-      'Active le mode sombre 🌙 depuis le menu',
+      'Active le mode sombre depuis le menu',
       'Tu peux supprimer définitivement ton compte et toutes tes données en bas de la page Mon compte',
     ],
   },
@@ -165,7 +166,7 @@ export default function GuidePage() {
               className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
               style={{ backgroundColor: section.bg }}
             >
-              {section.emoji}
+              <MytaIcon name="advice" size={22} className="text-tta-mid" />
             </div>
             <h2 className="font-extrabold text-zinc-900 text-lg">{section.title}</h2>
           </div>
@@ -192,12 +193,12 @@ export default function GuidePage() {
 
       {/* ── Footer ── */}
       <div className="card text-center flex flex-col items-center gap-3 py-6">
-        <div className="text-4xl">🎯</div>
+        <div className="text-4xl"></div>
         <p className="font-extrabold text-zinc-900">Des questions ?</p>
         <p className="text-sm text-zinc-400 leading-relaxed">
           Si tu as un problème ou une suggestion, utilise le bouton{' '}
           <span className="font-bold text-zinc-600">"Signaler un problème"</span>{' '}
-          dans le menu ☰ pour nous contacter.
+          dans le menu pour nous contacter.
         </p>
         <button
           onClick={launchTour}

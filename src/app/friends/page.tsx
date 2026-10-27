@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { todayISO } from '@/lib/utils'
 import { Loader2, Copy, Check, X, UserPlus, Users, Trophy, Shield, ChevronDown, ChevronUp, Pencil, MessageCircle, Send } from 'lucide-react'
+import { MytaIcon } from '@/components/ui/MytaIcon'
 
 
 // ── Types ─────────────────────────────────────────────────────
@@ -41,7 +42,8 @@ interface LeaderboardEntry {
 
 // ── Composant carte membre ────────────────────────────────────
 function MemberRow({ member, rank }: { member: GroupMember; rank: number }) {
-  const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`
+  const medalColor = rank === 1 ? 'text-amber-500' : rank === 2 ? 'text-zinc-400' : 'text-orange-700'
+  const medal = rank <= 3 ? <MytaIcon name="trophy" size={16} className={medalColor} /> : `#${rank}`
   const scoreColor = member.score >= 80 ? 'text-green-600' : member.score >= 50 ? 'text-yellow-600' : 'text-zinc-400'
 
   return (
@@ -54,7 +56,7 @@ function MemberRow({ member, rank }: { member: GroupMember; rank: number }) {
           </p>
         </div>
         {member.streak !== null && (
-          <p className="text-[10px] text-zinc-400">🔥 Série {member.streak}j</p>
+          <p className="text-[10px] text-zinc-400">Série {member.streak}j</p>
         )}
       </div>
       <div className="text-right flex-shrink-0">
@@ -89,23 +91,23 @@ function WatyRulesCard() {
       {open && (
         <div className="px-4 pb-4 flex flex-col gap-2.5 text-sm text-zinc-600 leading-relaxed border-t border-violet-100 pt-3">
           <div className="flex items-start gap-2">
-            <span className="text-base flex-shrink-0">🕛</span>
+            <span className="text-base flex-shrink-0"></span>
             <p><strong>Chaque jour repart à zéro à minuit</strong> (ton heure locale) : compteurs à zéro, Waty au niveau zéro, en bas de la lave.</p>
           </div>
           <div className="flex items-start gap-2">
-            <span className="text-base flex-shrink-0">🥗</span>
+            <span className="text-base flex-shrink-0"></span>
             <p><strong>Remplis ton journal alimentaire</strong> et atteins <strong>au moins 70 % de ton objectif personnalisé</strong> → tu gagnes ta journée et tu fais monter Waty.</p>
           </div>
           <div className="flex items-start gap-2">
-            <span className="text-base flex-shrink-0">🪜</span>
+            <span className="text-base flex-shrink-0"></span>
             <p><strong>6 étapes jusqu'à la coupe.</strong> Waty progresse au fil de la journée en fonction des résultats de chaque membre du groupe.</p>
           </div>
           <div className="flex items-start gap-2">
-            <span className="text-base flex-shrink-0">🏆</span>
+            <span className="text-base flex-shrink-0"></span>
             <p><strong>Tous les membres au top</strong> = Waty sauvé ! Et avec un score hebdo d'équipe ≥ 70 %, vous remportez une <strong>Coupe</strong> au classement global.</p>
           </div>
           <div className="bg-violet-50 rounded-2xl px-3 py-2.5 mt-1">
-            <p className="text-xs text-violet-700 italic">💬 "Chaque repas noté, chaque séance ajoutée me sauve un peu plus. Vous êtes ma force !" — Waty</p>
+            <p className="text-xs text-violet-700 italic">"Chaque repas noté, chaque séance ajoutée me sauve un peu plus. Vous êtes ma force !" — Waty</p>
           </div>
         </div>
       )}
@@ -121,7 +123,7 @@ const LAVA_STAGES = [
   { img: '/lava-3.png',   label: "Vous déchirez ! Waty remonte à toute vitesse !" },
   { img: '/lava-4.png',   label: 'Encore un petit effort, on y est presque !' },
   { img: '/lava-5.png',   label: 'Waw ! Waty est presque sauvé !' },
-  { img: '/lava-win.png', label: "Bravo l'équipe des Champions ! Waty est sauvé 🏆" },
+  { img: '/lava-win.png', label: "Bravo l'équipe des Champions ! Waty est sauvé" },
 ]
 
 // Lava basé sur le score JOURNALIER (repart à 0 chaque jour à minuit, heure locale)
@@ -259,7 +261,7 @@ function GroupCard({ group, onLeave, onCopyCode, onRename, hasUnread, onMarkRead
                   />
                   <button onClick={handleSaveName} disabled={savingName}
                     className="px-2 py-1 rounded-lg bg-violet-600 text-white text-xs font-bold">
-                    {savingName ? <Loader2 size={11} className="animate-spin" /> : '✓'}
+                    {savingName ? <Loader2 size={11} className="animate-spin" /> : ''}
                   </button>
                   <button onClick={() => setEditing(false)} className="p-1 rounded-lg text-zinc-400">
                     <X size={13} />
@@ -277,13 +279,13 @@ function GroupCard({ group, onLeave, onCopyCode, onRename, hasUnread, onMarkRead
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                 group.mode === 'equipe' ? 'bg-purple-100 text-purple-700' : 'bg-orange-100 text-orange-700'
               }`}>
-                {group.mode === 'equipe' ? '🤝 Équipe' : '⚔️ Compétition'}
+                {group.mode === 'equipe' ? 'Équipe' : 'Compétition'}
               </span>
             </div>
             <div className="flex items-center gap-3 mt-0.5">
               <p className="text-xs text-zinc-400">{group.members.length} membre{group.members.length > 1 ? 's' : ''}</p>
               {(group.cupsWon ?? 0) > 0 && (
-                <p className="text-xs font-bold text-amber-600">🏆 {group.cupsWon} coupe{group.cupsWon > 1 ? 's' : ''}</p>
+                <p className="text-xs font-bold text-amber-600">{group.cupsWon} coupe{group.cupsWon > 1 ? 's' : ''}</p>
               )}
             </div>
           </div>
@@ -320,7 +322,7 @@ function GroupCard({ group, onLeave, onCopyCode, onRename, hasUnread, onMarkRead
             {/* Jauge journalière */}
             <div className="bg-zinc-50 rounded-2xl px-4 py-2.5 flex flex-col gap-2">
               <div className="flex justify-between text-[10px] text-zinc-500">
-                <span>⚡ Score de l'équipe aujourd'hui</span>
+                <span>Score de l'équipe aujourd'hui</span>
                 <span className="font-bold text-violet-600">{group.teamDayScore ?? 0}%</span>
               </div>
               <div className="h-3 bg-zinc-200 rounded-full overflow-hidden">
@@ -328,7 +330,7 @@ function GroupCard({ group, onLeave, onCopyCode, onRename, hasUnread, onMarkRead
                   style={{ width: `${group.teamDayScore ?? 0}%`, background: 'linear-gradient(90deg, #7c3aed, #a78bfa)' }} />
               </div>
               <p className="text-[10px] text-zinc-400 text-right">
-                {isSaved ? '✓ Waty sauvé cette semaine 🏆' : '🎯 Atteignez 70% pour gagner une coupe'}
+                {isSaved ? 'Waty sauvé cette semaine' : 'Atteignez 70% pour gagner une coupe'}
               </p>
             </div>
           </div>
@@ -370,7 +372,7 @@ function GroupCard({ group, onLeave, onCopyCode, onRename, hasUnread, onMarkRead
             )}
           </div>
           <span className={`text-xs font-semibold flex-1 ${hasUnread ? 'text-zinc-800 font-bold' : 'text-zinc-500'}`}>
-            Messages du groupe{hasUnread ? ' 🔴' : ''}
+            Messages du groupe
           </span>
           {msgOpen ? <ChevronUp size={14} className="text-zinc-300" /> : <ChevronDown size={14} className="text-zinc-300" />}
         </button>
@@ -380,7 +382,7 @@ function GroupCard({ group, onLeave, onCopyCode, onRename, hasUnread, onMarkRead
             {/* Liste messages */}
             <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
               {messages.length === 0 ? (
-                <p className="text-xs text-zinc-400 text-center py-4 italic">Aucun message pour l'instant. Soyez le premier ! 👋</p>
+                <p className="text-xs text-zinc-400 text-center py-4 italic">Aucun message pour l'instant. Soyez le premier !</p>
               ) : (
                 messages.map(msg => {
                   const isMe = msg.user_id === currentUserId
@@ -564,7 +566,7 @@ export default function FriendsPage() {
     })
     const data = await res.json()
     if (!res.ok) { setCreateError(data.error ?? 'Erreur'); setCreating(false); return }
-    showToast('Groupe créé ! Partage le code avec tes amis 🎉')
+    showToast('Groupe créé ! Partage le code avec tes amis')
     setCreateName(''); setView('list')
     await loadGroups()
     setCreating(false)
@@ -582,7 +584,7 @@ export default function FriendsPage() {
     })
     const data = await res.json()
     if (!res.ok) { setJoinError(data.error ?? 'Code invalide'); setJoining(false); return }
-    showToast('Tu as rejoint le groupe ! 🙌')
+    showToast('Tu as rejoint le groupe !')
     setJoinCode(''); setView('list')
     await loadGroups()
     setJoining(false)
@@ -640,7 +642,7 @@ export default function FriendsPage() {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-extrabold text-zinc-900">🤝 Amis & Challenges</h1>
+        <h1 className="text-2xl font-extrabold text-zinc-900">Amis & Challenges</h1>
         <p className="text-sm text-zinc-400 mt-0.5">Progressez ensemble, sauvez Waty !</p>
       </div>
 
@@ -673,7 +675,7 @@ export default function FriendsPage() {
                 </p>
               </div>
               <p className="text-xs text-zinc-400 italic bg-zinc-50 rounded-2xl px-4 py-3 max-w-xs">
-                💬 Waty dit : "La motivation décuple quand on est ensemble !"
+ Waty dit : "La motivation décuple quand on est ensemble !"
               </p>
             </div>
           ) : (
@@ -697,7 +699,7 @@ export default function FriendsPage() {
                   </div>
                   <div className="text-right">
                     {totalCups > 0 ? (
-                      <p className="text-2xl font-black text-amber-600">🏆 {totalCups}</p>
+                      <p className="text-2xl font-black text-amber-600">{totalCups}</p>
                     ) : (
                       <p className="text-xs text-zinc-400">Aucune encore</p>
                     )}
@@ -706,7 +708,7 @@ export default function FriendsPage() {
                 {totalCups === 0 ? (
                   <div className="px-5 pb-4">
                     <p className="text-xs text-zinc-400 italic bg-white/60 rounded-2xl px-3 py-2.5">
-                      💬 Waty dit : "Atteignez 70% de score hebdo pour remporter votre première coupe !"
+ Waty dit : "Atteignez 70% de score hebdo pour remporter votre première coupe !"
                     </p>
                   </div>
                 ) : (
@@ -715,10 +717,10 @@ export default function FriendsPage() {
                       <div key={g.id} className="flex items-center gap-3 px-5 py-3">
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-zinc-800 truncate">{g.name}</p>
-                          <p className="text-[10px] text-zinc-400">{g.mode === 'equipe' ? '🤝 Équipe' : '⚔️ Compétition'}</p>
+                          <p className="text-[10px] text-zinc-400">{g.mode === 'equipe' ? 'Équipe' : 'Compétition'}</p>
                         </div>
                         <p className="text-sm font-extrabold text-amber-600 flex-shrink-0">
-                          🏆 {g.cupsWon} coupe{g.cupsWon > 1 ? 's' : ''}
+ {g.cupsWon} coupe{g.cupsWon > 1 ? 's' : ''}
                         </p>
                       </div>
                     ))}
@@ -757,24 +759,23 @@ export default function FriendsPage() {
             <label className="text-xs text-zinc-400 mb-2 block">Que partager avec le groupe ?</label>
             <div className="flex flex-col gap-2">
               {[
-                { value: 'minimum', label: 'Minimum', desc: 'Uniquement mon score %', icon: '🔒' },
-                { value: 'standard', label: 'Standard', desc: 'Score + série + badges', icon: '✅' },
+                { value: 'minimum', label: 'Minimum', desc: 'Uniquement mon score %', icon: '' },
+                { value: 'standard', label: 'Standard', desc: 'Score + série + badges', icon: '' },
               ].map(opt => (
                 <button key={opt.value} onClick={() => setJoinPrivacy(opt.value as any)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-2xl border-2 text-left transition-all ${
                     joinPrivacy === opt.value ? 'border-tta-mid bg-tta-light' : 'border-zinc-100 bg-zinc-50'
                   }`}>
-                  <span>{opt.icon}</span>
                   <div>
                     <p className="text-sm font-semibold text-zinc-800">{opt.label}</p>
                     <p className="text-xs text-zinc-400">{opt.desc}</p>
                   </div>
-                  {joinPrivacy === opt.value && <span className="ml-auto text-tta-mid font-bold">✓</span>}
+                  {joinPrivacy === opt.value && <span className="ml-auto text-tta-mid font-bold"></span>}
                 </button>
               ))}
             </div>
             <p className="text-[10px] text-zinc-400 mt-2 text-center">
-              🔒 Tes objectifs personnels restent toujours confidentiels.
+ Tes objectifs personnels restent toujours confidentiels.
             </p>
           </div>
 
@@ -808,19 +809,18 @@ export default function FriendsPage() {
             <label className="text-xs text-zinc-400 mb-2 block">Mode</label>
             <div className="flex flex-col gap-2">
               {[
-                { value: 'equipe',       label: 'Équipe — Sauver Waty',  desc: 'Coopération : unissez vos forces pour sauver Waty chaque semaine !', icon: '🤝' },
-                { value: 'competition',  label: 'Compétition',           desc: 'Classement hebdo — qui est le plus proche de ses objectifs ?',       icon: '⚔️' },
+                { value: 'equipe',       label: 'Équipe — Sauver Waty',  desc: 'Coopération : unissez vos forces pour sauver Waty chaque semaine !', icon: '' },
+                { value: 'competition',  label: 'Compétition',           desc: 'Classement hebdo — qui est le plus proche de ses objectifs ?',       icon: '' },
               ].map(opt => (
                 <button key={opt.value} onClick={() => setCreateMode(opt.value as any)}
                   className={`flex items-start gap-3 px-4 py-3 rounded-2xl border-2 text-left transition-all ${
                     createMode === opt.value ? 'border-tta-mid bg-tta-light' : 'border-zinc-100 bg-zinc-50'
                   }`}>
-                  <span className="text-xl flex-shrink-0 mt-0.5">{opt.icon}</span>
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-zinc-800">{opt.label}</p>
                     <p className="text-xs text-zinc-400 mt-0.5 leading-relaxed">{opt.desc}</p>
                   </div>
-                  {createMode === opt.value && <span className="text-tta-mid font-bold mt-0.5">✓</span>}
+                  {createMode === opt.value && <span className="text-tta-mid font-bold mt-0.5"></span>}
                 </button>
               ))}
             </div>
@@ -841,8 +841,8 @@ export default function FriendsPage() {
             <label className="text-xs text-zinc-400 mb-2 block">Tes partages</label>
             <div className="flex gap-2">
               {[
-                { value: 'minimum', label: '🔒 Minimum' },
-                { value: 'standard', label: '✅ Standard' },
+                { value: 'minimum', label: 'Minimum' },
+                { value: 'standard', label: 'Standard' },
               ].map(opt => (
                 <button key={opt.value} onClick={() => setCreatePrivacy(opt.value as any)}
                   className={`flex-1 py-2 rounded-xl text-xs font-semibold border-2 transition-all ${

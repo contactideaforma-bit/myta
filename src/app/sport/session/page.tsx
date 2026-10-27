@@ -14,23 +14,24 @@ import { VoiceSession } from '@/components/sport/VoiceSession'
 import { Waty, WATY_MESSAGES } from '@/components/ui/Waty'
 import OnboardingCoach from '@/components/ui/OnboardingCoach'
 import { useOnboarding } from '@/lib/onboarding'
+import { MytaIcon } from '@/components/ui/MytaIcon'
 
 type InputMode = 'none' | 'voice' | 'text'
 
 // ─── Conseils sportifs ────────────────────────────────────────────────────────
 const SPORT_TIPS = [
-  { icon: '💧', titre: 'Hydratation', conseil: 'Bois 500ml d\'eau 2h avant l\'effort. Pendant l\'exercice, vise 150-200ml toutes les 20 minutes.' },
-  { icon: '🔥', titre: 'Échauffement', conseil: '10 minutes d\'échauffement dynamique réduisent le risque de blessure de 50%. Ne saute jamais cette étape.' },
-  { icon: '😴', titre: 'Récupération', conseil: 'Le muscle se construit pendant le repos. Dors 7 à 9h et laisse 48h entre deux séances du même groupe musculaire.' },
-  { icon: '🥩', titre: 'Protéines post-effort', conseil: 'Mange des protéines dans les 30 minutes après ta séance. 20-40g suffisent pour optimiser la récupération musculaire.' },
-  { icon: '📈', titre: 'Progression', conseil: 'Augmente la charge ou les répétitions de 5-10% maximum par semaine. La progression lente est durable.' },
-  { icon: '🧘', titre: 'Étirements', conseil: 'Après l\'effort, 10 minutes d\'étirements statiques réduisent les courbatures et améliorent la flexibilité.' },
-  { icon: '⏱️', titre: 'Temps de repos', conseil: 'Entre les séries : 60-90s pour l\'endurance, 2-3min pour la force. Le repos est aussi important que l\'exercice.' },
-  { icon: '🫀', titre: 'Cardio & santé', conseil: '150 minutes de cardio modéré par semaine réduisent le risque cardiovasculaire de 35%.' },
-  { icon: '🏋️', titre: 'Technique avant tout', conseil: 'Maîtrise le mouvement avec peu de poids avant d\'augmenter la charge. La technique prime toujours.' },
-  { icon: '📊', titre: 'Variété', conseil: 'Varie tes entraînements toutes les 4-6 semaines pour éviter l\'adaptation et continuer à progresser.' },
-  { icon: '🌡️', titre: 'Retour au calme', conseil: '5-10 minutes de cardio léger après une séance intense aide à éliminer l\'acide lactique.' },
-  { icon: '🧠', titre: 'Mental & effort', conseil: 'La fatigue mentale précède souvent la fatigue physique. Pousse encore un peu quand ta tête dit stop.' },
+  { icon: '', titre: 'Hydratation', conseil: 'Bois 500ml d\'eau 2h avant l\'effort. Pendant l\'exercice, vise 150-200ml toutes les 20 minutes.' },
+  { icon: '', titre: 'Échauffement', conseil: '10 minutes d\'échauffement dynamique réduisent le risque de blessure de 50%. Ne saute jamais cette étape.' },
+  { icon: '', titre: 'Récupération', conseil: 'Le muscle se construit pendant le repos. Dors 7 à 9h et laisse 48h entre deux séances du même groupe musculaire.' },
+  { icon: '', titre: 'Protéines post-effort', conseil: 'Mange des protéines dans les 30 minutes après ta séance. 20-40g suffisent pour optimiser la récupération musculaire.' },
+  { icon: '', titre: 'Progression', conseil: 'Augmente la charge ou les répétitions de 5-10% maximum par semaine. La progression lente est durable.' },
+  { icon: '', titre: 'Étirements', conseil: 'Après l\'effort, 10 minutes d\'étirements statiques réduisent les courbatures et améliorent la flexibilité.' },
+  { icon: '', titre: 'Temps de repos', conseil: 'Entre les séries : 60-90s pour l\'endurance, 2-3min pour la force. Le repos est aussi important que l\'exercice.' },
+  { icon: '', titre: 'Cardio & santé', conseil: '150 minutes de cardio modéré par semaine réduisent le risque cardiovasculaire de 35%.' },
+  { icon: '', titre: 'Technique avant tout', conseil: 'Maîtrise le mouvement avec peu de poids avant d\'augmenter la charge. La technique prime toujours.' },
+  { icon: '', titre: 'Variété', conseil: 'Varie tes entraînements toutes les 4-6 semaines pour éviter l\'adaptation et continuer à progresser.' },
+  { icon: '', titre: 'Retour au calme', conseil: '5-10 minutes de cardio léger après une séance intense aide à éliminer l\'acide lactique.' },
+  { icon: '', titre: 'Mental & effort', conseil: 'La fatigue mentale précède souvent la fatigue physique. Pousse encore un peu quand ta tête dit stop.' },
 ]
 
 // ─── TipCard ──────────────────────────────────────────────────────────────────
@@ -40,7 +41,7 @@ function TipCard({ tip }: { tip: typeof SPORT_TIPS[0] }) {
     <button onClick={() => setOpen(v => !v)}
       className="w-full text-left card-sm transition-all hover:shadow-sm active:scale-[0.98]">
       <div className="flex items-center gap-3">
-        <span className="text-2xl flex-shrink-0">{tip.icon}</span>
+        <span className="w-9 h-9 rounded-xl bg-sport-light text-tta-mid flex items-center justify-center flex-shrink-0"><MytaIcon name="advice" size={18} /></span>
         <div className="flex-1 min-w-0">
           <p className="font-bold text-sm text-zinc-900">{tip.titre}</p>
           {!open && <p className="text-xs text-zinc-400 truncate mt-0.5">{tip.conseil}</p>}
@@ -94,14 +95,14 @@ function TextSession({ onConfirm, onCancel }: {
   return (
     <div className="card flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <p className="font-extrabold text-zinc-900">✍️ Décris ta séance</p>
+        <p className="font-extrabold text-zinc-900">Décris ta séance</p>
         <button onClick={onCancel} className="w-8 h-8 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-400 hover:bg-zinc-200">
           <X size={14} />
         </button>
       </div>
       {/* Conseil Waty */}
       <div className="flex items-start gap-3 bg-violet-50 rounded-2xl px-4 py-3">
-        <span className="text-xl flex-shrink-0 mt-0.5">🤖</span>
+        <span className="text-xl flex-shrink-0 mt-0.5"></span>
         <p className="text-xs text-violet-700 leading-relaxed">
           <span className="font-bold">Waty analyse ta description !</span> Plus tu détailles — exercice, durée, séries, charge — plus mon estimation des calories brûlées sera juste.
         </p>
@@ -253,7 +254,7 @@ export default function SessionPage() {
       {obStep === 'sport' && (
         <OnboardingCoach
           mode="sport"
-          title="Ta première séance 💪"
+          title="Ta première séance"
           message={'Décris ta séance à la voix ou en texte, tout simplement. Par exemple : « J\'ai marché 20 min », « J\'ai fait une séance de boxe d\'1h », ou « 30 min de vélo et 3 séries de pompes ». Waty estime la durée et les calories pour toi.'}
           onSkip={obSkip}
         />
@@ -263,7 +264,7 @@ export default function SessionPage() {
       {saved && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-nutri text-white px-5 py-3 rounded-full shadow-lg font-bold text-sm animate-in fade-in slide-in-from-bottom-2">
           <Check size={16} />
-          Séance enregistrée ! 💪
+          Séance enregistrée !
         </div>
       )}
 
@@ -276,12 +277,12 @@ export default function SessionPage() {
       {todaySessions.length > 0 && (
         <div className="card flex flex-col gap-2">
           <p className="text-xs font-bold text-zinc-400 uppercase tracking-wide">
-            ✅ Séances aujourd'hui
+ Séances aujourd'hui
           </p>
           {todaySessions.map((s: any) => (
             <div key={s.id} className="flex items-center gap-3 bg-sport-light rounded-2xl px-3 py-2.5">
               <div className="w-8 h-8 bg-sport/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                <span className="text-sm">🏋️</span>
+                <span className="text-sm"></span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-sport-dark truncate">

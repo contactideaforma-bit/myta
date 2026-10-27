@@ -29,7 +29,7 @@ const FAQ_ITEMS: FaqItem[] = [
       { text: <>Appuie sur <strong>Autorisations → Microphone → Autoriser</strong></> },
       { text: <>Recharge MYTA et réessaie</> },
     ],
-    tip: 'Alternative : dans Chrome, appuie sur le cadenas 🔒 dans la barre d\'adresse → Autorisations du site → Microphone → Autoriser',
+    tip: 'Alternative : dans Chrome, appuie sur le cadenas dans la barre d\'adresse → Autorisations du site → Microphone → Autoriser',
   },
   {
     icon: <CreditCard size={18} />,
@@ -98,7 +98,7 @@ const FAQ_ITEMS: FaqItem[] = [
     tag: 'Mon compte',
     tagColor: 'bg-teal-50 text-teal-700',
     steps: [
-      { text: <>Ouvre le menu <strong>☰</strong> en haut à gauche</> },
+      { text: <>Ouvre le menu <strong></strong> en haut à gauche</> },
       { text: <>Clique sur <strong>« Mon compte »</strong> en bas du menu</> },
       { text: <>Tu peux modifier : <strong>nom, email, mot de passe, carte bancaire, abonnement</strong></> },
     ],

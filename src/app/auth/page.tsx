@@ -6,6 +6,7 @@ import { isIosApp } from '@/lib/app-platform'
 import { linkRevenueCatUser } from '@/lib/revenuecat'
 import { hasActiveAccess } from '@/lib/access'
 import { Mail, Lock, User, ArrowRight, Loader2, Eye, EyeOff, Gift, CheckCircle2 } from 'lucide-react'
+import { MytaIcon } from '@/components/ui/MytaIcon'
 
 /**
  * App iOS : après connexion/inscription, rattache l'utilisateur RevenueCat
@@ -28,7 +29,7 @@ async function syncIosPurchases(accessToken: string | undefined, userId: string)
 
 type Mode = 'login' | 'register' | 'forgot'
 
-// ⏳ Compte développeur Apple en migration (accès coupé, dossier 20000118458293) :
+// Compte développeur Apple en migration (accès coupé, dossier 20000118458293) :
 // le provider Apple n'est pas configurable dans Supabase → bouton masqué pour
 // éviter l'erreur « provider is not enabled ». Repasser à true quand Apple aura
 // rétabli l'accès ET que le provider Apple sera configuré dans Supabase.
@@ -81,14 +82,14 @@ export default function AuthPage() {
     const ref = params.get('ref')
     if (ref) { setReferralInput(ref.toUpperCase()); setMode('register') }
     if (params.get('reset') === 'success') {
-      notify('✅ Mot de passe modifié ! Connecte-toi avec ton nouveau mot de passe.', 'success')
+      notify('Mot de passe modifié ! Connecte-toi avec ton nouveau mot de passe.', 'success')
     }
     // Achat in-app effectué sans compte (Apple 5.1.1(v)) : compte optionnel.
     // Le chemin recommandé = 1 tap « Continuer avec Apple » (pas de formulaire).
     if (params.get('purchased') === '1') {
       setPurchased(true)
       setMode('register')
-      notify('✅ Abonnement activé ! Lie un compte (gratuit) en 1 tap pour sauvegarder ton suivi et le retrouver sur tous tes appareils.', 'success')
+      notify('Abonnement activé ! Lie un compte (gratuit) en 1 tap pour sauvegarder ton suivi et le retrouver sur tous tes appareils.', 'success')
     }
   }, [])
 
@@ -179,7 +180,7 @@ export default function AuthPage() {
           .from('profiles').select('subscription_status, trial_ends_at').eq('id', data.user.id).single()
         const hasAccess = hasActiveAccess(profile?.subscription_status, profile?.trial_ends_at)
 
-        notify('✅ Connexion réussie, redirection…', 'success')
+        notify('Connexion réussie, redirection…', 'success')
         // Petit délai pour que le cookie soit bien posé avant la navigation
         setTimeout(() => {
           window.location.href = hasAccess ? '/dashboard' : '/pricing'
@@ -213,7 +214,7 @@ export default function AuthPage() {
         ? 'bg-green-50 text-green-700 border border-green-200'
         : 'bg-red-50 text-red-600 border border-red-200'
     }`}>
-      <span>{msgType === 'success' ? '✅' : '⚠️'}</span>
+      <MytaIcon name={msgType === 'success' ? 'check' : 'report'} size={14} className="flex-shrink-0" />
       <span>{message}</span>
     </div>
   )
@@ -255,13 +256,13 @@ export default function AuthPage() {
           <img src="/logo_my_twin_app.png" alt="My Twin App" className="w-64 object-contain drop-shadow-sm" />
           <div className="flex gap-2">
             <span className="px-3 py-1 rounded-full text-xs font-bold border bg-green-50 text-green-600 border-green-200">
-              🥗 Nutrition
+ Nutrition
             </span>
             <span className="px-3 py-1 rounded-full text-xs font-bold border bg-indigo-50 text-indigo-600 border-indigo-100">
-              🏋️ Sport
+ Sport
             </span>
             <span className="px-3 py-1 rounded-full text-xs font-bold border bg-teal-50 text-teal-700 border-teal-100">
-              😴 Sommeil
+ Sommeil
             </span>
           </div>
         </div>
@@ -269,7 +270,7 @@ export default function AuthPage() {
         {/* ────────── Écran MOT DE PASSE OUBLIÉ ────────── */}
         {mode === 'forgot' ? (
           <div className="bg-white rounded-3xl p-6 shadow-lg border border-zinc-100">
-            <h2 className="text-xl font-extrabold text-zinc-900 tracking-tight mb-0.5">Mot de passe oublié 🔑</h2>
+            <h2 className="text-xl font-extrabold text-zinc-900 tracking-tight mb-0.5">Mot de passe oublié</h2>
             <p className="text-zinc-400 text-sm mb-5">
               Entre ton e-mail : on t'envoie un lien pour réinitialiser ton mot de passe.
             </p>
@@ -277,7 +278,7 @@ export default function AuthPage() {
             {forgotSent ? (
               <div className="flex flex-col items-center gap-4 py-4 text-center">
                 <CheckCircle2 size={36} className="text-green-500" />
-                <p className="text-sm font-bold text-zinc-900">E-mail envoyé ✓</p>
+                <p className="text-sm font-bold text-zinc-900">E-mail envoyé</p>
                 <p className="text-xs text-zinc-500 leading-relaxed">
                   Un lien de réinitialisation vient d'être envoyé à <strong>{email}</strong>.
                   Vérifie ta boîte mail (et tes spams), le lien est valable 1 h.
@@ -317,7 +318,7 @@ export default function AuthPage() {
         /* ────────── Écran CONNEXION / INSCRIPTION ────────── */
         <div className="bg-white rounded-3xl p-6 shadow-lg border border-zinc-100">
           <h2 className="text-xl font-extrabold text-zinc-900 tracking-tight mb-0.5">
-            {purchased ? 'Abonnement activé 🎉' : mode === 'login' ? 'Bon retour ! 👋' : 'Créer un compte'}
+            {purchased ? 'Abonnement activé' : mode === 'login' ? 'Bon retour !' : 'Créer un compte'}
           </h2>
           <p className="text-zinc-400 text-sm mb-5">
             {purchased
@@ -403,12 +404,12 @@ export default function AuthPage() {
           <button
             onClick={() => window.location.href = '/demo'}
             className="w-full py-3 rounded-2xl border-2 border-dashed border-zinc-200 text-zinc-500 text-sm font-semibold hover:border-[#4B47A0] hover:text-[#4B47A0] transition-all flex items-center justify-center gap-2">
-            👀 Voir la démo sans s'inscrire
+ Voir la démo sans s'inscrire
           </button>
         )}
 
         <div className="flex flex-col items-center gap-2">
-          <p className="text-center text-zinc-400 text-xs">🔒 Données sécurisées · synchronisées avec Supabase</p>
+          <p className="text-center text-zinc-400 text-xs">Données sécurisées · synchronisées avec Supabase</p>
           <div className="flex gap-3">
             <a href="/legal" className="text-xs text-zinc-400 hover:text-tta-mid transition-colors">Mentions légales</a>
             <a href="/legal" className="text-xs text-zinc-400 hover:text-tta-mid transition-colors">CGU</a>

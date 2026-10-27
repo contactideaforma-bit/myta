@@ -137,7 +137,7 @@ export default function ImportRecipePage() {
       .upsert(toSavedRow(user.id, recipeWithMacros, liveScore), { onConflict: 'user_id,recipe_id' })
     setSaving(false)
     if (error) { showToast('Erreur de sauvegarde'); console.error(error); return }
-    showToast('✓ Recette enregistrée')
+    showToast('Recette enregistrée')
     setTimeout(() => router.push('/nutrition/recipes?view=saved'), 600)
   }
 
@@ -154,13 +154,13 @@ export default function ImportRecipePage() {
         </div>
 
         <Waty mode="nutrition" size="sm" dismissible
-          message="Voici ce que j'ai compris de la recette 👩‍🍳 Vérifie les quantités — c'est elles qui font le score — puis enregistre." />
+          message="Voici ce que j'ai compris de la recette Vérifie les quantités — c'est elles qui font le score — puis enregistre." />
 
         {/* Photo + titre */}
         <div className="relative rounded-2xl overflow-hidden h-44 bg-zinc-100">
           {recipe.photoUrl
             ? <img src={recipe.photoUrl} alt="" className="w-full h-full object-cover" />
-            : <div className="w-full h-full bg-gradient-to-br from-nutri-light to-zinc-100 flex items-center justify-center text-6xl">🍽️</div>}
+            : <div className="w-full h-full bg-gradient-to-br from-nutri-light to-zinc-100 flex items-center justify-center text-6xl"></div>}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
           <div className="absolute bottom-3 left-3 right-3">
             <input value={recipe.titre} onChange={e => setRecipe({ ...recipe, titre: e.target.value })}
@@ -217,7 +217,7 @@ export default function ImportRecipePage() {
         {/* Ingrédients éditables */}
         <div className="card">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-zinc-900">🛒 Ingrédients</h2>
+            <h2 className="text-sm font-bold text-zinc-900">Ingrédients</h2>
             <span className="text-[10px] text-zinc-400">quantité · nom · poids (g)</span>
           </div>
           <div className="flex flex-col gap-2">
@@ -236,7 +236,7 @@ export default function ImportRecipePage() {
 
         {/* Étapes éditables */}
         <div className="card">
-          <h2 className="text-sm font-bold text-zinc-900 mb-3">👨‍🍳 Préparation</h2>
+          <h2 className="text-sm font-bold text-zinc-900 mb-3">Préparation</h2>
           <div className="flex flex-col gap-3">
             {recipe.etapes.map((et, i) => (
               <div key={i} className="flex gap-2">
@@ -332,7 +332,7 @@ export default function ImportRecipePage() {
 
       {!url && !image && !text && (
         <Waty mode="nutrition" size="sm" dismissible={false}
-          message="Tu as vu une recette qui te fait envie sur Instagram ou TikTok ? Partage-la moi, je te dis ce qu'elle vaut pour ta journée 🍳" />
+          message="Tu as vu une recette qui te fait envie sur Instagram ou TikTok ? Partage-la moi, je te dis ce qu'elle vaut pour ta journée" />
       )}
     </div>
   )

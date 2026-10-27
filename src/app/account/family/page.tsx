@@ -152,7 +152,7 @@ export default function FamilyPage() {
       })
       const data = await res.json()
       if (res.ok) {
-        setChildMsg({ type: 'ok', text: `${childForm.name} ajouté(e) ! 🎉` })
+        setChildMsg({ type: 'ok', text: `${childForm.name} ajouté(e) !` })
         setChildForm({ name: '', birth_date: '', weight_kg: '', height_cm: '', gender: '' })
         setShowChildForm(false)
         await load()

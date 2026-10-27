@@ -20,50 +20,50 @@ interface WatyProps {
 // ─── Messages prédéfinis par contexte ────────────────────────────────────────
 export const WATY_MESSAGES = {
   // Dashboard
-  dashboard_welcome_morning:   "Bonjour ! Prêt(e) pour une belle journée ? Commence par noter ton petit-déjeuner 🌅",
-  dashboard_welcome_afternoon: "Bon après-midi ! N'oublie pas de t'hydrater entre les repas 💧",
-  dashboard_welcome_evening:   "Bonsoir ! Comment s'est passée ta journée ? Pense à noter ton dîner 🌙",
-  dashboard_no_data:           "Bienvenue sur MYTA ! Commence par remplir ton profil pour que je puisse te guider 🍉",
+  dashboard_welcome_morning:   "Bonjour ! Prêt(e) pour une belle journée ? Commence par noter ton petit-déjeuner",
+  dashboard_welcome_afternoon: "Bon après-midi ! N'oublie pas de t'hydrater entre les repas",
+  dashboard_welcome_evening:   "Bonsoir ! Comment s'est passée ta journée ? Pense à noter ton dîner",
+  dashboard_no_data:           "Bienvenue sur MYTA ! Commence par remplir ton profil pour que je puisse te guider",
 
   // Journal — objectifs
-  journal_goal_reached:        "Objectif calorique atteint ! Tu as parfaitement géré ton alimentation aujourd'hui 🎉",
-  journal_goal_near:           "Plus que quelques calories pour atteindre ton objectif. Un fruit ou un yaourt ? 🍎",
-  journal_over_goal:           "Tu as dépassé ton objectif aujourd'hui. Pas de panique, demain c'est reparti ! 💪",
-  journal_empty:               "Ton journal est vide ! Ajoute ton premier repas de la journée 🥗",
-  journal_good_protein:        "Excellent apport en protéines aujourd'hui ! Tes muscles te remercient 💪",
-  journal_low_protein:         "Pense à ajouter une source de protéines — œufs, poulet, lentilles ou yaourt grec 🥚",
-  journal_hydration:           "N'oublie pas de boire ! Vise 1,5L d'eau minimum par jour 💧",
-  journal_balanced:            "Superbe équilibre nutritionnel aujourd'hui ! Continue comme ça 🌟",
+  journal_goal_reached:        "Objectif calorique atteint ! Tu as parfaitement géré ton alimentation aujourd'hui",
+  journal_goal_near:           "Plus que quelques calories pour atteindre ton objectif. Un fruit ou un yaourt ?",
+  journal_over_goal:           "Tu as dépassé ton objectif aujourd'hui. Pas de panique, demain c'est reparti !",
+  journal_empty:               "Ton journal est vide ! Ajoute ton premier repas de la journée",
+  journal_good_protein:        "Excellent apport en protéines aujourd'hui ! Tes muscles te remercient",
+  journal_low_protein:         "Pense à ajouter une source de protéines — œufs, poulet, lentilles ou yaourt grec",
+  journal_hydration:           "N'oublie pas de boire ! Vise 1,5L d'eau minimum par jour",
+  journal_balanced:            "Superbe équilibre nutritionnel aujourd'hui ! Continue comme ça",
 
   // Sport — séances
-  sport_no_session:            "Aucune séance cette semaine encore. Un petit 20 minutes suffit pour commencer ! 🏃",
-  sport_good_week:             "Belle semaine sportive ! Tu es régulier(e), c'est la clé du progrès 🔥",
-  sport_session_done:          "Séance enregistrée ! La récupération est aussi importante que l'effort 🧘",
-  sport_streak:                "Incroyable, tu enchaînes les séances ! Pense à bien récupérer 💤",
-  sport_start:                 "Prêt(e) à bouger ? Choisis ta discipline et c'est parti ! ⚡",
-  sport_after_session:         "Bien joué ! Pense à manger des protéines dans l'heure qui suit 🥛",
-  sport_tabata:                "Le Tabata c'est intense mais super efficace ! N'oublie pas de t'échauffer avant 🔥",
+  sport_no_session:            "Aucune séance cette semaine encore. Un petit 20 minutes suffit pour commencer !",
+  sport_good_week:             "Belle semaine sportive ! Tu es régulier(e), c'est la clé du progrès",
+  sport_session_done:          "Séance enregistrée ! La récupération est aussi importante que l'effort",
+  sport_streak:                "Incroyable, tu enchaînes les séances ! Pense à bien récupérer",
+  sport_start:                 "Prêt(e) à bouger ? Choisis ta discipline et c'est parti !",
+  sport_after_session:         "Bien joué ! Pense à manger des protéines dans l'heure qui suit",
+  sport_tabata:                "Le Tabata c'est intense mais super efficace ! N'oublie pas de t'échauffer avant",
 
   // Profil
-  profile_incomplete:          "Remplis ton profil pour que je calcule ton TDEE et tes macros personnalisés 📊",
-  profile_weight_loss:         "Pour perdre du poids, vise un déficit de 300 à 500 kcal/jour. Progressif et durable 🎯",
-  profile_muscle_gain:         "Pour prendre de la masse, mange en légère surplus et cible 1,6g de protéines par kg 💪",
+  profile_incomplete:          "Remplis ton profil pour que je calcule ton TDEE et tes macros personnalisés",
+  profile_weight_loss:         "Pour perdre du poids, vise un déficit de 300 à 500 kcal/jour. Progressif et durable",
+  profile_muscle_gain:         "Pour prendre de la masse, mange en légère surplus et cible 1,6g de protéines par kg",
 
   // Inflammation & micronutriments
-  inflammation_high:           "Score inflammatoire élevé aujourd'hui. Essaie d'ajouter du saumon ou des myrtilles demain 🫐",
-  inflammation_good:           "Super journée anti-inflammatoire ! Tes choix alimentaires soutiennent ta santé 🌿",
-  micros_low_vitD:             "Manque de vitamine D détecté. Pense aux poissons gras ou à une exposition au soleil ☀️",
-  micros_low_iron:             "Apport en fer insuffisant. Les lentilles, épinards et viande rouge sont tes amis 🥬",
-  micros_good:                 "Excellent profil micronutritionnel aujourd'hui ! Ton corps est bien nourri 🌈",
+  inflammation_high:           "Score inflammatoire élevé aujourd'hui. Essaie d'ajouter du saumon ou des myrtilles demain",
+  inflammation_good:           "Super journée anti-inflammatoire ! Tes choix alimentaires soutiennent ta santé",
+  micros_low_vitD:             "Manque de vitamine D détecté. Pense aux poissons gras ou à une exposition au soleil",
+  micros_low_iron:             "Apport en fer insuffisant. Les lentilles, épinards et viande rouge sont tes amis",
+  micros_good:                 "Excellent profil micronutritionnel aujourd'hui ! Ton corps est bien nourri",
 
   // Recettes
-  recipes_encourage:           "Explore les recettes anti-inflammatoires, elles sont délicieuses et font du bien ! 🍽️",
+  recipes_encourage:           "Explore les recettes anti-inflammatoires, elles sont délicieuses et font du bien !",
 
   // Général
-  general_motivation:          "Chaque petit effort compte. Tu es sur la bonne voie ! 🍉✨",
-  general_weekend:             "Week-end = repos actif ! Une balade ou du yoga sont parfaits 🧘",
-  general_tip_sleep:           "Le sommeil c'est 30% des résultats. Vise 7 à 9h par nuit 😴",
-  general_tip_stress:          "Le stress fait monter le cortisol et peut bloquer la perte de poids. Respire ! 🌿",
+  general_motivation:          "Chaque petit effort compte. Tu es sur la bonne voie !",
+  general_weekend:             "Week-end = repos actif ! Une balade ou du yoga sont parfaits",
+  general_tip_sleep:           "Le sommeil c'est 30% des résultats. Vise 7 à 9h par nuit",
+  general_tip_stress:          "Le stress fait monter le cortisol et peut bloquer la perte de poids. Respire !",
 }
 
 // ─── Composant principal ──────────────────────────────────────────────────────

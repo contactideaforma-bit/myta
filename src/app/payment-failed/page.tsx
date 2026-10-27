@@ -51,7 +51,7 @@ export default function PaymentFailedPage() {
           {/* Header orange */}
           <div className="px-6 py-6 text-center"
             style={{ background: 'linear-gradient(135deg, #ea580c, #f97316)' }}>
-            <div className="text-4xl mb-2">⚠️</div>
+            <div className="text-4xl mb-2"></div>
             <h1 className="text-white font-extrabold text-xl">Paiement échoué</h1>
             <p className="text-white/85 text-sm mt-1">Ton accès MYTA est suspendu</p>
           </div>
@@ -85,7 +85,7 @@ export default function PaymentFailedPage() {
             </button>
 
             <p className="text-center text-xs text-zinc-400">
-              Géré de manière sécurisée par Stripe 🔒
+              Géré de manière sécurisée par Stripe
             </p>
           </div>
         </div>

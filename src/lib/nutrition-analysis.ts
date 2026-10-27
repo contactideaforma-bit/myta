@@ -86,11 +86,11 @@ export function inflamGaugePct(score: number, total: number): number {
 }
 
 export function inflamAdvice(s: InflamScore) {
-  if (s.score >= 2)  return { icon: '🌿', cls: 'bg-nutri-light border-nutri/30 text-nutri-dark',   text: 'Excellente journée anti-inflammatoire ! Vos choix alimentaires soutiennent votre santé.' }
-  if (s.score >= 1)  return { icon: '✅', cls: 'bg-nutri-light border-nutri/30 text-nutri-dark',   text: 'Bonne journée ! Continuez à privilégier poissons gras, légumes verts et fruits rouges.' }
-  if (s.score === 0) return { icon: '⚖️', cls: 'bg-zinc-50 border-zinc-200 text-zinc-600',         text: "Journée neutre. Ajoutez un aliment anti-inflammatoire : saumon, noix, myrtilles ou avocat." }
-  if (s.score === -1) return { icon: '⚠️', cls: 'bg-orange-50 border-orange-200 text-orange-700', text: 'Quelques aliments inflammatoires. Compensez avec des légumes verts ou du poisson gras.' }
-  return { icon: '🔴', cls: 'bg-red-50 border-red-200 text-red-700', text: 'Score inflammatoire élevé. Limitez charcuteries, sucres raffinés. Ajoutez curcuma, poissons gras ou fruits rouges.' }
+  if (s.score >= 2)  return { icon: '', cls: 'bg-nutri-light border-nutri/30 text-nutri-dark',   text: 'Excellente journée anti-inflammatoire ! Vos choix alimentaires soutiennent votre santé.' }
+  if (s.score >= 1)  return { icon: '', cls: 'bg-nutri-light border-nutri/30 text-nutri-dark',   text: 'Bonne journée ! Continuez à privilégier poissons gras, légumes verts et fruits rouges.' }
+  if (s.score === 0) return { icon: '', cls: 'bg-zinc-50 border-zinc-200 text-zinc-600',         text: "Journée neutre. Ajoutez un aliment anti-inflammatoire : saumon, noix, myrtilles ou avocat." }
+  if (s.score === -1) return { icon: '', cls: 'bg-orange-50 border-orange-200 text-orange-700', text: 'Quelques aliments inflammatoires. Compensez avec des légumes verts ou du poisson gras.' }
+  return { icon: '', cls: 'bg-red-50 border-red-200 text-red-700', text: 'Score inflammatoire élevé. Limitez charcuteries, sucres raffinés. Ajoutez curcuma, poissons gras ou fruits rouges.' }
 }
 
 // ─── Micronutriments (base CIQUAL) ───────────────────────────────────────────

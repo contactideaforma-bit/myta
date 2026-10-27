@@ -1,7 +1,7 @@
 /**
  * Score MYTA — indice nutritionnel interne, calculé localement (aucun appel réseau).
  *
- * ⚠️ Ce n'est PAS le Nutri-Score (marque déposée de Santé publique France).
+ * Ce n'est PAS le Nutri-Score (marque déposée de Santé publique France).
  * On applique l'algorithme public (points négatifs : énergie, sucres, AGS, sodium ;
  * points positifs : fruits/légumes/légumineuses, fibres, protéines) pour 100 g,
  * sous un nom et un design propres à MYTA.

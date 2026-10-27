@@ -1,6 +1,7 @@
 'use client'
 
 import { X, ArrowRight, BookOpen } from 'lucide-react'
+import { MytaIcon } from './MytaIcon'
 
 interface WelcomeModalProps {
   onStartTour: () => void
@@ -8,11 +9,11 @@ interface WelcomeModalProps {
 }
 
 const FEATURES = [
-  { icon: '🥗', label: 'Journal alimentaire', desc: 'Note tes repas, suis calories & macros' },
-  { icon: '🏋️', label: 'Séances sport',       desc: 'Enregistre entraînements & Tabata HIIT' },
-  { icon: '😴', label: 'Sommeil',              desc: 'Analyse la qualité de tes nuits' },
-  { icon: '🤖', label: 'Coach Waty',           desc: 'Conseils IA personnalisés en temps réel' },
-  { icon: '📊', label: 'Bilan & objectifs',    desc: 'Suivi hebdo et mensuel de ta progression' },
+  { icon: '', label: 'Journal alimentaire', desc: 'Note tes repas, suis calories & macros' },
+  { icon: '', label: 'Séances sport',       desc: 'Enregistre entraînements & Tabata HIIT' },
+  { icon: '', label: 'Sommeil',              desc: 'Analyse la qualité de tes nuits' },
+  { icon: '', label: 'Coach Waty',           desc: 'Conseils IA personnalisés en temps réel' },
+  { icon: '', label: 'Bilan & objectifs',    desc: 'Suivi hebdo et mensuel de ta progression' },
 ]
 
 export function WelcomeModal({ onStartTour, onClose }: WelcomeModalProps) {
@@ -30,7 +31,7 @@ export function WelcomeModal({ onStartTour, onClose }: WelcomeModalProps) {
               <X size={13} className="text-white" />
             </button>
           </div>
-          <h2 className="text-2xl font-extrabold text-white">Bienvenue sur MYTA ! 🎉</h2>
+          <h2 className="text-2xl font-extrabold text-white">Bienvenue sur MYTA !</h2>
           <p className="text-white/80 text-sm mt-1 leading-relaxed">
             Ton coach digital nutrition, sport & sommeil
           </p>
@@ -44,7 +45,7 @@ export function WelcomeModal({ onStartTour, onClose }: WelcomeModalProps) {
           {FEATURES.map(f => (
             <div key={f.label} className="flex items-center gap-3">
               <div className="w-9 h-9 bg-zinc-50 rounded-2xl flex items-center justify-center text-lg flex-shrink-0">
-                {f.icon}
+                <MytaIcon name="sparkle" size={16} className="text-tta-mid" />
               </div>
               <div>
                 <p className="text-sm font-bold text-zinc-900">{f.label}</p>
