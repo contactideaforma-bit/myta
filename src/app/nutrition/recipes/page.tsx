@@ -6,6 +6,8 @@ import { PremiumGate } from '@/components/ui/PremiumGate'
 import { Waty, WATY_MESSAGES } from '@/components/ui/Waty'
 import { useRouter } from 'next/navigation'
 import { RecipeNutritionGuide } from '@/components/ui/RecipeNutritionGuide'
+import { MytaIllustration } from '@/components/ui/MytaIllustration'
+import { SourceChips } from './SourceChips'
 import { fromSavedRow, toSavedRow, SOURCE_LABELS, shareRecipePdf, recipeShareToken, type Recipe, type Ingredient, type Etape } from '@/lib/recipes'
 import {
   ChevronLeft, Clock, Users, Flame,
@@ -434,26 +436,48 @@ export default function RecipesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-zinc-900">Recettes</h1>
-          <p className="text-sm text-zinc-400">Générées par IA ou importées · 100% en français</p>
+          <p className="text-sm text-zinc-400">Importe, crée, garde : ton catalogue à toi</p>
         </div>
         <button onClick={() => { setView('saved'); setDetail(null); loadSavedRecipes() }}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${view === 'saved' ? 'bg-nutri text-white border-nutri' : 'border-zinc-200 text-zinc-600 hover:border-nutri/40'}`}>
-          <BookmarkCheck size={14} />
-          {savedIds.size > 0 && savedIds.size}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-bold transition-colors ${view === 'saved' ? 'bg-nutri text-white border-nutri' : 'border-zinc-200 text-zinc-700 bg-white'}`}>
+          <BookmarkCheck size={14} />Mon catalogue{savedIds.size > 0 ? ` · ${savedIds.size}` : ''}
         </button>
       </div>
 
-      {/* ── Importer une recette (Instagram / TikTok / capture / photo) — accessible à tous les forfaits ── */}
+      {/* ── 1. Importer depuis Instagram / TikTok : le geste principal, mis en avant ── */}
       {view !== 'saved' && (
         <button onClick={() => router.push('/nutrition/recipes/import')}
-          className="card flex items-center gap-3 text-left p-4 hover:border-nutri/40 hover:shadow-md transition-all">
-          <div className="w-11 h-11 rounded-2xl bg-nutri-light text-nutri-dark flex items-center justify-center flex-shrink-0"><Link2 size={20} /></div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-zinc-900">Importer une recette</p>
-            <p className="text-[11px] text-zinc-400 leading-snug">Colle un lien Instagram ou TikTok, une capture ou une photo — Waty en fait une fiche avec son Score MYTA.</p>
+          className="relative overflow-hidden rounded-3xl text-left p-4 pb-5 shadow-md active:scale-[0.99] transition-transform"
+          style={{ background: 'linear-gradient(135deg, #4B47A0 0%, #6A66C7 55%, #22C55E 140%)' }}>
+          <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10 pointer-events-none" />
+          <div className="absolute -bottom-14 -left-6 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
+          <div className="relative flex items-start gap-3">
+            <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center flex-shrink-0"><MytaIllustration name="recette" size={44} /></div>
+            <div className="flex-1 min-w-0">
+              <span className="inline-block text-[10px] font-extrabold uppercase tracking-wide text-white/80 bg-white/15 rounded-full px-2 py-0.5">Nouveau</span>
+              <p className="text-white font-extrabold text-lg leading-tight mt-1">Une recette vue sur Instagram ou TikTok ?</p>
+              <p className="text-white/85 text-[13px] leading-snug mt-1">Colle le lien, Waty en fait une fiche complète avec sa photo, ses étapes et son Score MYTA.</p>
+            </div>
           </div>
-          <span className="text-[10px] font-bold text-nutri-dark bg-nutri-light px-2 py-1 rounded-full flex-shrink-0">Nouveau</span>
+          <div className="relative mt-3 flex items-center justify-between gap-3">
+            <SourceChips light />
+            <span className="inline-flex items-center gap-1.5 bg-white text-tta-mid text-sm font-extrabold px-4 py-2.5 rounded-full shadow-sm flex-shrink-0"><Link2 size={15} />Coller un lien</span>
+          </div>
         </button>
+      )}
+
+      {view !== 'saved' && (
+        <Waty mode="nutrition" size="sm" dismissible
+          message="Tu as vu une recette qui te fait envie ? Copie son lien, colle-le ici : je te dis ce qu'elle vaut et je la range dans ton catalogue." />
+      )}
+
+      {/* ── 2. Créer une recette avec Waty (génération IA) ── */}
+      {view !== 'saved' && (
+        <div className="flex items-center gap-3 pt-1">
+          <div className="h-px flex-1 bg-zinc-200" />
+          <p className="text-[11px] font-extrabold uppercase tracking-wide text-zinc-400">Ou demande une recette à Waty</p>
+          <div className="h-px flex-1 bg-zinc-200" />
+        </div>
       )}
 
       {view !== 'saved' && <PremiumGate label="Recettes IA — fonctionnalité Premium"><div className="flex flex-col gap-4">
@@ -528,8 +552,8 @@ export default function RecipesPage() {
       {view === 'categories' && !searchQuery && !searchCategory && (
         <div className="card text-center py-12 text-zinc-400">
           <ChefHat size={40} className="mx-auto mb-3 text-zinc-300" />
-          <p className="text-sm font-medium">Choisis une catégorie</p>
-          <p className="text-xs mt-1">Waty va te concocter 4 recettes personnalisées</p>
+          <p className="text-sm font-medium">Choisis une envie ci-dessus</p>
+          <p className="text-xs mt-1">Waty te propose 4 recettes adaptées à ton profil</p>
         </div>
       )}
 

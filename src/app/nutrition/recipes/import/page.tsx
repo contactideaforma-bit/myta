@@ -6,11 +6,12 @@ import { createClient } from '@/lib/supabase/client'
 import { Capacitor, CapacitorHttp } from '@capacitor/core'
 import { Waty } from '@/components/ui/Waty'
 import { RecipeNutritionGuide } from '@/components/ui/RecipeNutritionGuide'
+import { SourceChips } from '../SourceChips'
 import { scoreRecipe, type ScoreMyta } from '@/lib/score-myta'
-import { toSavedRow, SOURCE_LABELS, shareRecipePdf, type Recipe, type Ingredient, type Etape, type SourceKind } from '@/lib/recipes'
+import { toSavedRow, SOURCE_LABELS, shareRecipePdf, recipeShareToken, type Recipe, type Ingredient, type Etape, type SourceKind } from '@/lib/recipes'
 import {
   ChevronLeft, Link2, ClipboardPaste, Camera, Image as ImageIcon, FileText, X,
-  Loader2, Sparkles, Minus, Plus, Trash2, Bookmark, ExternalLink, Clock, Users, Star, FileDown, Check,
+  Loader2, Sparkles, Minus, Plus, Trash2, Bookmark, ExternalLink, Clock, Users, Star, FileDown, Check, Share2, ChevronDown,
 } from 'lucide-react'
 
 interface ImportResult {
@@ -185,6 +186,23 @@ export default function ImportRecipePage() {
     setTimeout(() => router.push('/nutrition/recipes?view=saved'), 600)
   }
 
+  /** Envoyer à un ami : enregistre la fiche puis partage le lien public. */
+  const [linkBusy, setLinkBusy] = useState(false)
+  async function shareLink() {
+    if (!recipeWithMacros) return
+    setLinkBusy(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { error } = await supabase.from('saved_recipes').upsert(toSavedRow(user.id, recipeWithMacros, liveScore), { onConflict: 'user_id,recipe_id' })
+      if (error) { showToast('Erreur de sauvegarde'); return }
+      const token = await recipeShareToken(supabase, recipeWithMacros)
+      const url = `${window.location.origin}/nutrition/recipes/share?t=${token ?? ''}`
+      if (navigator.share) { try { await navigator.share({ title: recipeWithMacros.titre, text: recipeWithMacros.description, url }) } catch { /* annulé */ } }
+      else { await navigator.clipboard.writeText(url); showToast('Lien copié') }
+    } finally { setLinkBusy(false) }
+  }
+
   /** Partager en PDF : enregistre la fiche (telle qu'éditée) puis ouvre la feuille de partage. */
   async function sharePdf() {
     if (!recipeWithMacros) return
@@ -206,8 +224,24 @@ export default function ImportRecipePage() {
           {result.remaining !== null && <span className="text-[10px] text-zinc-400">{result.remaining} import{result.remaining > 1 ? 's' : ''} restant{result.remaining > 1 ? 's' : ''} ce mois</span>}
         </div>
 
+        {/* Actions principales, toutes ensemble, en haut */}
+        <div className="card p-2 grid grid-cols-3 gap-1.5">
+          <button onClick={save} disabled={saving || !recipe.titre.trim() || recipe.ingredients.length === 0}
+            className="flex flex-col items-center gap-1 py-2.5 rounded-2xl bg-nutri text-white text-[11px] font-extrabold disabled:opacity-50">
+            {saving ? <Loader2 size={18} className="animate-spin" /> : <Bookmark size={18} />}Enregistrer
+          </button>
+          <button onClick={sharePdf} disabled={pdfBusy || !recipe.titre.trim() || recipe.ingredients.length === 0}
+            className="flex flex-col items-center gap-1 py-2.5 rounded-2xl bg-tta-mid/10 text-tta-mid text-[11px] font-extrabold disabled:opacity-50">
+            {pdfBusy ? <Loader2 size={18} className="animate-spin" /> : <FileDown size={18} />}Partager en PDF
+          </button>
+          <button onClick={shareLink} disabled={linkBusy || !recipe.titre.trim() || recipe.ingredients.length === 0}
+            className="flex flex-col items-center gap-1 py-2.5 rounded-2xl bg-amber-100 text-amber-800 text-[11px] font-extrabold disabled:opacity-50">
+            {linkBusy ? <Loader2 size={18} className="animate-spin" /> : <Share2 size={18} />}Envoyer à un ami
+          </button>
+        </div>
+
         <Waty mode="nutrition" size="sm" dismissible
-          message="Voici ce que j'ai compris de la recette Vérifie les quantités — c'est elles qui font le score — puis enregistre." />
+          message="Voici la fiche. Jette un œil aux quantités (ce sont elles qui font le score), puis enregistre-la dans ton catalogue." />
 
         {/* Photo + titre */}
         <div className="relative rounded-2xl overflow-hidden h-44 bg-zinc-100">
@@ -316,11 +350,7 @@ export default function ImportRecipePage() {
 
         <button onClick={save} disabled={saving || !recipe.titre.trim() || recipe.ingredients.length === 0} className="btn-nutri justify-center py-3 disabled:opacity-50">
           {saving ? <Loader2 size={16} className="animate-spin" /> : <Bookmark size={16} />}
-          Enregistrer dans mes recettes
-        </button>
-        <button onClick={sharePdf} disabled={pdfBusy || saving || !recipe.titre.trim() || recipe.ingredients.length === 0} className="btn-ghost justify-center py-3 bg-raised disabled:opacity-50">
-          {pdfBusy ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
-          {pdfBusy ? 'Préparation du PDF…' : 'Partager en PDF'}
+          Enregistrer dans mon catalogue
         </button>
         <p className="text-[10px] text-zinc-400 text-center px-4">
           Les étapes sont reformulées par Waty et la publication d'origine reste créditée. Tu es responsable du contenu que tu importes.
@@ -336,58 +366,77 @@ export default function ImportRecipePage() {
 
       <button onClick={() => router.push('/nutrition/recipes')} className="btn-ghost self-start -ml-1"><ChevronLeft size={16} />Recettes</button>
 
-      <div>
-        <h1 className="text-xl font-bold text-zinc-900">Importer une recette</h1>
-        <p className="text-sm text-zinc-400">Colle un lien Instagram ou TikTok, une capture d'écran ou une photo : Waty en fait une fiche avec son guide nutritionnel.</p>
-      </div>
+      <Waty mode="nutrition" size="sm" dismissible={false}
+        message={url ? (kindHint ? `Lien ${kindHint} reconnu. Appuie sur Analyser, je m'occupe du reste.` : 'Je vais lire ce lien. Appuie sur Analyser.')
+          : image ? 'Image reçue. Appuie sur Analyser, je lis la recette dessus.'
+          : 'Colle le lien de la vidéo, je fais la fiche à ta place : ingrédients, étapes, photo et Score MYTA.'} />
 
-      {/* Lien */}
-      <div className="card flex flex-col gap-3">
-        <label className="text-xs font-bold text-zinc-700 flex items-center gap-1.5"><Link2 size={14} className="text-nutri-dark" />Lien de la recette</label>
-        <div className="relative">
-          <input value={url} onChange={e => setUrl(e.target.value)} inputMode="url" placeholder="https://www.instagram.com/reel/… ou tiktok.com/…"
-            className="input pr-9 text-sm" />
-          {url && <button onClick={() => setUrl('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400"><X size={14} /></button>}
+      {/* ── 1. Le lien : le geste principal ── */}
+      <div className="relative overflow-hidden rounded-3xl p-4 shadow-md" style={{ background: 'linear-gradient(135deg, #4B47A0 0%, #6A66C7 60%, #22C55E 150%)' }}>
+        <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
+        <div className="relative flex items-center justify-between gap-2">
+          <p className="text-white font-extrabold text-base">1 · Colle le lien de la vidéo</p>
+          <SourceChips light active={/instagram\.com/i.test(url) ? 'instagram' : /tiktok\.com/i.test(url) ? 'tiktok' : null} />
         </div>
-        <button onClick={pasteFromClipboard} className="btn-ghost text-xs self-start -ml-2"><ClipboardPaste size={14} />Coller depuis le presse-papier</button>
-        <p className="text-[10px] text-zinc-400 leading-snug">
-          On lit la légende publique du post. Si la recette n'est que dans la vidéo, ajoute une capture d'écran du texte affiché.
-        </p>
+        <div className="relative mt-3">
+          <input value={url} onChange={e => setUrl(e.target.value)} inputMode="url" placeholder="https://www.instagram.com/reel/…"
+            className="w-full rounded-2xl bg-white text-zinc-900 text-sm px-4 py-3.5 pr-10 outline-none placeholder:text-zinc-400 shadow-inner" />
+          {url && <button onClick={() => setUrl('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400"><X size={16} /></button>}
+        </div>
+        {!url ? (
+          <button onClick={pasteFromClipboard} className="relative mt-2.5 w-full inline-flex items-center justify-center gap-2 bg-white text-tta-mid font-extrabold text-sm py-3 rounded-2xl shadow-sm">
+            <ClipboardPaste size={16} />Coller le lien copié
+          </button>
+        ) : (
+          <div className="relative mt-2.5 flex items-center gap-2 text-white/90 text-xs font-semibold"><Check size={14} />Lien prêt{kindHint ? ` · ${kindHint}` : ''}</div>
+        )}
+        <p className="relative mt-2.5 text-[11px] text-white/75 leading-snug">Dans Instagram ou TikTok : Partager → Copier le lien, puis reviens ici.</p>
       </div>
 
-      {/* Capture / photo */}
-      <div className={`card flex flex-col gap-3 ${needsMore ? 'border-nutri ring-2 ring-nutri/20' : ''}`}>
-        <label className="text-xs font-bold text-zinc-700 flex items-center gap-1.5"><Camera size={14} className="text-nutri-dark" />Capture d'écran ou photo de la recette</label>
-        {preview ? (
+      {/* ── 2. Sinon : capture, photo ou texte ── */}
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-zinc-200" />
+        <p className="text-[11px] font-extrabold uppercase tracking-wide text-zinc-400">Pas de lien ? Sinon</p>
+        <div className="h-px flex-1 bg-zinc-200" />
+      </div>
+
+      {preview ? (
+        <div className={`card p-2 ${needsMore ? 'border-nutri ring-2 ring-nutri/20' : ''}`}>
           <div className="relative rounded-2xl overflow-hidden">
             <img src={preview} alt="" className="w-full max-h-64 object-contain bg-zinc-50" />
-            <button onClick={() => pickImage(null)} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 shadow flex items-center justify-center"><X size={14} /></button>
+            <button onClick={() => pickImage(null)} className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center"><X size={14} /></button>
           </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => { if (fileRef.current) { fileRef.current.removeAttribute('capture'); fileRef.current.click() } }}
-              className="flex flex-col items-center gap-1 py-4 rounded-2xl border-2 border-dashed border-zinc-200 text-zinc-500 hover:border-nutri/50 text-xs font-medium">
-              <ImageIcon size={20} />Galerie / capture
-            </button>
-            <button onClick={() => { if (fileRef.current) { fileRef.current.setAttribute('capture', 'environment'); fileRef.current.click() } }}
-              className="flex flex-col items-center gap-1 py-4 rounded-2xl border-2 border-dashed border-zinc-200 text-zinc-500 hover:border-nutri/50 text-xs font-medium">
-              <Camera size={20} />Photo d'un livre / fiche
-            </button>
-          </div>
-        )}
-        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => pickImage(e.target.files?.[0] ?? null)} />
-      </div>
+        </div>
+      ) : (
+        <div className={`grid grid-cols-3 gap-2 ${needsMore ? 'rounded-3xl ring-2 ring-nutri/30 p-1' : ''}`}>
+          <button onClick={() => { if (fileRef.current) { fileRef.current.removeAttribute('capture'); fileRef.current.click() } }}
+            className="card flex flex-col items-center gap-2 py-4 px-2 text-center">
+            <span className="w-11 h-11 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center"><ImageIcon size={22} /></span>
+            <span className="text-xs font-bold text-zinc-800 leading-tight">Une capture d'écran</span>
+            <span className="text-[10px] text-zinc-400 leading-tight">de la recette affichée</span>
+          </button>
+          <button onClick={() => { if (fileRef.current) { fileRef.current.setAttribute('capture', 'environment'); fileRef.current.click() } }}
+            className="card flex flex-col items-center gap-2 py-4 px-2 text-center">
+            <span className="w-11 h-11 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center"><Camera size={22} /></span>
+            <span className="text-xs font-bold text-zinc-800 leading-tight">Une photo</span>
+            <span className="text-[10px] text-zinc-400 leading-tight">d'un livre ou d'une fiche</span>
+          </button>
+          <button onClick={() => setShowText(v => !v)} className={`card flex flex-col items-center gap-2 py-4 px-2 text-center ${showText ? 'border-tta-mid/40' : ''}`}>
+            <span className="w-11 h-11 rounded-2xl bg-violet-100 text-tta-mid flex items-center justify-center"><FileText size={22} /></span>
+            <span className="text-xs font-bold text-zinc-800 leading-tight">Le texte</span>
+            <span className="text-[10px] text-zinc-400 leading-tight flex items-center gap-0.5">à coller <ChevronDown size={10} className={`transition-transform ${showText ? 'rotate-180' : ''}`} /></span>
+          </button>
+        </div>
+      )}
+      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => pickImage(e.target.files?.[0] ?? null)} />
 
-      {/* Texte */}
-      <div className="card flex flex-col gap-2">
-        <button onClick={() => setShowText(v => !v)} className="text-xs font-bold text-zinc-700 flex items-center gap-1.5 text-left">
-          <FileText size={14} className="text-nutri-dark" />Coller le texte de la recette {showText ? '' : '(facultatif)'}
-        </button>
-        {showText && (
-          <textarea value={text} onChange={e => setText(e.target.value)} rows={6} className="input text-sm"
+      {showText && (
+        <div className="card flex flex-col gap-2">
+          <p className="text-xs font-bold text-zinc-700">Le texte de la recette</p>
+          <textarea value={text} onChange={e => setText(e.target.value)} rows={6} className="input text-sm" autoFocus
             placeholder={"Ingrédients :\n- 200 g de …\n\nPréparation :\n1. …"} />
-        )}
-      </div>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 leading-snug">{error}</div>
@@ -423,16 +472,12 @@ export default function ImportRecipePage() {
           <p className="text-[10px] text-zinc-400">Une quinzaine de secondes en général. Ne ferme pas l'app.</p>
         </div>
       ) : (
-        <button onClick={analyze} disabled={loading || (!url && !text.trim() && !image)} className="btn-nutri justify-center py-3 disabled:opacity-50">
-          <Sparkles size={16} />
+        <button onClick={analyze} disabled={loading || (!url && !text.trim() && !image)} className="btn-nutri justify-center py-3.5 text-base shadow-md disabled:opacity-40">
+          <Sparkles size={18} />
           {`Analyser ${kindHint ? `la recette ${kindHint}` : 'la recette'}`}
         </button>
       )}
 
-      {!url && !image && !text && (
-        <Waty mode="nutrition" size="sm" dismissible={false}
-          message="Tu as vu une recette qui te fait envie sur Instagram ou TikTok ? Partage-la moi, je te dis ce qu'elle vaut pour ta journée" />
-      )}
     </div>
   )
 }
