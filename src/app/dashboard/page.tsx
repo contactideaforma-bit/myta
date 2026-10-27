@@ -6,6 +6,7 @@ import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } fro
 // WeightChart et MonthProgress déplacés vers journal/profil
 import { fr } from 'date-fns/locale'
 import { MytaIcon } from '@/components/ui/MytaIcon'
+import { MytaIllustration } from '@/components/ui/MytaIllustration'
 import { todayISO } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { Waty } from '@/components/ui/Waty'
@@ -495,7 +496,7 @@ export default function DashboardPage() {
           <div className="w-11 h-11 rounded-[14px] bg-orange-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
             {badge.image
               ? <img src={badge.image} alt="" className="w-9 h-9 object-contain" />
-              : <MytaIcon name="flame" size={22} className="text-orange-500" />}
+              : <MytaIllustration name="trophee" size={36} />}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline justify-between gap-2">
@@ -518,7 +519,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 gap-3">
         <button onClick={() => router.push('/nutrition/journal')} className="card-sm p-3.5 text-left flex flex-col active:scale-[0.98] transition-transform">
           <div className="flex items-center justify-between">
-            <span className="w-[34px] h-[34px] rounded-[11px] bg-green-50 text-green-700 flex items-center justify-center"><MytaIcon name="journal" size={18} /></span>
+            <MytaIllustration name={s.lastMeal ? 'repas' : 'vide'} size={40} />
             <span className="text-[11px] font-bold t-muted">{s.lastMeal?.at ? format(new Date(s.lastMeal.at), 'HH:mm') : ''}</span>
           </div>
           <p className="text-xs font-bold t-muted mt-2.5">Dernier repas</p>
@@ -527,7 +528,7 @@ export default function DashboardPage() {
         </button>
         <button onClick={() => router.push(s.lastSession ? '/sport/history' : '/sport/session')} className="card-sm p-3.5 text-left flex flex-col active:scale-[0.98] transition-transform">
           <div className="flex items-center justify-between">
-            <span className="w-[34px] h-[34px] rounded-[11px] bg-sport-light text-tta-mid flex items-center justify-center"><MytaIcon name="sport" size={18} /></span>
+            <MytaIllustration name="seance" size={40} />
             <span className="text-[11px] font-bold t-muted">{s.lastSession ? relDay(s.lastSession.date) : ''}</span>
           </div>
           <p className="text-xs font-bold t-muted mt-2.5">Dernière séance</p>
@@ -540,7 +541,7 @@ export default function DashboardPage() {
       <div className="rounded-3xl p-4 text-white flex flex-col gap-2.5"
         style={{ background: 'linear-gradient(135deg, #2D2A5E 0%, #4B47A0 60%, #5C60C0 100%)', boxShadow: '0 14px 32px rgba(45,42,94,0.28)' }}>
         <div className="flex items-center gap-2.5">
-          <span className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center"><MytaIcon name="sparkle" size={18} /></span>
+          <span className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center"><MytaIllustration name="waty" size={34} /></span>
           <div className="flex-1 min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-[0.8px] opacity-75">Waty · conseil du jour</p>
             <p className="text-sm font-extrabold leading-tight truncate">{dailyTip.title}</p>

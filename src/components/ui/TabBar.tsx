@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { MytaIcon, type MytaIconName } from './MytaIcon'
+import { MytaIllustration, type MytaIllustrationName } from './MytaIllustration'
 import { getActiveProfile } from '@/lib/active-profile'
 
 const TABS: { href: string; label: string; icon: MytaIconName; match: (p: string) => boolean }[] = [
@@ -19,13 +20,13 @@ const TABS: { href: string; label: string; icon: MytaIconName; match: (p: string
   { href: '/sleep',             label: 'Sommeil', icon: 'sleep',   match: p => p.startsWith('/sleep') },
 ]
 
-interface Action { href: string; title: string; sub: string; icon: MytaIconName; bg: string; fg: string; tint: string }
+interface Action { href: string; title: string; sub: string; icon: MytaIconName; art: MytaIllustrationName }
 
 const ACTIONS: Action[] = [
-  { href: '/nutrition/journal', title: 'Un repas',             sub: 'Photo · vocal · recherche',    icon: 'journal', bg: 'bg-nutri',   fg: 'text-white', tint: 'bg-nutri-light' },
-  { href: '/sport/session',           title: 'Une séance',           sub: 'Vocal ou minuteur Tabata',     icon: 'sport',   bg: 'bg-sport',   fg: 'text-white', tint: 'bg-sport-light' },
-  { href: '/sleep',                   title: 'Ma nuit',              sub: 'Coucher · réveil · qualité',   icon: 'sleep',   bg: 'bg-violet-500', fg: 'text-white', tint: 'bg-violet-50' },
-  { href: '/nutrition/recipes/import', title: 'Importer une recette', sub: 'Lien Instagram, TikTok, photo', icon: 'recipe',  bg: 'bg-orange-500', fg: 'text-white', tint: 'bg-orange-50' },
+  { href: '/nutrition/journal',        title: 'Un repas',             sub: 'Photo · vocal · recherche',     icon: 'journal', art: 'repas'   },
+  { href: '/sport/session',            title: 'Une séance',           sub: 'Vocal ou minuteur Tabata',      icon: 'sport',   art: 'seance'  },
+  { href: '/sleep',                    title: 'Ma nuit',              sub: 'Coucher · réveil · qualité',    icon: 'sleep',   art: 'nuit'    },
+  { href: '/nutrition/recipes/import', title: 'Importer une recette', sub: 'Lien Instagram, TikTok, photo', icon: 'recipe',  art: 'recette' },
 ]
 
 export function TabBar() {
@@ -72,10 +73,8 @@ export function TabBar() {
             <div className="grid grid-cols-2 gap-3">
               {ACTIONS.filter(a => !isChild || a.icon === 'journal').map(a => (
                 <button key={a.href} onClick={() => go(a.href)}
-                  className={`${a.tint} rounded-[22px] p-4 text-left flex flex-col gap-2.5 active:scale-[0.97] transition-transform`}>
-                  <span className={`w-10 h-10 rounded-[13px] ${a.bg} ${a.fg} flex items-center justify-center`}>
-                    <MytaIcon name={a.icon} size={20} />
-                  </span>
+                  className="bg-raised rounded-[22px] p-4 text-left flex flex-col gap-2 active:scale-[0.97] transition-transform">
+                  <MytaIllustration name={a.art} size={44} />
                   <span>
                     <span className="block text-[15px] font-extrabold text-zinc-900 leading-tight">{a.title}</span>
                     <span className="block text-xs font-semibold text-zinc-500 mt-0.5">{a.sub}</span>
