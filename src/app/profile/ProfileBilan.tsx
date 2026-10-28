@@ -607,6 +607,28 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
         jMap[r.date].fat  += Number(r.fat)
       }
       const hc = (form as any).health_conditions as string[] ?? []
+      // ── Qui est la personne : âge, sexe, corps, activité, condition, santé, tabac, objectif ──
+      const ageNum = form.birth_date ? new Date().getFullYear() - new Date(form.birth_date).getFullYear() : null
+      const wKg = parseFloat(form.weight_kg) || null, hCm = parseInt(form.height_cm) || null
+      const bmiNum = wKg && hCm ? Math.round((wKg / ((hCm / 100) ** 2)) * 10) / 10 : null
+      const condLabel = CONDITIONS_FEMME.find(c => c.value === form.condition)?.label ?? null
+      const hcLabels = hc.map(k => HEALTH_CONDITIONS.find(x => x.value === k)?.label ?? k)
+      const actLabel = ACTIVITY_LEVELS.find(a => String(a.value) === String(form.activity_factor))?.label ?? null
+      const smokingTxt = (form as any).smoking_goal
+        ? `Fumeur·se en démarche d'arrêt ou de réduction (${smokingWeek ? `${smokingWeek.total} cigarette${smokingWeek.total > 1 ? 's' : ''} notée${smokingWeek.total > 1 ? 's' : ''} sur 7 jours, ${smokingWeek.days.length} jour${smokingWeek.days.length > 1 ? 's' : ''} renseigné${smokingWeek.days.length > 1 ? 's' : ''}` : 'pas de suivi noté cette semaine'})`
+        : null
+      const personText = [
+        form.sex === 'femme' ? 'Femme' : form.sex === 'homme' ? 'Homme' : null,
+        ageNum ? `${ageNum} ans` : null,
+        wKg && hCm ? `${wKg} kg pour ${hCm} cm (IMC ${bmiNum})` : wKg ? `${wKg} kg` : null,
+        actLabel ? `activité déclarée : ${actLabel}` : null,
+        condLabel ? `condition : ${condLabel}` : null,
+        hcLabels.length ? `santé : ${hcLabels.join(', ')}` : null,
+        smokingTxt,
+        profile?.goal ? `objectif déclaré : ${profile.goal}` : null,
+        profile?.weight_goal ? `poids visé : ${profile.weight_goal} kg` : null,
+        profile?.calorie_target ? `objectif calorique de l'app : ${profile.calorie_target} kcal/j${tdee ? ` (dépense estimée ${tdee} kcal/j)` : ''}` : null,
+      ].filter(Boolean).join(' · ')
       const conditionNote = [
         form.condition === 'enceinte'           ? 'La personne est enceinte (+300 kcal).'           : '',
         form.condition === 'post-partum'        ? 'La personne est en post-partum (+500 kcal).'     : '',
@@ -658,6 +680,7 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
           condition:    conditionNote,
           micros:       microsText || null,
           coverage:     coverageText,
+          person:       personText,
         }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
