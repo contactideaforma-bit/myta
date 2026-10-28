@@ -104,9 +104,9 @@ export default function ImportRecipePage() {
       const fd = new FormData()
       fd.append('kind', image ? 'capture' : url ? 'link' : 'text')
       if (url)         fd.append('url', url.trim())
-      // Instagram bloque les serveurs mais pas les téléphones : dans l'app, on lit la page
+      // Instagram et TikTok bloquent ou limitent les serveurs, pas les téléphones : dans l'app, on lit la page
       // depuis l'appareil et on envoie son HTML (la légende) au serveur pour analyse.
-      if (url && /instagram\.com/i.test(url) && Capacitor.isNativePlatform()) {
+      if (url && /instagram\.com|tiktok\.com/i.test(url) && Capacitor.isNativePlatform()) {
         try {
           const r = await CapacitorHttp.get({ url: url.trim(), headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1', 'Accept-Language': 'fr-FR,fr;q=0.9', Accept: 'text/html' }, responseType: 'text', connectTimeout: 8000, readTimeout: 8000 })
           const html = typeof r.data === 'string' ? r.data : ''

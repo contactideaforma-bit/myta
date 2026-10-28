@@ -70,25 +70,58 @@ function detectKind(url: string): SourceKind {
 
 // ─── Extraction ──────────────────────────────────────────────────────────────
 
-async function extractTikTok(url: string): Promise<SourceMeta> {
+/** Lit description / auteur / vignette dans le HTML d'une page TikTok (JSON embarqué ou balises og:). */
+function parseTikTokHtml(html: string, meta: SourceMeta): SourceMeta {
+  const unJson = (raw: string) => { try { return JSON.parse(`"${raw}"`) as string } catch { return decodeEntities(raw) } }
+  // a) JSON d'hydratation : "desc":"…" (description complète, non tronquée)
+  const block = html.match(/"itemStruct"[\s\S]{0,400}?"desc"\s*:\s*"((?:[^"\\]|\\.)*)"/) ?? html.match(/"desc"\s*:\s*"((?:[^"\\]|\\.){20,})"/)
+  if (block) { const d = unJson(block[1]).trim(); if (d.length > (meta.caption?.length ?? 0)) meta.caption = d }
+  const uid = html.match(/"uniqueId"\s*:\s*"([^"]+)"/)?.[1] ?? html.match(/"author"\s*:\s*"([^"]+)"/)?.[1]
+  if (uid && !meta.author) meta.author = `@${uid}`
+  const cover = html.match(/"cover"\s*:\s*"((?:[^"\\]|\\.)+)"/)?.[1]
+  if (cover && !meta.thumbnail) meta.thumbnail = unJson(cover)
+  // b) Balises og:
+  const ogDesc = metaTag(html, 'og:description') ?? metaTag(html, 'description')
+  if (ogDesc && ogDesc.length > (meta.caption?.length ?? 0)) meta.caption = ogDesc
+  if (!meta.thumbnail) meta.thumbnail = metaTag(html, 'og:image')
+  if (!meta.title) meta.title = metaTag(html, 'og:title')
+  return meta
+}
+
+async function extractTikTok(url: string, pageHtml?: string): Promise<SourceMeta> {
   const meta: SourceMeta = { kind: 'tiktok', url }
+  // 0. HTML lu par l'app sur le téléphone (le plus fiable : TikTok limite les serveurs)
+  if (pageHtml && pageHtml.length > 500) parseTikTokHtml(pageHtml, meta)
+  let finalUrl = url
   try {
-    // Les liens courts (vm.tiktok.com/…) : on résout la redirection d'abord
-    let finalUrl = url
+    // Liens courts (vm.tiktok.com/…, tiktok.com/t/…) : on résout la redirection d'abord
     if (/vm\.tiktok\.com|vt\.tiktok\.com|\/t\//.test(url)) {
-      const r = await fetchWithTimeout(url, { headers: { 'User-Agent': UA }, method: 'GET' })
-      finalUrl = r.url || url
+      const r = await fetchWithTimeout(url, { headers: { 'User-Agent': UA_MOBILE }, method: 'GET' })
+      finalUrl = (r.url || url).split('?')[0]
       meta.url = finalUrl
     }
-    const r = await fetchWithTimeout(`https://www.tiktok.com/oembed?url=${encodeURIComponent(finalUrl)}`, { headers: { 'User-Agent': UA } })
-    if (r.ok) {
-      const j: any = await r.json()
-      meta.title     = j.title
-      meta.caption   = j.title
-      meta.author    = j.author_name ?? j.author_unique_id
-      meta.thumbnail = j.thumbnail_url
-    }
-  } catch (e) { console.warn('[import-recipe] tiktok oembed', e) }
+  } catch (e) { console.warn('[import-recipe] tiktok resolve', e) }
+  // 1. oEmbed public (description = title)
+  if (!meta.caption || meta.caption.length < 120) {
+    try {
+      const r = await fetchWithTimeout(`https://www.tiktok.com/oembed?url=${encodeURIComponent(finalUrl)}`, { headers: { 'User-Agent': UA, Accept: 'application/json' } })
+      if (r.ok) {
+        const j: any = await r.json()
+        const t = String(j.title ?? '').trim()
+        if (t.length > (meta.caption?.length ?? 0)) meta.caption = t
+        meta.title     = meta.title ?? t
+        meta.author    = meta.author ?? (j.author_unique_id ? `@${j.author_unique_id}` : j.author_name)
+        meta.thumbnail = meta.thumbnail ?? j.thumbnail_url
+      } else console.warn('[import-recipe] tiktok oembed', r.status)
+    } catch (e) { console.warn('[import-recipe] tiktok oembed', e) }
+  }
+  // 2. Page publique (JSON embarqué) si la description manque ou semble tronquée
+  if (!meta.caption || meta.caption.length < 120 || /…|\.\.\.$/.test(meta.caption)) {
+    try {
+      const r = await fetchWithTimeout(finalUrl, { headers: { 'User-Agent': UA_MOBILE, 'Accept-Language': 'fr-FR,fr;q=0.9', Accept: 'text/html' } })
+      if (r.ok) parseTikTokHtml(await r.text(), meta)
+    } catch (e) { console.warn('[import-recipe] tiktok page', e) }
+  }
   return meta
 }
 
@@ -257,7 +290,7 @@ function cleanJSONObject(text: string): any {
 function looksUsable(text: string | undefined): boolean {
   if (!text) return false
   const t = text.toLowerCase()
-  if (t.length < 80) return false
+  if (t.length < 45) return false
   // Un indice minimal de recette : unité, ingrédient ou mot-clé
   return /\b(\d+\s?(g|gr|kg|ml|cl|l|cs|cc|c\.|cuill|tasse|cup|oz|tbsp|tsp)\b|ingr[ée]dient|recette|recipe|pr[ée]paration|cuisson|m[ée]langer|ajouter|four|poêle|sel|poivre|huile|oeuf|œuf|farine|sucre|beurre|lait|poulet|riz|pâtes|pasta)/i.test(t)
 }
@@ -302,7 +335,7 @@ export async function POST(req: NextRequest) {
   if (url) {
     if (!/^https?:\/\//i.test(url)) return NextResponse.json({ error: 'Lien invalide' }, { status: 400 })
     const k = detectKind(url)
-    src = k === 'tiktok' ? await extractTikTok(url) : k === 'instagram' ? await extractInstagram(url, pageHtml) : await extractWeb(url)
+    src = k === 'tiktok' ? await extractTikTok(url, pageHtml) : k === 'instagram' ? await extractInstagram(url, pageHtml) : await extractWeb(url)
   }
   const sourceKind: SourceKind = src?.kind ?? (kind === 'photo' ? 'photo' : kind === 'capture' ? 'capture' : 'texte')
 
@@ -315,7 +348,9 @@ export async function POST(req: NextRequest) {
       error: src?.kind === 'instagram'
         ? "La recette n'est pas dans la légende de ce post (ou le post est privé). Ajoute une capture d'écran de la recette, ou colle son texte."
         : src?.kind === 'tiktok'
-          ? "La légende de cette vidéo ne contient pas la recette. Ajoute une capture d'écran de la recette affichée, ou colle le texte."
+          ? (src.caption
+              ? `La description de cette vidéo ne contient pas la recette (« ${src.caption.slice(0, 60)}${src.caption.length > 60 ? '…' : ''} »). Ajoute une capture d'écran de la recette affichée dans la vidéo, ou colle le texte.`
+              : "Je n'ai pas pu lire la description de cette vidéo TikTok. Ajoute une capture d'écran de la recette, ou colle le texte de la description.")
           : "Je n'ai pas trouvé de recette exploitable. Ajoute une capture d'écran ou colle le texte de la recette.",
     }, { status: 422 })
   }
