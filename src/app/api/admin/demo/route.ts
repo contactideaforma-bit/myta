@@ -94,10 +94,12 @@ export async function POST(req: NextRequest) {
     if (i % 2 === 0) for (const m of SUPPLEMENTS) push(d, 9, m)
     // Sommeil : nuits courtes et hachées (réveils de bébé), une seule nuit correcte
     const mins = [330, 345, 300, 420, 315, 360, 335][6 - i]
-    const bed = i === 3 ? '00:10' : '23:20'
-    const wakeTotal = (23 * 60 + 20 + mins) % (24 * 60)
+    // duration_min est calculée par la base (colonne générée) à partir de bedtime / wake_time
+    const bedMin = i === 3 ? 10 : 23 * 60 + 20
+    const bed = `${String(Math.floor(bedMin / 60)).padStart(2, '0')}:${String(bedMin % 60).padStart(2, '0')}`
+    const wakeTotal = (bedMin + mins) % (24 * 60)
     const wake = `${String(Math.floor(wakeTotal / 60)).padStart(2, '0')}:${String(wakeTotal % 60).padStart(2, '0')}`
-    sleep.push({ user_id: userId, date: d, bedtime: bed, wake_time: wake, duration_min: mins, notes: i === 3 ? 'Réveillée 3 fois, bébé fiévreux' : i === 1 ? 'Une vraie nuit, enfin' : null })
+    sleep.push({ user_id: userId, date: d, bedtime: bed, wake_time: wake, notes: i === 3 ? 'Réveillée 3 fois, bébé fiévreux' : i === 1 ? 'Une vraie nuit, enfin' : null })
   }
   sessions.push({ user_id: userId, discipline_id: DISC_CARDIO, session_date: day(5), duration_min: 30, calories_burned: 130, notes: 'Marche rapide avec la poussette' })
   sessions.push({ user_id: userId, discipline_id: DISC_MUSCU,  session_date: day(2), duration_min: 20, calories_burned: 90,  notes: 'Renfo doux périnée et dos, à la maison' })
