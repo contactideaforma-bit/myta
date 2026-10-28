@@ -16,6 +16,7 @@ import { MytaIllustration } from '@/components/ui/MytaIllustration'
 import { AdminStats } from './AdminStats'
 import { AdminCampaigns } from './AdminCampaigns'
 import { AdminSocial } from './AdminSocial'
+import { DemoProfileCard } from './DemoProfileCard'
 
 interface Code { code: string; partner_user_id: string | null; partner_name: string | null; days: number; max_uses: number | null; uses: number; redemptions: number; expires_at: string | null; active: boolean; note: string | null; created_at: string }
 interface Activity { createdAt: string | null; lastSignIn: string | null; activated: boolean; lastDay: string | null; days7: number; days30: number; meals30: number; sessions30: number; sleeps30: number; recipes: number; games30: number; lastMeal: string | null }
@@ -253,6 +254,8 @@ export default function AdminPage() {
               </div>
             </div>
           ))}
+
+          <DemoProfileCard headers={headers} toast={showToast} />
         </>
       )}
 
