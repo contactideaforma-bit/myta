@@ -841,10 +841,16 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
     const lastWeight  = sortedW[sortedW.length - 1]?.weight_kg ?? null
     const weightDiff  = firstWeight && lastWeight ? Math.round((lastWeight - firstWeight) * 10) / 10 : null
     const weightData  = sortedW.map(w => ({ date: format(parseISO(w.date), 'd MMM', { locale: fr }), poids: w.weight_kg }))
+    // Échelle du graphique : jamais « zoomée » sur quelques centaines de grammes. On garde au moins
+    // ±2 kg autour de la moyenne (ou 1,5 × l'amplitude réelle si elle est plus grande), bornes arrondies au 0,5.
+    const ws = sortedW.map(w => w.weight_kg)
+    const wMin = Math.min(...ws), wMax = Math.max(...ws), wMid = (wMin + wMax) / 2
+    const half = Math.max(2, ((wMax - wMin) * 1.5) / 2)
+    const weightDomain: [number, number] = [Math.floor((wMid - half) * 2) / 2, Math.ceil((wMid + half) * 2) / 2]
     const avgSleepMin   = sleepLogs.length ? Math.round(sleepLogs.reduce((s, l) => s + l.duration_min, 0) / sleepLogs.length) : 0
     const sleepDebtMin  = avgSleepMin > 0 && avgSleepMin < 420 ? 420 - avgSleepMin : 0
     const nightsLabel   = sleepLogs.length ? `${sleepLogs.length} nuit${sleepLogs.length > 1 ? 's' : ''} renseignée${sleepLogs.length > 1 ? 's' : ''}` : ''
-    return { avgCal, totalCalBurned, avgDeficit, weightDiff, firstWeight, lastWeight, weightData, avgSleepMin, sleepDebtMin, coverage, nightsLabel }
+    return { avgCal, totalCalBurned, avgDeficit, weightDiff, firstWeight, lastWeight, weightData, weightDomain, avgSleepMin, sleepDebtMin, coverage, nightsLabel }
   })()
 
   if (loading) return (
@@ -1043,9 +1049,9 @@ export function ProfileBilan({ mode }: { mode: ProfileMode }) {
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
                       <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} />
-                      <YAxis tick={{ fontSize: 10 }} tickLine={false} domain={['auto', 'auto']} />
+                      <YAxis tick={{ fontSize: 10 }} tickLine={false} domain={bilanStats.weightDomain} allowDataOverflow tickCount={5} tickFormatter={(v: number) => `${v}`} width={34} />
                       <Tooltip formatter={(v: number) => [`${v} kg`, 'Poids']} />
-                      <Area type="monotone" dataKey="poids" stroke="#4B47A0" fill="url(#wg)" strokeWidth={2.5} dot={{ r: 3, fill: '#4B47A0' }} />
+                      <Area type="monotone" dataKey="poids" stroke="#4B47A0" fill="url(#wg)" strokeWidth={2.5} dot={{ r: 3.5, fill: '#4B47A0', strokeWidth: 0 }} baseValue={bilanStats.weightDomain[0]} />
                       {profile?.weight_kg && (
                         <ReferenceLine y={profile.weight_kg} stroke="#22c55e" strokeDasharray="4 2"
                           label={{ value: 'Actuel', fontSize: 9, fill: '#22c55e' }} />
