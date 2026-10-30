@@ -29,6 +29,7 @@ export function AdminCampaigns({ headers, toast }: { headers: () => Promise<Reco
   const [busy, setBusy] = useState<'' | 'gen' | 'send'>('')
   const [preview, setPreview] = useState('')
   const [confirm, setConfirm] = useState(false)
+  const [mode, setMode] = useState<'preview' | 'edit'>('preview')
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   async function load() {
@@ -106,28 +107,43 @@ export function AdminCampaigns({ headers, toast }: { headers: () => Promise<Reco
         </button>
       </div>
 
-      {/* ── 3. Texte + aperçu ── */}
+      {/* ── 3. Aperçu direct du mail + retouches ── */}
       {draft && (
         <>
-          <div className="card flex flex-col gap-2">
-            <p className="text-sm font-extrabold t-text">3 · Relis et ajuste</p>
-            <label className="text-[11px] font-bold t-muted uppercase tracking-wide">Objet</label>
-            <input value={draft.subject} onChange={e => setDraft({ ...draft, subject: e.target.value })} className="input font-bold" />
-            <label className="text-[11px] font-bold t-muted uppercase tracking-wide">Aperçu dans la boîte mail (préheader)</label>
-            <input value={draft.preheader} onChange={e => setDraft({ ...draft, preheader: e.target.value })} className="input" />
-            <label className="text-[11px] font-bold t-muted uppercase tracking-wide">Texte (une ligne vide = nouveau paragraphe, **gras**)</label>
-            <textarea value={draft.paragraphs} onChange={e => setDraft({ ...draft, paragraphs: e.target.value })} rows={9} className="input leading-relaxed" />
-            <div className="grid grid-cols-2 gap-2">
-              <div><label className="text-[11px] font-bold t-muted uppercase tracking-wide">Bouton</label><input value={draft.cta} onChange={e => setDraft({ ...draft, cta: e.target.value })} className="input" /></div>
-              <div><label className="text-[11px] font-bold t-muted uppercase tracking-wide">Ouvre</label>
-                <select value={draft.ctaPath} onChange={e => setDraft({ ...draft, ctaPath: e.target.value })} className="input">{PATHS.map(([p, l]) => <option key={p} value={p}>{l}</option>)}</select></div>
-            </div>
+          <div className="flex bg-raised rounded-full p-1 gap-1">
+            {([['preview', 'Aperçu du mail'], ['edit', 'Modifier le texte']] as const).map(([k, l]) => (
+              <button key={k} onClick={() => setMode(k)} className={`flex-1 py-1.5 rounded-full text-xs font-extrabold transition-all ${mode === k ? 'bg-white text-tta-mid shadow-sm' : 't-muted'}`}>{l}</button>
+            ))}
           </div>
 
-          <div className="card p-0 overflow-hidden">
-            <p className="text-[11px] font-bold t-muted uppercase tracking-wide px-4 pt-3">Aperçu du mail reçu</p>
-            {preview ? <iframe title="Aperçu" srcDoc={preview} sandbox="" className="w-full h-[460px] border-0 bg-transparent" /> : <p className="text-xs t-muted px-4 py-6">Rendu en cours…</p>}
-          </div>
+          {mode === 'preview' ? (
+            <div className="card p-0 overflow-hidden">
+              <div className="flex items-center justify-between px-4 pt-3 pb-2">
+                <p className="text-[11px] font-bold t-muted uppercase tracking-wide">3 · Le mail tel que l'adhérent le recevra</p>
+                <span className="text-[11px] t-faint">Objet : {draft.subject.slice(0, 40)}{draft.subject.length > 40 ? '…' : ''}</span>
+              </div>
+              {preview
+                ? <iframe title="Aperçu du mail" srcDoc={preview} sandbox="" className="w-full h-[640px] border-0" style={{ background: '#EEF0F7' }} />
+                : <div className="h-[640px] flex items-center justify-center text-xs t-muted">Rendu en cours…</div>}
+              <p className="text-[11px] t-faint px-4 py-2">Logo, bandeau Waty et pied de page sont ajoutés automatiquement ; le prénom remplace « Myriam » pour chaque destinataire.</p>
+            </div>
+          ) : (
+            <div className="card flex flex-col gap-2">
+              <p className="text-sm font-extrabold t-text">3 · Relis et ajuste</p>
+              <label className="text-[11px] font-bold t-muted uppercase tracking-wide">Objet</label>
+              <input value={draft.subject} onChange={e => setDraft({ ...draft, subject: e.target.value })} className="input font-bold" />
+              <label className="text-[11px] font-bold t-muted uppercase tracking-wide">Aperçu dans la boîte mail (préheader)</label>
+              <input value={draft.preheader} onChange={e => setDraft({ ...draft, preheader: e.target.value })} className="input" />
+              <label className="text-[11px] font-bold t-muted uppercase tracking-wide">Texte (une ligne vide = nouveau paragraphe, **gras**)</label>
+              <textarea value={draft.paragraphs} onChange={e => setDraft({ ...draft, paragraphs: e.target.value })} rows={9} className="input leading-relaxed" />
+              <div className="grid grid-cols-2 gap-2">
+                <div><label className="text-[11px] font-bold t-muted uppercase tracking-wide">Bouton</label><input value={draft.cta} onChange={e => setDraft({ ...draft, cta: e.target.value })} className="input" /></div>
+                <div><label className="text-[11px] font-bold t-muted uppercase tracking-wide">Ouvre</label>
+                  <select value={draft.ctaPath} onChange={e => setDraft({ ...draft, ctaPath: e.target.value })} className="input">{PATHS.map(([p, l]) => <option key={p} value={p}>{l}</option>)}</select></div>
+              </div>
+              <button onClick={() => setMode('preview')} className="btn-ghost justify-center bg-raised text-sm">Voir l'aperçu</button>
+            </div>
+          )}
 
           {/* ── 4. Envoi ── */}
           <div className="card flex flex-col gap-2">

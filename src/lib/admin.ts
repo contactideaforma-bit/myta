@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { requireAuth } from './auth'
+import { renderEmail } from './email-layout'
 
 export const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -93,13 +94,6 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
 }
 
 export function emailShell(title: string, body: string): string {
-  return `<!doctype html><html lang="fr"><body style="margin:0;background:#F6F6FB;font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#15152A">
-<div style="max-width:520px;margin:0 auto;padding:32px 20px">
-  <div style="background:#fff;border-radius:24px;padding:28px 24px;box-shadow:0 10px 30px rgba(45,42,94,0.08)">
-    <p style="margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:1px;color:#4B47A0;text-transform:uppercase">MYTA · My Twin App</p>
-    <h1 style="margin:0 0 16px;font-size:22px;line-height:1.25">${title}</h1>
-    ${body}
-  </div>
-  <p style="margin:18px 0 0;font-size:11px;color:#8A8AA6;text-align:center">MYTA par IDEAFORMA · contact@mytwinapp.fr</p>
-</div></body></html>`
+  // Coque de marque commune (logo, bandeau Waty, pied de page) — voir lib/email-layout.ts
+  return renderEmail({ title, bodyHtml: body })
 }

@@ -17,6 +17,7 @@ import { AdminStats } from './AdminStats'
 import { AdminCampaigns } from './AdminCampaigns'
 import { AdminSocial } from './AdminSocial'
 import { DemoProfileCard } from './DemoProfileCard'
+import { AdminBell } from './AdminBell'
 
 interface Code { code: string; partner_user_id: string | null; partner_name: string | null; days: number; max_uses: number | null; uses: number; redemptions: number; expires_at: string | null; active: boolean; note: string | null; created_at: string }
 interface Activity { createdAt: string | null; lastSignIn: string | null; activated: boolean; lastDay: string | null; days7: number; days30: number; meals30: number; sessions30: number; sleeps30: number; recipes: number; games30: number; lastMeal: string | null }
@@ -145,6 +146,7 @@ export default function AdminPage() {
           <h1 className="text-xl font-extrabold t-text tracking-tight">Collabs</h1>
           <p className="text-xs t-muted mt-0.5">{activeCount} partenaire{activeCount > 1 ? 's' : ''} actif{activeCount > 1 ? 's' : ''} · {codes.length} code{codes.length > 1 ? 's' : ''} · {redemptions} utilisation{redemptions > 1 ? 's' : ''}</p>
         </div>
+        <AdminBell headers={headers} />
       </div>
 
       <div className="flex bg-raised rounded-full p-1 gap-1 overflow-x-auto no-scrollbar">

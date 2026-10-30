@@ -8,7 +8,7 @@ import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import {
   Loader2, X, Check, AlertTriangle,
-  Mic, ChevronDown, ChevronUp, PenLine, Send,
+  Mic, ChevronDown, ChevronUp, PenLine, Send, Trash2,
 } from 'lucide-react'
 import { VoiceSession } from '@/components/sport/VoiceSession'
 import { Waty, WATY_MESSAGES } from '@/components/ui/Waty'
@@ -179,6 +179,17 @@ export default function SessionPage() {
   const [saved, setSaved]         = useState(false)
   const [lastSaved, setLastSaved] = useState<ExtractedSession | null>(null)
   const [todaySessions, setTodaySessions] = useState<any[]>([])
+  const [deleting, setDeleting] = useState<string | null>(null)
+
+  /** Supprimer une séance enregistrée (ses exercices suivent, puis la ligne). */
+  async function deleteSession(id: string) {
+    if (!confirm('Supprimer cette séance ?')) return
+    setDeleting(id)
+    await supabase.from('session_exercises').delete().eq('session_id', id)
+    const { error } = await supabase.from('sessions').delete().eq('id', id)
+    setDeleting(null)
+    if (!error) { setTodaySessions(prev => prev.filter(s => s.id !== id)); if (lastSaved) setLastSaved(null) }
+  }
 
   useEffect(() => {
     async function loadToday() {
@@ -309,6 +320,10 @@ export default function SessionPage() {
                   {s.duration_min} min · {s.calories_burned ?? 0} kcal{(s.discipline as any)?.name ? ` · ${(s.discipline as any).name}` : ''}
                 </p>
               </div>
+              <button onClick={() => deleteSession(s.id)} disabled={deleting === s.id} aria-label="Supprimer la séance"
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-zinc-400 hover:text-red-500 hover:bg-red-50 flex-shrink-0 disabled:opacity-50">
+                {deleting === s.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={15} />}
+              </button>
             </div>
           ))}
         </div>

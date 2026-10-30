@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { RC_PRODUCT_TO_PLAN } from '@/lib/revenuecat'
+import { notifyNewSubscriber } from '@/lib/admin-notify'
 
 /**
  * Webhook RevenueCat — synchronise les achats in-app iOS vers Supabase.
@@ -87,7 +88,15 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const { data: before } = await supabaseAdmin.from('profiles').select('subscription_status').eq('id', uid).maybeSingle()
     await supabaseAdmin.from('profiles').update(update).eq('id', uid)
+    // Notification admin : nouvel essai ou nouvel abonné payant (une seule fois par transition)
+    const store = (event.store as string | undefined) === 'PLAY_STORE' ? 'google' : (event.store as string | undefined) === 'APP_STORE' ? 'apple' : 'revenuecat'
+    if (type === 'INITIAL_PURCHASE') {
+      notifyNewSubscriber({ userId: uid, plan: planId, source: store, trial: isTrial }).catch(() => null)
+    } else if ((type === 'RENEWAL' || type === 'PRODUCT_CHANGE') && !isTrial && before?.subscription_status !== 'active') {
+      notifyNewSubscriber({ userId: uid, plan: planId, source: store, trial: false }).catch(() => null)
+    }
   } catch (err) {
     console.error('[revenuecat webhook]', err)
     return NextResponse.json({ error: 'db_error' }, { status: 500 })

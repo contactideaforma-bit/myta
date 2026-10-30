@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 import { getPlanIdFromPriceId } from '@/lib/stripe-plans'
+import { notifyNewSubscriber } from '@/lib/admin-notify'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2026-05-27.dahlia' as any,
@@ -274,6 +275,9 @@ export async function POST(req: NextRequest) {
           plan:                checkoutPlanId ?? 'premium',
         }).eq('id', uid)
 
+        // Notification admin (cloche Collabs + e-mail + push) — jamais bloquant
+        notifyNewSubscriber({ userId: uid, plan: checkoutPlanId ?? 'premium', source: 'stripe', trial: !!checkoutSub?.trial_end }).catch(() => null)
+
         // ── Parrainage : créditer le parrain d'1 mois gratuit ──
         // Réutilise checkoutSub déjà récupéré plus haut
         try {
@@ -361,7 +365,12 @@ export async function POST(req: NextRequest) {
         if (periodEnd) updatePayload.subscription_end = periodEnd
         if (planId) updatePayload.plan = planId
 
+        // Passage essai → payant : on prévient l'admin une seule fois
+        const { data: before } = await supabaseAdmin.from('profiles').select('subscription_status').eq('id', uid).maybeSingle()
         await supabaseAdmin.from('profiles').update(updatePayload).eq('id', uid)
+        if (sub.status === 'active' && before?.subscription_status !== 'active') {
+          notifyNewSubscriber({ userId: uid, plan: planId, source: 'stripe', trial: false }).catch(() => null)
+        }
       }
       break
     }
