@@ -3,20 +3,7 @@
 import { useState, useRef } from 'react'
 import { Mic, MicOff, Loader2, Check, X, RefreshCw, Calendar } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-interface ExtractedSession {
-  discipline: string
-  duration_min: number
-  exercises: {
-    name: string
-    sets: number | null
-    reps: number | null
-    duration_sec: number | null
-    tips: string
-  }[]
-  notes: string
-  calories_estimate: number | null
-}
+import { SessionResult, SessionAnalyzing, type ExtractedSession } from './SessionResult'
 
 interface Props {
   onConfirm: (session: ExtractedSession & { custom_date?: string }) => void
@@ -31,10 +18,6 @@ function fmtDuration(sec: number | null): string {
   const m = Math.floor(sec / 60)
   const s = sec % 60
   return m > 0 ? `${m}min${s > 0 ? ` ${s}s` : ''}` : `${s}s`
-}
-
-const DISC_EMOJI: Record<string, string> = {
-  natation: '', musculation: '', cardio: '', boxe: '',
 }
 
 export function VoiceSession({ onConfirm, onCancel, allowDatePick = false }: Props) {
@@ -172,15 +155,7 @@ export function VoiceSession({ onConfirm, onCancel, allowDatePick = false }: Pro
   )
 
   // ── Processing ────────────────────────────────────────────────────────────────
-  if (state === 'processing') return (
-    <div className="card flex flex-col items-center gap-5 py-12">
-      <Loader2 size={40} className="animate-spin text-tta-mid" />
-      <div className="text-center">
-        <p className="font-bold text-zinc-900">Analyse en cours…</p>
-        <p className="text-sm text-zinc-400 mt-1">Waty analyse ta séance</p>
-      </div>
-    </div>
-  )
+  if (state === 'processing') return <SessionAnalyzing mode="vocal" />
 
   // ── Error ─────────────────────────────────────────────────────────────────────
   if (state === 'error') return (
@@ -201,81 +176,26 @@ export function VoiceSession({ onConfirm, onCancel, allowDatePick = false }: Pro
 
   // ── Preview ───────────────────────────────────────────────────────────────────
   if (state === 'preview' && session) return (
-    <div className="card flex flex-col gap-4">
-      <div>
-        <p className="text-sm font-bold text-zinc-900">Séance détectée</p>
-        <p className="text-xs text-zinc-400 mt-0.5 italic">"{transcript}"</p>
-      </div>
-
-      {/* Résumé */}
-      <div className="bg-tta-light rounded-xl p-4 flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">{DISC_EMOJI[session.discipline] ?? ''}</span>
-            <div>
-              <p className="font-bold text-tta-mid capitalize">{session.discipline}</p>
-              <p className="text-xs text-zinc-500">{session.notes}</p>
+    <SessionResult session={session} title="Séance détectée" transcript={transcript} actions={
+      <div className="flex flex-col gap-2">
+        {allowDatePick && (
+          <div className="bg-zinc-50 rounded-2xl p-3 flex items-center gap-3">
+            <Calendar size={16} className="text-sport flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-xs font-bold text-zinc-600 mb-1">Date de la séance</p>
+              <input type="date" value={selectedDate} max={new Date().toISOString().slice(0, 10)} onChange={e => setSelectedDate(e.target.value)} className="input py-1.5 text-sm" />
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-xl font-black text-tta-mid">{session.duration_min} min</p>
-            {session.calories_estimate && (
-              <p className="text-xs text-zinc-500">~{session.calories_estimate} kcal</p>
-            )}
-          </div>
+        )}
+        <div className="flex gap-2">
+          <button onClick={() => onConfirm({ ...session!, custom_date: allowDatePick ? selectedDate : undefined })} className="btn-primary flex-1 justify-center py-2.5">
+            <Check size={16} />Enregistrer la séance
+          </button>
+          <button onClick={reset} className="btn-ghost px-3" title="Réenregistrer"><RefreshCw size={15} /></button>
+          <button onClick={onCancel} className="btn-ghost px-3 text-zinc-400" title="Annuler"><X size={15} /></button>
         </div>
       </div>
-
-      {/* Exercices */}
-      {session.exercises.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Exercices détectés</p>
-          {session.exercises.map((ex, i) => (
-            <div key={i} className="flex items-center gap-3 py-2 border-b border-zinc-100 last:border-0">
-              <span className="w-2 h-2 rounded-full bg-tta-mid flex-shrink-0" />
-              <p className="text-sm font-medium flex-1">{ex.name}</p>
-              <span className="text-xs text-zinc-400 font-mono">
-                {ex.duration_sec ? fmtDuration(ex.duration_sec)
-                  : ex.sets && ex.reps ? `${ex.sets}×${ex.reps}`
-                  : ex.sets ? `${ex.sets} séries`
-                  : ''}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Sélecteur de date — si allowDatePick */}
-      {allowDatePick && (
-        <div className="bg-zinc-50 rounded-2xl p-3 flex items-center gap-3">
-          <Calendar size={16} className="text-sport flex-shrink-0" />
-          <div className="flex-1">
-            <p className="text-xs font-bold text-zinc-600 mb-1">Date de la séance</p>
-            <input
-              type="date"
-              value={selectedDate}
-              max={new Date().toISOString().slice(0, 10)}
-              onChange={e => setSelectedDate(e.target.value)}
-              className="input py-1.5 text-sm"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Actions */}
-      <div className="flex gap-2 pt-1">
-        <button onClick={() => onConfirm({ ...session!, custom_date: allowDatePick ? selectedDate : undefined })}
-          className="btn-primary flex-1 justify-center py-2.5">
-          <Check size={16} />Enregistrer la séance
-        </button>
-        <button onClick={reset} className="btn-ghost px-3" title="Réenregistrer">
-          <RefreshCw size={15} />
-        </button>
-        <button onClick={onCancel} className="btn-ghost px-3 text-zinc-400" title="Annuler">
-          <X size={15} />
-        </button>
-      </div>
-    </div>
+    } />
   )
 
   return null

@@ -15,6 +15,8 @@ import { Waty, WATY_MESSAGES } from '@/components/ui/Waty'
 import OnboardingCoach from '@/components/ui/OnboardingCoach'
 import { useOnboarding } from '@/lib/onboarding'
 import { MytaIcon } from '@/components/ui/MytaIcon'
+import { MytaIllustration } from '@/components/ui/MytaIllustration'
+import { SessionResult, SessionAnalyzing, type ExtractedSession } from '@/components/sport/SessionResult'
 
 type InputMode = 'none' | 'voice' | 'text'
 
@@ -64,6 +66,7 @@ function TextSession({ onConfirm, onCancel }: {
   const [text, setText]       = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
+  const [preview, setPreview] = useState<ExtractedSession | null>(null)
 
   const EXAMPLES = [
     "30 min de vélo elliptique intensité modérée",
@@ -85,12 +88,23 @@ function TextSession({ onConfirm, onCancel }: {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Erreur serveur')
-      onConfirm(data.session)
+      setPreview(data.session)
     } catch (e: any) {
       setError(e.message ?? 'Erreur lors de l\'analyse')
     }
     setLoading(false)
   }
+
+  if (loading) return <SessionAnalyzing mode="texte" />
+  if (preview) return (
+    <SessionResult session={preview} title="Séance détectée" transcript={text} actions={
+      <div className="flex gap-2">
+        <button onClick={() => onConfirm(preview)} className="btn-primary flex-1 justify-center py-2.5"><Check size={16} />Enregistrer la séance</button>
+        <button onClick={() => setPreview(null)} className="btn-ghost px-3" title="Modifier"><PenLine size={15} /></button>
+        <button onClick={onCancel} className="btn-ghost px-3 text-zinc-400" title="Annuler"><X size={15} /></button>
+      </div>
+    } />
+  )
 
   return (
     <div className="card flex flex-col gap-4">
@@ -124,12 +138,8 @@ function TextSession({ onConfirm, onCancel }: {
         </div>
       </div>
       {error && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-xl">{error}</p>}
-      <button onClick={submit} disabled={!text.trim() || loading}
-        className="btn-sport justify-center py-3 disabled:opacity-50">
-        {loading
-          ? <><Loader2 size={16} className="animate-spin" />Analyse en cours…</>
-          : <><Send size={16} />Analyser ma séance</>
-        }
+      <button onClick={submit} disabled={!text.trim() || loading} className="btn-sport justify-center py-3 disabled:opacity-50">
+        <Send size={16} />Analyser ma séance
       </button>
     </div>
   )
@@ -167,6 +177,7 @@ export default function SessionPage() {
   const [inputMode, setInputMode] = useState<InputMode>('none')
   const [shuffledTips]            = useState(() => [...SPORT_TIPS].sort(() => Math.random() - 0.5))
   const [saved, setSaved]         = useState(false)
+  const [lastSaved, setLastSaved] = useState<ExtractedSession | null>(null)
   const [todaySessions, setTodaySessions] = useState<any[]>([])
 
   useEffect(() => {
@@ -213,7 +224,7 @@ export default function SessionPage() {
           duration_min:    voiceSession.duration_min ?? 30,
           calories_burned: voiceSession.calories_estimate
             ?? Math.round(5 * weight * ((voiceSession.duration_min ?? 30) / 60)),
-          notes: voiceSession.notes ?? null,
+          notes: [voiceSession.activity_label, voiceSession.notes].filter(Boolean).join(' · ') || null,
         }).select().single()
 
       if (sessionError) { console.error('Session insert error:', sessionError); return }
@@ -231,10 +242,12 @@ export default function SessionPage() {
         )
       }
 
-      // Reste sur la page + affiche succès
+      // Reste sur la page : fiche de la séance + commentaire de Waty
       setSaved(true)
+      setLastSaved(voiceSession)
       setInputMode('none')
-      setTimeout(() => setSaved(false), 4000)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      setTimeout(() => setSaved(false), 3000)
 
       // Parcours guidé : première séance enregistrée → étape sommeil.
       if (obStep === 'sport') {
@@ -269,9 +282,15 @@ export default function SessionPage() {
       )}
 
       <div>
-        <h1 className="text-xl font-extrabold text-zinc-900">Nouvelle séance</h1>
-        <p className="text-sm text-zinc-400 mt-0.5">Décris ta séance à voix haute ou par écrit</p>
+        <h1 className="text-xl font-extrabold text-zinc-900">{lastSaved ? 'Bien joué' : 'Nouvelle séance'}</h1>
+        <p className="text-sm text-zinc-400 mt-0.5">{lastSaved ? 'Ta séance est enregistrée, voici ce qu\'elle t\'apporte' : 'Décris ta séance à voix haute ou par écrit'}</p>
       </div>
+
+      {lastSaved && inputMode === 'none' && (
+        <SessionResult session={lastSaved} title="Séance enregistrée" actions={
+          <button onClick={() => setLastSaved(null)} className="btn-sport justify-center py-2.5"><Mic size={15} />Nouvelle séance</button>
+        } />
+      )}
 
       {/* ── Séances du jour ── */}
       {todaySessions.length > 0 && (
@@ -281,15 +300,13 @@ export default function SessionPage() {
           </p>
           {todaySessions.map((s: any) => (
             <div key={s.id} className="flex items-center gap-3 bg-sport-light rounded-2xl px-3 py-2.5">
-              <div className="w-8 h-8 bg-sport/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                <span className="text-sm"></span>
-              </div>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"><MytaIllustration name="seance" size={30} /></div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-sport-dark truncate">
-                  {(s.discipline as any)?.name ?? 'Séance'}
+                  {s.notes ? String(s.notes).split(' · ')[0] : ((s.discipline as any)?.name ?? 'Séance')}
                 </p>
-                <p className="text-xs text-zinc-400">
-                  {s.duration_min} min · {s.calories_burned ?? 0} kcal
+                <p className="text-xs text-zinc-400 truncate">
+                  {s.duration_min} min · {s.calories_burned ?? 0} kcal{(s.discipline as any)?.name ? ` · ${(s.discipline as any).name}` : ''}
                 </p>
               </div>
             </div>
@@ -297,10 +314,10 @@ export default function SessionPage() {
         </div>
       )}
 
-      <Waty mode="sport" message={WATY_MESSAGES.sport_start} size="sm" />
+      {!lastSaved && <Waty mode="sport" message={WATY_MESSAGES.sport_start} size="sm" />}
 
       {/* Modes de saisie */}
-      {inputMode === 'voice' ? (
+      {lastSaved && inputMode === 'none' ? null : inputMode === 'voice' ? (
         <VoiceSession onConfirm={handleVoiceConfirm} onCancel={() => setInputMode('none')} />
       ) : inputMode === 'text' ? (
         <TextSession onConfirm={handleVoiceConfirm} onCancel={() => setInputMode('none')} />
